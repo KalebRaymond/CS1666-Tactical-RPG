@@ -6,6 +6,8 @@ const CAM_H: u32 = 720;
 
 use sdl2::rect::Rect;
 
+#[macro_use] mod sdl_macros;
+
 mod credits;
 
 pub struct SDLCore {
@@ -60,14 +62,16 @@ fn init_sdl_core(vsync:bool) -> Result<SDLCore, String> {
 
 	let texture_creator = wincan.texture_creator();
 
-	Ok( SDLCore{
+	Ok( 
+		SDLCore{
 			sdl_ctx,
 			ttf_ctx,
 			wincan,
 			event_pump,
 			cam,
 			texture_creator,
-	})
+		}
+	)
 }
 
 fn main() {
