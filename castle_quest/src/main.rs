@@ -26,6 +26,13 @@ fn runner(vsync:bool) {
 }
 
 fn run(vsync:bool) -> Result<(), String> {
+	let mut core = init_sdl_core(vsync)?;
+	credits::credits(&mut core)?;
+
+	Ok(())
+}
+
+fn init_sdl_core(vsync:bool) -> Result<SDLCore, String> {
 	let sdl_ctx = sdl2::init()?;
 	let ttf_ctx = sdl2::ttf::init().map_err(|e| e.to_string())?;
 	let video_subsys = sdl_ctx.video()?;
@@ -53,18 +60,14 @@ fn run(vsync:bool) -> Result<(), String> {
 
 	let texture_creator = wincan.texture_creator();
 
-	let mut core = SDLCore{
-		sdl_ctx,
-		ttf_ctx,
-		wincan,
-		event_pump,
-		cam,
-		texture_creator,
-	};
-
-	credits::credits(&mut core)?;
-
-	Ok(())
+	Ok( SDLCore{
+			sdl_ctx,
+			ttf_ctx,
+			wincan,
+			event_pump,
+			cam,
+			texture_creator,
+	})
 }
 
 fn main() {
