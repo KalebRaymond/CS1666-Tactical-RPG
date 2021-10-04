@@ -21,14 +21,20 @@ pub struct SDLCore {
 
 fn runner(vsync:bool) {
 	println!("\nRunning {}:", TITLE);
-	match run(vsync) {
-		Err(e) => println!("\n\t\tEncountered error while running: {}", e),
-		Ok(_) => println!("DONE\nExiting cleanly"),
+	print!("\tInitting...");
+	match init_sdl_core(vsync) {
+		Err(e) => println!("\n\t\tFailed to init: {}", e),
+		Ok(core) => {
+			println!("DONE");
+			print!("\tRunning...");
+			match run(core) {
+				Err(e) => println!("\n\t\tEncountered error while running: {}", e),
+				Ok(_) => println!("DONE\nExiting cleanly"),
+			};
+		},
 	};
 }
-
-fn run(vsync:bool) -> Result<(), String> {
-	let mut core = init_sdl_core(vsync)?;
+fn run(mut core: SDLCore) -> Result<(), String> {
 	credits::credits(&mut core)?;
 
 	Ok(())
