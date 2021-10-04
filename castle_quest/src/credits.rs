@@ -133,5 +133,11 @@ pub fn credits(core: &mut SDLCore) -> Result<(), String> {
 		core.wincan.copy(&jake_credit, None, None)?;
 	});
 
+	// Shane Josapak Credit Image
+	credits_page!(core, {
+		let shane_credit = core.texture_creator.load_texture("images/ShaneJCreditImage.png")?;
+		core.wincan.copy(&shane_credit, None, None)?;
+	});
+
 	Ok(())
 }
