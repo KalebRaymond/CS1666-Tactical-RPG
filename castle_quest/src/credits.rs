@@ -91,6 +91,15 @@ pub fn credits(core: &mut SDLCore) -> Result<(), String> {
 		core.wincan.copy(&text_texture, None, centered_rect!(core, _, 400, 550, 200))?;
 	});
 
+	//Colin Woelfel Credit Image
+	credits_page!(core, {
+		core.wincan.set_draw_color(Color::RGBA(201, 196, 196, 128));
+		core.wincan.clear();
+
+		let colin_credit = core.texture_creator.load_texture("images/ColinWCreditImage.png")?;
+		core.wincan.copy(&kaleb_credit, None, None)?;
+	});
+
 	// ----- Networking team
 	credits_page!(core, {
 		core.wincan.set_draw_color(Color::RGBA(238, 46, 21, 128));
