@@ -102,6 +102,24 @@ pub fn credits(core: &mut SDLCore) -> Result<(), String> {
 		let kaleb_credit = core.texture_creator.load_texture("images/KalebRCreditImage.png")?;
 		core.wincan.copy(&kaleb_credit, None, None)?;
 	});
+	
+	//Jared Carl Credit Image
+	credits_page!(core, {
+		core.wincan.set_draw_color(Color::RGBA(255, 255, 255, 128));
+		core.wincan.clear();
+
+		let jared_credit = core.texture_creator.load_texture("images/JaredCCreditImage.png")?;
+		core.wincan.copy(&jared_credit, None, centered_rect!(core, _, 200, 256, 200))?;
+	
+		let text_surface = regular_font.render("Jared Carl")
+			.blended_wrapped(Color::RGBA(0, 0, 0, 128), 320)
+			.map_err(|e| e.to_string())?;
+	
+		let text_texture = core.texture_creator.create_texture_from_surface(&text_surface)
+			.map_err(|e| e.to_string())?;
+	
+		core.wincan.copy(&text_texture, None, centered_rect!(core, _, 400, 550, 200))?;
+	});
 
 	// ----- Networking team
 	credits_page!(core, {
