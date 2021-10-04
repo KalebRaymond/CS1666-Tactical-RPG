@@ -127,10 +127,11 @@ pub fn credits(core: &mut SDLCore) -> Result<(), String> {
 		core.wincan.copy(&bianca_credit, None, None)?;
 	});
   
-  credits_page!(core, {
+	//Jake Baumbaugh Credit Image
+	credits_page!(core, {
 		let jake_credit = core.texture_creator.load_texture("images/JakeBCreditImageWithText.png")?;
 		core.wincan.copy(&jake_credit, None, None)?;
-  });
+	});
 
 	Ok(())
 }
