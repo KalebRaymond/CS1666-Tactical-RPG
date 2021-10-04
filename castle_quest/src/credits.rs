@@ -121,5 +121,11 @@ pub fn credits(core: &mut SDLCore) -> Result<(), String> {
 		core.wincan.copy(&text_texture, None, centered_rect!(core, _, 400, 500, 125))?;
 	});
 
+	//Bianca Finamore Credit Image
+	credits_page!(core, {
+		let bianca_credit = core.texture_creator.load_texture("images/BiancaCredit.png")?;
+		core.wincan.copy(&bianca_credit, None, None)?;
+	});
+
 	Ok(())
 }
