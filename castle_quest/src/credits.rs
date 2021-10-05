@@ -7,7 +7,7 @@ use sdl2::rect::Rect;
 
 use crate::SDLCore;
 
-const CREDITS_TIMEOUT: u64 = 4500;
+const CREDITS_TIMEOUT: u64 = 3500;
 
 /// Credits page macro: surrounds the provided "closure" (not really a closure) with canvas present() and thread::sleep calls
 macro_rules! credits_page {
@@ -97,7 +97,7 @@ pub fn credits(core: &mut SDLCore) -> Result<(), String> {
 		core.wincan.clear();
 
 		let colin_credit = core.texture_creator.load_texture("images/ColinWCreditImage.png")?;
-		core.wincan.copy(&kaleb_credit, None, None)?;
+		core.wincan.copy(&colin_credit, None, None)?;
 	});
 
 	// ----- Networking team
