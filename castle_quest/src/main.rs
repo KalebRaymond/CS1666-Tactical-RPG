@@ -104,7 +104,7 @@ fn init_sdl_core(vsync:bool) -> Result<SDLCore, String> {
 
 fn run_single_player(core: &mut SDLCore) -> Result<(), String> {
 	//Basic mock map, 48x48 2d vector filled with 1s
-	let mut map: Vec<Vec<u32>> = vec![vec![1; 3]; 3];
+	let mut map: Vec<Vec<u32>> = vec![vec![1; 48]; 48];
 	let map_width = map[0].len();
 	let map_height = map.len();
 
