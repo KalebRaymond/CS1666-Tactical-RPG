@@ -39,31 +39,37 @@ fn runner(vsync:bool) {
 	print!("\tInitting...");
 	match init_sdl_core(vsync) {
 		Err(e) => println!("\n\t\tFailed to init: {}", e),
-		Ok(core) => {
+		Ok(mut core) => {
 			println!("DONE");
 			print!("\tRunning...");
 
+			//Start the game in the Single Player mode
 			let mut game_state = GameState::SinglePlayer;
 
-			match run(core, game_state) {
-				Err(e) => {
-					println!("\n\t\tEncountered error while running: {}", e)
-				},
-				Ok(GameState) => {
-					match GameState {
-						GameState::Quit => println!("DONE\nExiting cleanly"),
-						_ => println!("Invalid game state"),
-					}
-				},
-			};
+			loop {
+				match run_game_state(&mut core, &game_state) {
+					Err(e) => {
+						println!("\n\t\tEncountered error while running: {}", e)
+					},
+					Ok(next_game_state) => {
+						match next_game_state {
+							GameState::Quit => break,
+							_ => { game_state = next_game_state; },
+						}
+					},
+				};
+			}
+
+			println!("DONE\nExiting cleanly");
 		},
 	};
 }
 
-fn run(mut core: SDLCore, game_state: GameState) -> Result<GameState, String> {
+fn run_game_state(core: &mut SDLCore, game_state: &GameState) -> Result<GameState, String> {
 	let next_game_state = match game_state {
-		GameState::SinglePlayer => run_single_player(&mut core)?,
-		GameState::Credits => credits::credits(&mut core)?,
+		GameState::SinglePlayer => run_single_player(core)?,
+		GameState::Credits => credits::credits(core)?,
+		GameState::Quit => GameState::Quit,
 		_ => return Err("Invalid game state".to_string()),
 	};
 
@@ -98,16 +104,16 @@ fn init_sdl_core(vsync:bool) -> Result<SDLCore, String> {
 
 	let texture_creator = wincan.texture_creator();
 
-	Ok( 
-		SDLCore{
-			sdl_ctx,
-			ttf_ctx,
-			wincan,
-			event_pump,
-			cam,
-			texture_creator,
-		}
-	)
+	let core = SDLCore{
+		sdl_ctx,
+		ttf_ctx,
+		wincan,
+		event_pump,
+		cam,
+		texture_creator,
+	};
+
+	Ok(core)
 }
 
 fn run_single_player(core: &mut SDLCore) -> Result<GameState, String> {
