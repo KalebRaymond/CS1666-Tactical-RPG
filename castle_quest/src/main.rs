@@ -17,11 +17,12 @@ mod pixel_coordinates;
 
 use pixel_coordinates::PixelCoordinates;
 
-enum GameState {
+pub enum GameState {
 	MainMenu,
 	SinglePlayer,
 	MultiPlayer,
 	Credits,
+	Quit,
 }
 
 pub struct SDLCore {
@@ -38,28 +39,41 @@ fn runner(vsync:bool) {
 	print!("\tInitting...");
 	match init_sdl_core(vsync) {
 		Err(e) => println!("\n\t\tFailed to init: {}", e),
-		Ok(core) => {
+		Ok(mut core) => {
 			println!("DONE");
 			print!("\tRunning...");
 
+			//Start the game in the Single Player mode
 			let mut game_state = GameState::SinglePlayer;
 
-			match run(core, game_state) {
-				Err(e) => println!("\n\t\tEncountered error while running: {}", e),
-				Ok(_) => println!("DONE\nExiting cleanly"),
-			};
+			loop {
+				match run_game_state(&mut core, &game_state) {
+					Err(e) => {
+						panic!("\n\t\tEncountered error while running: {}", e);
+					},
+					Ok(next_game_state) => {
+						match next_game_state {
+							GameState::Quit => break,
+							_ => { game_state = next_game_state; },
+						}
+					},
+				};
+			}
+
+			println!("DONE\nExiting cleanly");
 		},
 	};
 }
 
-fn run(mut core: SDLCore, game_state: GameState) -> Result<(), String> {
-	match game_state {
-		GameState::SinglePlayer => run_single_player(&mut core)?,
-		GameState::Credits => credits::credits(&mut core)?,
+fn run_game_state(core: &mut SDLCore, game_state: &GameState) -> Result<GameState, String> {
+	let next_game_state = match game_state {
+		GameState::SinglePlayer => run_single_player(core)?,
+		GameState::Credits => credits::credits(core)?,
+		GameState::Quit => GameState::Quit,
 		_ => return Err("Invalid game state".to_string()),
-	}
+	};
 
-	Ok(())
+	Ok(next_game_state)
 }
 
 fn init_sdl_core(vsync:bool) -> Result<SDLCore, String> {
@@ -90,19 +104,19 @@ fn init_sdl_core(vsync:bool) -> Result<SDLCore, String> {
 
 	let texture_creator = wincan.texture_creator();
 
-	Ok( 
-		SDLCore{
-			sdl_ctx,
-			ttf_ctx,
-			wincan,
-			event_pump,
-			cam,
-			texture_creator,
-		}
-	)
+	let core = SDLCore{
+		sdl_ctx,
+		ttf_ctx,
+		wincan,
+		event_pump,
+		cam,
+		texture_creator,
+	};
+
+	Ok(core)
 }
 
-fn run_single_player(core: &mut SDLCore) -> Result<(), String> {
+fn run_single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	//Basic mock map, 48x48 2d vector filled with 1s
 	let mut map: Vec<Vec<u32>> = vec![vec![1; 48]; 48];
 	let map_width = map[0].len();
@@ -137,7 +151,8 @@ fn run_single_player(core: &mut SDLCore) -> Result<(), String> {
 		core.wincan.present();
 	}
 
-	Ok(())
+	//Single player finished running cleanly, automatically quit game
+	Ok(GameState::Quit)
 }
 
 fn main() {
