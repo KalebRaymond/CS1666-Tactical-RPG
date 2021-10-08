@@ -27,3 +27,44 @@ macro_rules! centered_rect {
 		);
 	};
 }
+
+/// Sleep thread macro: sleeps for the provided duration, but wakes up at intervals to check for escape key codes
+macro_rules! sleep_poll {
+	($core: ident, $waitms: expr) => {
+		{
+			let mut wait: u64 = $waitms as u64;
+			'sleep: loop {
+				if (wait < 100) {
+					std::thread::sleep(std::time::Duration::from_millis(wait));
+					break 'sleep;
+				}
+
+				std::thread::sleep(std::time::Duration::from_millis(100));
+				wait -= 100;
+				for event in $core.event_pump.poll_iter() {
+					match event {
+						sdl2::event::Event::Quit{..} | sdl2::event::Event::KeyDown{keycode: Some(sdl2::keyboard::Keycode::Escape), ..} => return Err("Escape keycode caught during sleep_poll".to_string()),
+						_ => {},
+					}
+				}
+			}
+		}
+	};
+	($core: ident, $waitms: expr, $closure: expr) => {
+		{
+			let mut wait: u64 = $waitms as u64;
+			'sleep: loop {
+				if (wait < 100) {
+					std::thread::sleep(std::time::Duration::from_millis(wait));
+					break 'sleep;
+				}
+
+				std::thread::sleep(std::time::Duration::from_millis(100));
+				wait -= 100;
+				for event in $core.event_pump.poll_iter() {
+					$closure(event);
+				}
+			}
+		}
+	}
+}
