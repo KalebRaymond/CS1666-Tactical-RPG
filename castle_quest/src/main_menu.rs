@@ -22,7 +22,7 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 			if single_player_button.contains_point((x, y)) {
 				next_game_state = GameState::SinglePlayer;
 				break 'menuloop;
-			} else if credit_button.contains_point(((x, y)){
+			} else if credit_button.contains_point((x, y)){
 				next_game_state = GameState::Credits;
 				break 'menuloop;
 			}
