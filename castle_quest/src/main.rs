@@ -49,7 +49,7 @@ fn runner(vsync:bool) {
 			loop {
 				match run_game_state(&mut core, &game_state) {
 					Err(e) => {
-						println!("\n\t\tEncountered error while running: {}", e)
+						panic!("\n\t\tEncountered error while running: {}", e);
 					},
 					Ok(next_game_state) => {
 						match next_game_state {
