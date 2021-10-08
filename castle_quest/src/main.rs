@@ -13,6 +13,7 @@ use sdl2::rect::Rect;
 #[macro_use] mod sdl_macros;
 
 mod credits;
+mod main_menu;
 mod pixel_coordinates;
 
 use pixel_coordinates::PixelCoordinates;
@@ -43,8 +44,8 @@ fn runner(vsync:bool) {
 			println!("DONE");
 			print!("\tRunning...");
 
-			//Start the game in the Single Player mode
-			let mut game_state = GameState::SinglePlayer;
+			//Start the game in the menu
+			let mut game_state = GameState::MainMenu;
 
 			loop {
 				match run_game_state(&mut core, &game_state) {
@@ -67,6 +68,7 @@ fn runner(vsync:bool) {
 
 fn run_game_state(core: &mut SDLCore, game_state: &GameState) -> Result<GameState, String> {
 	let next_game_state = match game_state {
+		GameState::MainMenu => main_menu::main_menu(core)?,
 		GameState::SinglePlayer => run_single_player(core)?,
 		GameState::Credits => credits::credits(core)?,
 		GameState::Quit => GameState::Quit,
