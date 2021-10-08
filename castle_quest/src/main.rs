@@ -3,12 +3,26 @@ extern crate sdl2;
 const TITLE: &str = "Castle Quest";
 const CAM_W: u32 = 1280;
 const CAM_H: u32 = 720;
+const TILE_SIZE: u32 = 32;
 
+use sdl2::event::Event;
+use sdl2::image::LoadTexture;
+use sdl2::keyboard::Keycode;
 use sdl2::rect::Rect;
 
 #[macro_use] mod sdl_macros;
 
 mod credits;
+mod pixel_coordinates;
+
+use pixel_coordinates::PixelCoordinates;
+
+enum GameState {
+	MainMenu,
+	SinglePlayer,
+	MultiPlayer,
+	Credits,
+}
 
 pub struct SDLCore {
 	pub sdl_ctx: sdl2::Sdl,
@@ -27,15 +41,23 @@ fn runner(vsync:bool) {
 		Ok(core) => {
 			println!("DONE");
 			print!("\tRunning...");
-			match run(core) {
+
+			let mut game_state = GameState::SinglePlayer;
+
+			match run(core, game_state) {
 				Err(e) => println!("\n\t\tEncountered error while running: {}", e),
 				Ok(_) => println!("DONE\nExiting cleanly"),
 			};
 		},
 	};
 }
-fn run(mut core: SDLCore) -> Result<(), String> {
-	credits::credits(&mut core)?;
+
+fn run(mut core: SDLCore, game_state: GameState) -> Result<(), String> {
+	match game_state {
+		GameState::SinglePlayer => run_single_player(&mut core)?,
+		GameState::Credits => credits::credits(&mut core)?,
+		_ => return Err("Invalid game state".to_string()),
+	}
 
 	Ok(())
 }
@@ -78,6 +100,44 @@ fn init_sdl_core(vsync:bool) -> Result<SDLCore, String> {
 			texture_creator,
 		}
 	)
+}
+
+fn run_single_player(core: &mut SDLCore) -> Result<(), String> {
+	//Basic mock map, 48x48 2d vector filled with 1s
+	let mut map: Vec<Vec<u32>> = vec![vec![1; 48]; 48];
+	let map_width = map[0].len();
+	let map_height = map.len();
+
+	'gameloop: loop {
+		core.wincan.clear();
+
+		for event in core.event_pump.poll_iter() {
+			match event {
+				Event::Quit{..} | Event::KeyDown{keycode: Some(Keycode::Escape), ..} => break 'gameloop,
+				_ => {},
+			}
+		}
+
+		//Draw tiles & sprites
+		for i in 0..map_height {
+			for j in 0..map_width {
+				let pixel_location = PixelCoordinates::from_matrix_indices(i as u32, j as u32);
+				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
+
+				//Draw map tile at this coordinate
+				let map_tile_texture = match map[i][j] {
+					1 => core.texture_creator.load_texture("images/grass_tile.png")?,
+					_ => return Err("Invalid map tile id".to_string()),
+				};
+
+				core.wincan.copy(&map_tile_texture, None, dest)?; 
+			}
+		}
+
+		core.wincan.present();
+	}
+
+	Ok(())
 }
 
 fn main() {
