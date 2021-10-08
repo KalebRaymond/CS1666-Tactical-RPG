@@ -17,8 +17,15 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 		let mouse_state: MouseState = core.event_pump.mouse_state();
 
 		if mouse_state.left() {
-			next_game_state = GameState::Quit;
-			break 'menuloop;
+			let x = mouse_state.x();
+			let y = mouse_state.y();
+			if single_player_button.contains_point((x, y)) {
+				next_game_state = GameState::SinglePlayer;
+				break 'menuloop;
+			} else if credit_button.contains_point(((x, y)){
+				next_game_state = GameState::Credits;
+				break 'menuloop;
+			}
 		}
 		for event in core.event_pump.poll_iter() {
 			match event {

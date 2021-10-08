@@ -147,5 +147,5 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 	});
 
 	//Credits finished playing, automatically quit game
-	Ok(GameState::Quit)
+	Ok(GameState::MainMenu)
 }
