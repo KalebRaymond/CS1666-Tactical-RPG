@@ -1,10 +1,11 @@
 use std::time::Duration;
 use std::thread;
 
-use sdl2::pixels::Color;
 use sdl2::image::LoadTexture;
+use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 
+use crate::GameState;
 use crate::SDLCore;
 
 const CREDITS_TIMEOUT: u64 = 3500;
@@ -21,7 +22,7 @@ macro_rules! credits_page {
 	}
 }
 
-pub fn credits(core: &mut SDLCore) -> Result<(), String> {
+pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 	let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?; //From https://www.fontsquirrel.com/fonts/open-sans
 	let regular_font = core.ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 16)?; //From https://www.fontsquirrel.com/fonts/open-sans
 
@@ -148,5 +149,6 @@ pub fn credits(core: &mut SDLCore) -> Result<(), String> {
 		core.wincan.copy(&shane_credit, None, None)?;
 	});
 
-	Ok(())
+	//Credits finished playing, automatically quit game
+	Ok(GameState::Quit)
 }

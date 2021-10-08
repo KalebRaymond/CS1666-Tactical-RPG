@@ -17,11 +17,12 @@ mod pixel_coordinates;
 
 use pixel_coordinates::PixelCoordinates;
 
-enum GameState {
+pub enum GameState {
 	MainMenu,
 	SinglePlayer,
 	MultiPlayer,
 	Credits,
+	Quit,
 }
 
 pub struct SDLCore {
@@ -45,21 +46,28 @@ fn runner(vsync:bool) {
 			let mut game_state = GameState::SinglePlayer;
 
 			match run(core, game_state) {
-				Err(e) => println!("\n\t\tEncountered error while running: {}", e),
-				Ok(_) => println!("DONE\nExiting cleanly"),
+				Err(e) => {
+					println!("\n\t\tEncountered error while running: {}", e)
+				},
+				Ok(GameState) => {
+					match GameState {
+						GameState::Quit => println!("DONE\nExiting cleanly"),
+						_ => println!("Invalid game state"),
+					}
+				},
 			};
 		},
 	};
 }
 
-fn run(mut core: SDLCore, game_state: GameState) -> Result<(), String> {
-	match game_state {
+fn run(mut core: SDLCore, game_state: GameState) -> Result<GameState, String> {
+	let next_game_state = match game_state {
 		GameState::SinglePlayer => run_single_player(&mut core)?,
 		GameState::Credits => credits::credits(&mut core)?,
 		_ => return Err("Invalid game state".to_string()),
-	}
+	};
 
-	Ok(())
+	Ok(next_game_state)
 }
 
 fn init_sdl_core(vsync:bool) -> Result<SDLCore, String> {
@@ -102,7 +110,7 @@ fn init_sdl_core(vsync:bool) -> Result<SDLCore, String> {
 	)
 }
 
-fn run_single_player(core: &mut SDLCore) -> Result<(), String> {
+fn run_single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	//Basic mock map, 48x48 2d vector filled with 1s
 	let mut map: Vec<Vec<u32>> = vec![vec![1; 48]; 48];
 	let map_width = map[0].len();
@@ -137,7 +145,8 @@ fn run_single_player(core: &mut SDLCore) -> Result<(), String> {
 		core.wincan.present();
 	}
 
-	Ok(())
+	//Single player finished running cleanly, automatically quit game
+	Ok(GameState::Quit)
 }
 
 fn main() {
