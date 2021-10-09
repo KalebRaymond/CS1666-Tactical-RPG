@@ -33,10 +33,10 @@ macro_rules! sleep_poll {
 	($core: ident, $waitms: expr) => {
 		{
 			let mut wait: u64 = $waitms as u64;
-			'sleep: loop {
+			loop {
 				if (wait < 100) {
 					std::thread::sleep(std::time::Duration::from_millis(wait));
-					break 'sleep;
+					break;
 				}
 
 				std::thread::sleep(std::time::Duration::from_millis(100));
@@ -53,10 +53,10 @@ macro_rules! sleep_poll {
 	($core: ident, $waitms: expr, $closure: expr) => {
 		{
 			let mut wait: u64 = $waitms as u64;
-			'sleep: loop {
+			loop {
 				if (wait < 100) {
 					std::thread::sleep(std::time::Duration::from_millis(wait));
-					break 'sleep;
+					break;
 				}
 
 				std::thread::sleep(std::time::Duration::from_millis(100));
