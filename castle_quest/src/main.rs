@@ -146,14 +146,29 @@ fn run_single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		.collect();
 
 	let mut textures: HashMap<&str, Texture> = HashMap::new();
-	textures.insert("m", core.texture_creator.load_texture("images/tiles/mountain_tile.png")?);
+	// Mountains
+	textures.insert("▉", core.texture_creator.load_texture("images/tiles/mountain_tile.png")?);
+	textures.insert("▀", core.texture_creator.load_texture("images/tiles/mountain_side_top.png")?);
+	textures.insert("▐", core.texture_creator.load_texture("images/tiles/mountain_side_vertical_right.png")?);
+	textures.insert("▃", core.texture_creator.load_texture("images/tiles/mountain_side_bottom.png")?);
+	textures.insert("▍", core.texture_creator.load_texture("images/tiles/mountain_side_vertical_left.png")?);
+	textures.insert("▛", core.texture_creator.load_texture("images/tiles/mountain_top_left.png")?);
+	textures.insert("▜", core.texture_creator.load_texture("images/tiles/mountain_top_right.png")?);
+	textures.insert("▙", core.texture_creator.load_texture("images/tiles/mountain_bottom_left.png")?);
+	textures.insert("▟", core.texture_creator.load_texture("images/tiles/mountain_bottom_right.png")?);
+	// Grass
 	textures.insert(" ", core.texture_creator.load_texture("images/tiles/grass_tile.png")?);
+	// Rivers
 	textures.insert("=", core.texture_creator.load_texture("images/tiles/river_tile.png")?);
 	textures.insert("║", core.texture_creator.load_texture("images/tiles/river_vertical.png")?);
-	textures.insert("^", core.texture_creator.load_texture("images/tiles/river_end_vertical.png")?);
+	textures.insert("^", core.texture_creator.load_texture("images/tiles/river_end_vertical_top.png")?);
+	textures.insert("v", core.texture_creator.load_texture("images/tiles/river_end_vertical_bottom.png")?);
+	textures.insert(">", core.texture_creator.load_texture("images/tiles/river_end_right.png")?);
+	textures.insert("<", core.texture_creator.load_texture("images/tiles/river_end_left.png")?);
+	// Bases
 	textures.insert("b", core.texture_creator.load_texture("images/tiles/barbarian_camp.png")?);
 	textures.insert("1", core.texture_creator.load_texture("images/tiles/red_castle.png")?);
-	textures.insert("2", core.texture_creator.load_texture("images/tiles/red_castle.png")?);
+	textures.insert("2", core.texture_creator.load_texture("images/tiles/blue_castle.png")?);
 
 
 	'gameloop: loop {
