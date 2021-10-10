@@ -17,10 +17,15 @@ use crate::CAM_W;
 use crate::CAM_H;
 
 pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
-	let mut current_player = 0; //Very basic counter to keep track of player turn (will be changed to something more powerful later on)
+	let mut current_player = 1; //Very basic counter to keep track of player turn (will be changed to something more powerful later on) - start with 1 since 0 will be drawn initially
+	let mut player_text = "Player 1's Turn";
+	let mut current_red  = 0;
+	let mut current_green = 89;
+	let mut current_blue = 178;
 	let mut current_transparency = 250;
+
 	let mut initial_banner_output = Instant::now();
-	let banner_timeout = Duration::new(5,0);
+	let banner_timeout = Duration::new(3,500);
 	
 	//Basic mock map, 48x48 2d vector filled with 1s
 	let mut map: Vec<Vec<u32>> = vec![vec![1; 48]; 48];
@@ -78,13 +83,23 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}
 
-		if keystate.contains(&Keycode::Backspace) {
+		if keystate.contains(&Keycode::Backspace) && current_transparency == 0{ //Very basic next turn
+			current_transparency = 250; //Restart transparency in order to display next banner
 			if current_player == 0 {
-				println!("Player 1");
+				player_text = "Player 1's Turn";
+				current_red  = 0;
+				current_green = 89;
+				current_blue = 178;
 			} else if current_player == 1 {
-				println!("Player 2");
+				player_text = "Player 2's Turn";
+				current_red  = 207;
+				current_green = 21;
+				current_blue = 24;
 			} else {
-				println!("Barbarians");
+				player_text = "Barbarians's Turn";
+				current_red  = 163;
+				current_green = 96;
+				current_blue = 30;
 				current_player = -1;
 			}
 			current_player += 1;
@@ -92,7 +107,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 		//As long as the banner won't be completely transparent, draw it
 		if current_transparency != 0 {
-			draw_player_banner(core, "hi", Color::RGBA(255, 0, 0, current_transparency), Color::RGBA(255,255,255, current_transparency))?;
+			draw_player_banner(core, player_text, Color::RGBA(current_red, current_green, current_blue, current_transparency), Color::RGBA(0,0,0, current_transparency))?;
 		}
 
 		//The first time we draw the banner we need to keep track of when it first appears
@@ -100,9 +115,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			initial_banner_output = Instant::now();
 			current_transparency -= 10;
 		}
+
 		//After a set amount of seconds pass, start to make the banner disappear
 		if Instant::now()-initial_banner_output >= banner_timeout && current_transparency != 0{
-			println!("Time has passed! {}", current_transparency);
 			current_transparency -= 10;
 		}
 
@@ -114,12 +129,22 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 }
 
 fn draw_player_banner(core: &mut SDLCore, text: &str, rect_color: Color, text_color: Color) -> Result< (), String> {
+	let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?;
 	let banner_rect = centered_rect!(core, CAM_W, 128);
 
 	core.wincan.set_blend_mode(BlendMode::Blend);
 	core.wincan.set_draw_color(rect_color);
 	core.wincan.draw_rect(banner_rect)?;
 	core.wincan.fill_rect(banner_rect)?;
+	
+	let text_surface = bold_font.render(text)
+			.blended_wrapped(text_color, 320) //Black font
+			.map_err(|e| e.to_string())?;
+
+	let text_texture = core.texture_creator.create_texture_from_surface(&text_surface)
+		.map_err(|e| e.to_string())?;
+
+	core.wincan.copy(&text_texture, None, centered_rect!(core, CAM_W/6, 128))?;
 	
 	Ok(())
 }
