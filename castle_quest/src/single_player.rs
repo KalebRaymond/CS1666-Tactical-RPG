@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use sdl2::event::Event;
 use sdl2::image::LoadTexture;
+use sdl2::pixels::Color;
 use sdl2::keyboard::Keycode;
 use sdl2::rect::Rect;
 use sdl2::render::Texture;
@@ -84,9 +85,21 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}
 
+		draw_player_banner(core, Color::RGBA(255, 0, 0, 255), Color::RGBA(255,255,255,255))?;
+
 		core.wincan.present();
 	}
 
 	//Single player finished running cleanly, automatically quit game
 	Ok(GameState::Quit)
+}
+
+fn draw_player_banner(core: &mut SDLCore, rect_color: Color, text_color: Color) -> Result< (), String> {
+	let banner_rect = centered_rect!(core, CAM_W, 128);
+
+	core.wincan.set_draw_color(rect_color);
+	core.wincan.draw_rect(banner_rect)?;
+	core.wincan.fill_rect(banner_rect)?;
+	
+	Ok(())
 }
