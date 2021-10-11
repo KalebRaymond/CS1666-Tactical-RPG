@@ -1,9 +1,6 @@
 use sdl2::pixels::Color;
-use sdl2::image::LoadTexture;
 use sdl2::rect::Rect;
-use sdl2::event::Event;
 use sdl2::mouse::MouseState;
-use sdl2::keyboard::Keycode;
 
 use crate::GameState;
 use crate::SDLCore;
