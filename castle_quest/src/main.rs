@@ -6,6 +6,7 @@ const CAM_H: u32 = 720;
 pub const TILE_SIZE: u32 = 32;
 
 use sdl2::rect::Rect;
+use sdl2::render::Texture;
 
 #[macro_use] mod sdl_macros;
 
