@@ -16,16 +16,15 @@ use crate::TILE_SIZE;
 use crate::CAM_W;
 use crate::CAM_H;
 
+const BANNER_TIMEOUT: u64 = 2000;
+
 pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut current_player = 1; //Very basic counter to keep track of player turn (will be changed to something more powerful later on) - start with 1 since 0 will be drawn initially
 	let mut player_text = "Player 1's Turn";
-	let mut current_red  = 0;
-	let mut current_green = 89;
-	let mut current_blue = 178;
 	let mut current_transparency = 250;
+	let mut banner_colors = Color::RGBA(0, 89, 178, current_transparency);
 
 	let mut initial_banner_output = Instant::now();
-	let banner_timeout = Duration::new(3,500);
 	
 	//Basic mock map, 48x48 2d vector filled with 1s
 	let mut map: Vec<Vec<u32>> = vec![vec![1; 48]; 48];
@@ -87,19 +86,13 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			current_transparency = 250; //Restart transparency in order to display next banner
 			if current_player == 0 {
 				player_text = "Player 1's Turn";
-				current_red  = 0;
-				current_green = 89;
-				current_blue = 178;
+				banner_colors = Color::RGBA(0, 89, 178, current_transparency);
 			} else if current_player == 1 {
 				player_text = "Player 2's Turn";
-				current_red  = 207;
-				current_green = 21;
-				current_blue = 24;
+				banner_colors = Color::RGBA(207, 21, 24, current_transparency);
 			} else {
 				player_text = "Barbarians's Turn";
-				current_red  = 163;
-				current_green = 96;
-				current_blue = 30;
+				banner_colors = Color::RGBA(163,96,30, current_transparency);
 				current_player = -1;
 			}
 			current_player += 1;
@@ -107,18 +100,19 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 		//As long as the banner won't be completely transparent, draw it
 		if current_transparency != 0 {
-			draw_player_banner(core, player_text, Color::RGBA(current_red, current_green, current_blue, current_transparency), Color::RGBA(0,0,0, current_transparency))?;
+			banner_colors.a = current_transparency;
+			draw_player_banner(core, player_text, banner_colors, Color::RGBA(0,0,0, current_transparency))?;
 		}
 
 		//The first time we draw the banner we need to keep track of when it first appears
 		if current_transparency == 250 {
 			initial_banner_output = Instant::now();
-			current_transparency -= 10;
+			current_transparency -= 25;
 		}
 
-		//After a set amount of seconds pass, start to make the banner disappear
-		if Instant::now()-initial_banner_output >= banner_timeout && current_transparency != 0{
-			current_transparency -= 10;
+		//After a set amount of seconds pass and if the banner is still visible, start to make the banner disappear
+		if initial_banner_output.elapsed() >= Duration::from_millis(BANNER_TIMEOUT) && current_transparency != 0{
+			current_transparency -= 25;
 		}
 
 		core.wincan.present();
