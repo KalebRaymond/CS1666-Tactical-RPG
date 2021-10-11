@@ -148,6 +148,7 @@ fn run_single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut textures: HashMap<&str, Texture> = HashMap::new();
 	// Mountains
 	textures.insert("▉", core.texture_creator.load_texture("images/tiles/mountain_tile.png")?);
+	textures.insert("▒", core.texture_creator.load_texture("images/tiles/mountain2_tile.png")?);
 	textures.insert("▀", core.texture_creator.load_texture("images/tiles/mountain_side_top.png")?);
 	textures.insert("▐", core.texture_creator.load_texture("images/tiles/mountain_side_vertical_right.png")?);
 	textures.insert("▃", core.texture_creator.load_texture("images/tiles/mountain_side_bottom.png")?);
@@ -169,6 +170,8 @@ fn run_single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	textures.insert("b", core.texture_creator.load_texture("images/tiles/barbarian_camp.png")?);
 	textures.insert("1", core.texture_creator.load_texture("images/tiles/red_castle.png")?);
 	textures.insert("2", core.texture_creator.load_texture("images/tiles/blue_castle.png")?);
+	// Tree
+	textures.insert("t", core.texture_creator.load_texture("images/tiles/tree_tile.png")?);
 
 
 	'gameloop: loop {
