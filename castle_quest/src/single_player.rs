@@ -23,7 +23,7 @@ use crate::TILE_SIZE;
 use crate::CAM_W;
 use crate::CAM_H;
 
-const BANNER_TIMEOUT: u64 = 2000;
+const BANNER_TIMEOUT: u64 = 2500;
 
 pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut current_player = 1; //Very basic counter to keep track of player turn (will be changed to something more powerful later on) - start with 1 since 0 will be drawn initially
@@ -156,7 +156,23 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		//As long as the banner won't be completely transparent, draw it
 		if current_transparency != 0 {
 			banner_colors.a = current_transparency;
-			draw_player_banner(core, player_text, banner_colors, Color::RGBA(0,0,0, current_transparency))?;
+			//draw_player_banner(core, player_text, banner_colors, Color::RGBA(0,0,0, current_transparency))?;
+			let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?;
+			let banner_rect = centered_rect!(core, CAM_W, 128);
+
+			core.wincan.set_blend_mode(BlendMode::Blend);
+			core.wincan.set_draw_color(banner_colors);
+			core.wincan.draw_rect(banner_rect)?;
+			core.wincan.fill_rect(banner_rect)?;
+			
+			let text_surface = bold_font.render(player_text)
+					.blended_wrapped(Color::RGBA(0,0,0, current_transparency), 320) //Black font
+					.map_err(|e| e.to_string())?;
+
+			let text_texture = core.texture_creator.create_texture_from_surface(&text_surface)
+				.map_err(|e| e.to_string())?;
+
+			core.wincan.copy(&text_texture, None, centered_rect!(core, CAM_W/6, 128))?;
 		}
 
 		//The first time we draw the banner we need to keep track of when it first appears
@@ -177,23 +193,23 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	Ok(GameState::Quit)
 }
 
-fn draw_player_banner(core: &mut SDLCore, text: &str, rect_color: Color, text_color: Color) -> Result< (), String> {
-	let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?;
-	let banner_rect = centered_rect!(core, CAM_W, 128);
+// fn draw_player_banner(core: &mut SDLCore, text: &str, rect_color: Color, text_color: Color) -> Result< (), String> {
+// 	let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?;
+// 	let banner_rect = centered_rect!(core, CAM_W, 128);
 
-	core.wincan.set_blend_mode(BlendMode::Blend);
-	core.wincan.set_draw_color(rect_color);
-	core.wincan.draw_rect(banner_rect)?;
-	core.wincan.fill_rect(banner_rect)?;
+// 	core.wincan.set_blend_mode(BlendMode::Blend);
+// 	core.wincan.set_draw_color(rect_color);
+// 	core.wincan.draw_rect(banner_rect)?;
+// 	core.wincan.fill_rect(banner_rect)?;
 	
-	let text_surface = bold_font.render(text)
-			.blended_wrapped(text_color, 320) //Black font
-			.map_err(|e| e.to_string())?;
+// 	let text_surface = bold_font.render(text)
+// 			.blended_wrapped(text_color, 320) //Black font
+// 			.map_err(|e| e.to_string())?;
 
-	let text_texture = core.texture_creator.create_texture_from_surface(&text_surface)
-		.map_err(|e| e.to_string())?;
+// 	let text_texture = core.texture_creator.create_texture_from_surface(&text_surface)
+// 		.map_err(|e| e.to_string())?;
 
-	core.wincan.copy(&text_texture, None, centered_rect!(core, CAM_W/6, 128))?;
+// 	core.wincan.copy(&text_texture, None, centered_rect!(core, CAM_W/6, 128))?;
 	
-	Ok(())
-}
+// 	Ok(())
+// }
