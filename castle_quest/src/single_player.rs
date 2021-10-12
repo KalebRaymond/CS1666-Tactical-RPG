@@ -3,6 +3,7 @@ use sdl2::image::LoadTexture;
 use sdl2::keyboard::Keycode;
 use sdl2::rect::Rect;
 use sdl2::render::Texture;
+use sdl2::mouse::MouseState;
 
 // For accessing map file and reading lines
 use std::fs::File;
@@ -17,19 +18,23 @@ use crate::SDLCore;
 use crate::TILE_SIZE;
 
 pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
-	//Basic mock map, 48x48 2d vector filled with 1's
-	//let mut map: Vec<Vec<&str>> = vec![vec![" "; 64]; 64];
-	//let map_width = map[0].len();
-	//let map_height = map.len();
 
 	let mut map_data = File::open("src/maps/map.txt").expect("Unable to open map file");
 	let mut map_data = BufReader::new(map_data);
 	let mut line = String::new();
 
+	// Sets size of the map from the first line of the text file
 	map_data.read_line(&mut line).unwrap();
 	let map_width: usize = line.trim().parse().unwrap();
 	let map_height: usize = line.trim().parse().unwrap();
+	core.cam.w = (map_width as u32 * TILE_SIZE) as i32;
+	core.cam.h = (map_height as u32 * TILE_SIZE) as i32;
 
+	// Previous mouse positions
+	let mut old_mouse_x = -1;
+	let mut old_mouse_y = -1;
+
+	// Creates map from file
 	let map: Vec<Vec<String>> = map_data.lines()
 		.take(map_width)
 		.map(|x| x.unwrap().chars().collect::<Vec<char>>())
@@ -80,6 +85,24 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}
 
+		// Mouse Controls
+		let mouse_state: MouseState = core.event_pump.mouse_state();
+		if mouse_state.right() {
+			if old_mouse_x < 0 || old_mouse_y < 0 {
+				old_mouse_x = mouse_state.x();
+				old_mouse_y = mouse_state.y();
+			}
+			core.cam.x = (core.cam.x - (old_mouse_x - mouse_state.x())).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
+			core.cam.y = (core.cam.y - (old_mouse_y - mouse_state.y())).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0,);
+			
+			old_mouse_x = mouse_state.x();
+			old_mouse_y = mouse_state.y();
+		}
+		else {
+			old_mouse_y = -1;
+			old_mouse_x = -1;
+		}
+
 		//Draw tiles & sprites
 		for i in 0..map_height {
 			for j in 0..map_width {
@@ -110,6 +133,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}
 
+		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
 	}
 
