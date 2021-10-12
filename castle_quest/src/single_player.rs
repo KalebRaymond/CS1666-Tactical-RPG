@@ -26,8 +26,10 @@ use crate::CAM_H;
 const BANNER_TIMEOUT: u64 = 2500;
 
 pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
+	let texture_creator = core.wincan.texture_creator();
+	
 	let mut current_player = 1; //Very basic counter to keep track of player turn (will be changed to something more powerful later on) - start with 1 since 0 will be drawn initially
-	let mut player_text = "Player 1's Turn";
+	let mut banner_key = "p1_banner";
 	let mut current_transparency = 250;
 	let mut banner_colors = Color::RGBA(0, 89, 178, current_transparency);
 
@@ -57,34 +59,68 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		.map(|x| x.chunks(2).map(|chunk| chunk[0].to_string()).collect())
 		.collect();
 
-	let mut textures: HashMap<&str, Texture> = HashMap::new();
+	let mut tile_textures: HashMap<&str, Texture> = HashMap::new();
 	// Mountains
-	textures.insert("▉", core.texture_creator.load_texture("images/tiles/mountain_tile.png")?);
-	textures.insert("▒", core.texture_creator.load_texture("images/tiles/mountain2_tile.png")?);
-	textures.insert("▀", core.texture_creator.load_texture("images/tiles/mountain_side_top.png")?);
-	textures.insert("▐", core.texture_creator.load_texture("images/tiles/mountain_side_vertical_right.png")?);
-	textures.insert("▃", core.texture_creator.load_texture("images/tiles/mountain_side_bottom.png")?);
-	textures.insert("▍", core.texture_creator.load_texture("images/tiles/mountain_side_vertical_left.png")?);
-	textures.insert("▛", core.texture_creator.load_texture("images/tiles/mountain_top_left.png")?);
-	textures.insert("▜", core.texture_creator.load_texture("images/tiles/mountain_top_right.png")?);
-	textures.insert("▙", core.texture_creator.load_texture("images/tiles/mountain_bottom_left.png")?);
-	textures.insert("▟", core.texture_creator.load_texture("images/tiles/mountain_bottom_right.png")?);
+	tile_textures.insert("▉", texture_creator.load_texture("images/tiles/mountain_tile.png")?);
+	tile_textures.insert("▒", texture_creator.load_texture("images/tiles/mountain2_tile.png")?);
+	tile_textures.insert("▀", texture_creator.load_texture("images/tiles/mountain_side_top.png")?);
+	tile_textures.insert("▐", texture_creator.load_texture("images/tiles/mountain_side_vertical_right.png")?);
+	tile_textures.insert("▃", texture_creator.load_texture("images/tiles/mountain_side_bottom.png")?);
+	tile_textures.insert("▍", texture_creator.load_texture("images/tiles/mountain_side_vertical_left.png")?);
+	tile_textures.insert("▛", texture_creator.load_texture("images/tiles/mountain_top_left.png")?);
+	tile_textures.insert("▜", texture_creator.load_texture("images/tiles/mountain_top_right.png")?);
+	tile_textures.insert("▙", texture_creator.load_texture("images/tiles/mountain_bottom_left.png")?);
+	tile_textures.insert("▟", texture_creator.load_texture("images/tiles/mountain_bottom_right.png")?);
 	// Grass
-	textures.insert(" ", core.texture_creator.load_texture("images/tiles/grass_tile.png")?);
+	tile_textures.insert(" ", texture_creator.load_texture("images/tiles/grass_tile.png")?);
 	// Rivers
-	textures.insert("=", core.texture_creator.load_texture("images/tiles/river_tile.png")?);
-	textures.insert("║", core.texture_creator.load_texture("images/tiles/river_vertical.png")?);
-	textures.insert("^", core.texture_creator.load_texture("images/tiles/river_end_vertical_top.png")?);
-	textures.insert("v", core.texture_creator.load_texture("images/tiles/river_end_vertical_bottom.png")?);
-	textures.insert(">", core.texture_creator.load_texture("images/tiles/river_end_right.png")?);
-	textures.insert("<", core.texture_creator.load_texture("images/tiles/river_end_left.png")?);
+	tile_textures.insert("=", texture_creator.load_texture("images/tiles/river_tile.png")?);
+	tile_textures.insert("║", texture_creator.load_texture("images/tiles/river_vertical.png")?);
+	tile_textures.insert("^", texture_creator.load_texture("images/tiles/river_end_vertical_top.png")?);
+	tile_textures.insert("v", texture_creator.load_texture("images/tiles/river_end_vertical_bottom.png")?);
+	tile_textures.insert(">", texture_creator.load_texture("images/tiles/river_end_right.png")?);
+	tile_textures.insert("<", texture_creator.load_texture("images/tiles/river_end_left.png")?);
 	// Bases
-	textures.insert("b", core.texture_creator.load_texture("images/tiles/barbarian_camp.png")?);
-	textures.insert("1", core.texture_creator.load_texture("images/tiles/red_castle.png")?);
-	textures.insert("2", core.texture_creator.load_texture("images/tiles/blue_castle.png")?);
+	tile_textures.insert("b", texture_creator.load_texture("images/tiles/barbarian_camp.png")?);
+	tile_textures.insert("1", texture_creator.load_texture("images/tiles/red_castle.png")?);
+	tile_textures.insert("2", texture_creator.load_texture("images/tiles/blue_castle.png")?);
 	// Tree
-	textures.insert("t", core.texture_creator.load_texture("images/tiles/tree_tile.png")?);
+	tile_textures.insert("t", texture_creator.load_texture("images/tiles/tree_tile.png")?);
 
+	let mut unit_textures: HashMap<&str, Texture> = HashMap::new();
+	unit_textures.insert("p1m", texture_creator.load_texture("images/player1_melee.png")?);
+
+	
+	let mut text_textures: HashMap<&str, Texture> = HashMap::new();
+	{
+		let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?;
+		text_textures.insert("p1_banner", {
+			let text_surface = bold_font.render("Player 1's Turn")
+					.blended_wrapped(Color::RGBA(0,0,0, current_transparency), 320) //Black font
+					.map_err(|e| e.to_string())?;
+
+			texture_creator.create_texture_from_surface(&text_surface)
+					.map_err(|e| e.to_string())?
+		});
+
+		text_textures.insert("p2_banner", {
+			let text_surface = bold_font.render("Player 2's Turn")
+					.blended_wrapped(Color::RGBA(0,0,0, current_transparency), 320) //Black font
+					.map_err(|e| e.to_string())?;
+
+			texture_creator.create_texture_from_surface(&text_surface)
+					.map_err(|e| e.to_string())?
+		});
+
+		text_textures.insert("b_banner", {
+			let text_surface = bold_font.render("Barbarians's Turn")
+					.blended_wrapped(Color::RGBA(0,0,0, current_transparency), 320) //Black font
+					.map_err(|e| e.to_string())?;
+
+			texture_creator.create_texture_from_surface(&text_surface)
+					.map_err(|e| e.to_string())?
+		});
+	}
 	//Mock units map for testing
 	let mut units: Vec<Vec<u32>> = vec![vec![0; map_width]; map_height];
 	units[0][0] = 1;
@@ -120,13 +156,13 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, map_tile_size, map_tile_size);
 
 				//Draw map tile at this coordinate
-				if let std::collections::hash_map::Entry::Occupied(entry) = textures.entry(map_tile) {
+				if let std::collections::hash_map::Entry::Occupied(entry) = tile_textures.entry(map_tile) {
 					core.wincan.copy(&entry.get(), None, dest)?
 				}
 
 				//Draw unit at this coordinate if there is one
-				let unit_texture: Option<Texture> = match units[i][j] {
-					1 => Some(core.texture_creator.load_texture("images/player1_melee.png")?),
+				let unit_texture: Option<&Texture<'_>> = match units[i][j] {
+					1 => unit_textures.get("p1m"),
 					_ => None,
 				};
 
@@ -140,13 +176,13 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		if keystate.contains(&Keycode::Backspace) && current_transparency == 0{ //Very basic next turn
 			current_transparency = 250; //Restart transparency in order to display next banner
 			if current_player == 0 {
-				player_text = "Player 1's Turn";
+				banner_key = "p1_banner";
 				banner_colors = Color::RGBA(0, 89, 178, current_transparency);
 			} else if current_player == 1 {
-				player_text = "Player 2's Turn";
+				banner_key = "p2_banner";
 				banner_colors = Color::RGBA(207, 21, 24, current_transparency);
 			} else {
-				player_text = "Barbarians's Turn";
+				banner_key = "b_banner";
 				banner_colors = Color::RGBA(163,96,30, current_transparency);
 				current_player = -1;
 			}
@@ -156,23 +192,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		//As long as the banner won't be completely transparent, draw it
 		if current_transparency != 0 {
 			banner_colors.a = current_transparency;
-			//draw_player_banner(core, player_text, banner_colors, Color::RGBA(0,0,0, current_transparency))?;
-			let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?;
-			let banner_rect = centered_rect!(core, CAM_W, 128);
-
-			core.wincan.set_blend_mode(BlendMode::Blend);
-			core.wincan.set_draw_color(banner_colors);
-			core.wincan.draw_rect(banner_rect)?;
-			core.wincan.fill_rect(banner_rect)?;
-			
-			let text_surface = bold_font.render(player_text)
-					.blended_wrapped(Color::RGBA(0,0,0, current_transparency), 320) //Black font
-					.map_err(|e| e.to_string())?;
-
-			let text_texture = core.texture_creator.create_texture_from_surface(&text_surface)
-				.map_err(|e| e.to_string())?;
-
-			core.wincan.copy(&text_texture, None, centered_rect!(core, CAM_W/6, 128))?;
+			draw_player_banner(core, &text_textures, banner_key, banner_colors, Color::RGBA(0,0,0, current_transparency))?;
 		}
 
 		//The first time we draw the banner we need to keep track of when it first appears
@@ -193,23 +213,18 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	Ok(GameState::Quit)
 }
 
-// fn draw_player_banner(core: &mut SDLCore, text: &str, rect_color: Color, text_color: Color) -> Result< (), String> {
-// 	let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?;
-// 	let banner_rect = centered_rect!(core, CAM_W, 128);
+fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_index: &str, rect_color: Color, text_color: Color) -> Result< (), String> {
+	let banner_rect = centered_rect!(core, CAM_W, 128);
 
-// 	core.wincan.set_blend_mode(BlendMode::Blend);
-// 	core.wincan.set_draw_color(rect_color);
-// 	core.wincan.draw_rect(banner_rect)?;
-// 	core.wincan.fill_rect(banner_rect)?;
+	core.wincan.set_blend_mode(BlendMode::Blend);
+	core.wincan.set_draw_color(rect_color);
+	core.wincan.draw_rect(banner_rect)?;
+	core.wincan.fill_rect(banner_rect)?;
+
+	match text_textures.get(text_index) {
+		Some(texture) => core.wincan.copy(&texture, None, centered_rect!(core, CAM_W/6, 128))?,
+		None => {},
+	};
 	
-// 	let text_surface = bold_font.render(text)
-// 			.blended_wrapped(text_color, 320) //Black font
-// 			.map_err(|e| e.to_string())?;
-
-// 	let text_texture = core.texture_creator.create_texture_from_surface(&text_surface)
-// 		.map_err(|e| e.to_string())?;
-
-// 	core.wincan.copy(&text_texture, None, centered_rect!(core, CAM_W/6, 128))?;
-	
-// 	Ok(())
-// }
+	Ok(())
+}

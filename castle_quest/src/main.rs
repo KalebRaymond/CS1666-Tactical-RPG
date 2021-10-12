@@ -29,7 +29,6 @@ pub struct SDLCore {
 	pub wincan: sdl2::render::WindowCanvas,
 	pub event_pump: sdl2::EventPump,
 	pub cam: Rect,
-	pub texture_creator: sdl2::render::TextureCreator<sdl2::video::WindowContext>
 }
 
 fn runner(vsync:bool) {
@@ -101,15 +100,12 @@ fn init_sdl_core(vsync:bool) -> Result<SDLCore, String> {
 
 	let cam = Rect::new(0, 0, CAM_W, CAM_H);
 
-	let texture_creator = wincan.texture_creator();
-
 	let core = SDLCore{
 		sdl_ctx,
 		ttf_ctx,
 		wincan,
 		event_pump,
 		cam,
-		texture_creator,
 	};
 
 	Ok(core)
