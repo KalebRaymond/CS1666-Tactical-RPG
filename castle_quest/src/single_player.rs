@@ -119,7 +119,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		});
 
 		text_textures.insert("b_banner", {
-			let text_surface = bold_font.render("Barbarians's Turn")
+			let text_surface = bold_font.render("Barbarians' Turn")
 					.blended_wrapped(Color::RGBA(0,0,0, current_transparency), 320) //Black font
 					.map_err(|e| e.to_string())?;
 
