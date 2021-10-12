@@ -40,9 +40,16 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 					next_game_state = GameState::Quit;
 					break 'menuloop;
 				},
+				sdl2::event::Event::KeyDown{keycode: Some(sdl2::keyboard::Keycode::Backspace), ..} => {
+					if textbox_selected && join_code.chars().count() > 0 {
+						let mut char_iter = join_code.chars();
+						char_iter.next_back();
+						join_code = char_iter.as_str().to_string();
+					}
+				}
 				sdl2::event::Event::KeyDown{keycode: Some(key), ..} => {
 					let parsed_key = key.to_string();
-					if textbox_selected && parsed_key.chars().count() == 1 && parsed_key.chars().next().unwrap().is_numeric() {
+					if textbox_selected && join_code.chars().count() < 4 && parsed_key.chars().count() == 1 && parsed_key.chars().next().unwrap().is_numeric() {
 						join_code.push_str(&key.to_string());
 					}
 				},
