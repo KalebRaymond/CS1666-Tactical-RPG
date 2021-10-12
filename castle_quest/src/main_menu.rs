@@ -9,6 +9,7 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
     let mut next_game_state = GameState::SinglePlayer;
 	let single_player_button = centered_rect!(core, _, 720/4, 100, 100);
 	let credit_button = centered_rect!(core, _, 3*720/4, 100, 100);
+	let join_code_textbox = Rect::new(750, 200, 400, 60);
 
 	'menuloop: loop {
 		let mouse_state: MouseState = core.event_pump.mouse_state();
@@ -40,6 +41,9 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 		core.wincan.set_draw_color(Color::RGBA(255,0,0,255));
 		core.wincan.draw_rect(single_player_button)?;
 		
+		core.wincan.set_draw_color(Color::RGBA(255,255,255,255));
+		core.wincan.draw_rect(join_code_textbox)?;
+
 		core.wincan.set_draw_color(Color::RGBA(0,255,0,255));
 		core.wincan.draw_rect(credit_button)?;
 
