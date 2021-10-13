@@ -33,6 +33,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	// Previous mouse positions
 	let mut old_mouse_x = -1;
 	let mut old_mouse_y = -1;
+	
+	// Left mouse button state. If true, then the left mouse button was clicked on the current frame
+	let mut left_clicked = false; 
 
 	// Creates map from file
 	let map: Vec<Vec<String>> = map_data.lines()
@@ -101,6 +104,16 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		else {
 			old_mouse_y = -1;
 			old_mouse_x = -1;
+		}
+
+		if mouse_state.left() {
+			if  !left_clicked {
+				left_clicked = true;
+				println!("Left clicked");
+			}
+		}
+		else {
+			left_clicked = false;
 		}
 
 		//Draw tiles & sprites
