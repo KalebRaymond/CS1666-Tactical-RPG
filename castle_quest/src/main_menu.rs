@@ -36,6 +36,7 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 				break 'menuloop;
 			}
 		}
+
 		for event in core.event_pump.poll_iter() {
 			match event {
 				sdl2::event::Event::Quit{..} | sdl2::event::Event::KeyDown{keycode: Some(sdl2::keyboard::Keycode::Escape), ..} => {
@@ -59,7 +60,7 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}
 
-		core.wincan.set_draw_color(Color::RGBA(0, 0, 0, 255)); //Black Screenhjudfgjkfghjk
+		core.wincan.set_draw_color(Color::RGBA(0, 0, 0, 255)); //Black screen
 		core.wincan.clear();
 
 		core.wincan.set_draw_color(Color::RGBA(255,0,0,255));
@@ -68,6 +69,7 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 		core.wincan.set_draw_color(Color::RGBA(255,255,255,255));
 		core.wincan.draw_rect(join_code_textbox)?;
 		
+		//Render text for join code textbox
 		let display_text = format!("{}{}", join_code, if textbox_selected && textbox_select_time.elapsed().subsec_millis()<500 { "|" } else { "" });
 		let text_size = regular_font.size_of(&display_text);
 		match text_size {
