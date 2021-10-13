@@ -5,7 +5,7 @@ use sdl2::rect::Rect;
 use sdl2::render::Texture;
 use sdl2::mouse::MouseState;
 
-// For accessing map file and reading lines
+//For accessing map file and reading lines
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::convert::TryInto;
@@ -23,21 +23,21 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut map_data = BufReader::new(map_data);
 	let mut line = String::new();
 
-	// Sets size of the map from the first line of the text file
+	//Sets size of the map from the first line of the text file
 	map_data.read_line(&mut line).unwrap();
 	let map_width: usize = line.trim().parse().unwrap();
 	let map_height: usize = line.trim().parse().unwrap();
 	core.cam.w = (map_width as u32 * TILE_SIZE) as i32;
 	core.cam.h = (map_height as u32 * TILE_SIZE) as i32;
 
-	// Previous mouse positions
+	//Previous mouse positions
 	let mut old_mouse_x = -1;
 	let mut old_mouse_y = -1;
 	
-	// Left mouse button state. If true, then the left mouse button was clicked on the current frame
+	//Left mouse button state. If true, then the left mouse button was clicked on the current frame
 	let mut left_clicked = false; 
 
-	// Creates map from file
+	//Creates map from file
 	let map: Vec<Vec<String>> = map_data.lines()
 		.take(map_width)
 		.map(|x| x.unwrap().chars().collect::<Vec<char>>())
@@ -45,7 +45,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		.collect();
 
 	let mut textures: HashMap<&str, Texture> = HashMap::new();
-	// Mountains
+	//Mountains
 	textures.insert("▉", core.texture_creator.load_texture("images/tiles/mountain_tile.png")?);
 	textures.insert("▒", core.texture_creator.load_texture("images/tiles/mountain2_tile.png")?);
 	textures.insert("▀", core.texture_creator.load_texture("images/tiles/mountain_side_top.png")?);
@@ -56,20 +56,20 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	textures.insert("▜", core.texture_creator.load_texture("images/tiles/mountain_top_right.png")?);
 	textures.insert("▙", core.texture_creator.load_texture("images/tiles/mountain_bottom_left.png")?);
 	textures.insert("▟", core.texture_creator.load_texture("images/tiles/mountain_bottom_right.png")?);
-	// Grass
+	//Grass
 	textures.insert(" ", core.texture_creator.load_texture("images/tiles/grass_tile.png")?);
-	// Rivers
+	//Rivers
 	textures.insert("=", core.texture_creator.load_texture("images/tiles/river_tile.png")?);
 	textures.insert("║", core.texture_creator.load_texture("images/tiles/river_vertical.png")?);
 	textures.insert("^", core.texture_creator.load_texture("images/tiles/river_end_vertical_top.png")?);
 	textures.insert("v", core.texture_creator.load_texture("images/tiles/river_end_vertical_bottom.png")?);
 	textures.insert(">", core.texture_creator.load_texture("images/tiles/river_end_right.png")?);
 	textures.insert("<", core.texture_creator.load_texture("images/tiles/river_end_left.png")?);
-	// Bases
+	//Bases
 	textures.insert("b", core.texture_creator.load_texture("images/tiles/barbarian_camp.png")?);
 	textures.insert("1", core.texture_creator.load_texture("images/tiles/red_castle.png")?);
 	textures.insert("2", core.texture_creator.load_texture("images/tiles/blue_castle.png")?);
-	// Tree
+	//Tree
 	textures.insert("t", core.texture_creator.load_texture("images/tiles/tree_tile.png")?);
 
 	//Mock units map for testing
@@ -88,8 +88,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}
 
-		// Mouse Controls
+		//Mouse Controls
 		let mouse_state: MouseState = core.event_pump.mouse_state();
+		//Check right mouse button
 		if mouse_state.right() {
 			if old_mouse_x < 0 || old_mouse_y < 0 {
 				old_mouse_x = mouse_state.x();
@@ -106,10 +107,23 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			old_mouse_x = -1;
 		}
 
+		//Check left mouse button
 		if mouse_state.left() {
 			if  !left_clicked {
 				left_clicked = true;
-				println!("Left clicked");
+				
+				println!("Mouse position: ({}, {})", mouse_state.x(), mouse_state.y());
+				println!("Camera position: ({}, {})", core.cam.x, core.cam.y);
+
+				//Get map matrix indices from mouse position
+				let (i, j) = PixelCoordinates::matrix_indices_from_pixel(	mouse_state.x().try_into().unwrap(), 
+																			mouse_state.y().try_into().unwrap(), 
+																			(-1 * core.cam.x).try_into().unwrap(), 
+																			(-1 * core.cam.y).try_into().unwrap()
+																		);
+				
+				println!("Tile location: ({}, {})", i, j);
+				println!();
 			}
 		}
 		else {
