@@ -35,6 +35,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut banner_colors = Color::RGBA(0, 89, 178, current_transparency);
 
 	let mut initial_banner_output = Instant::now();
+
+	let mut ui_visible = true;
 	
 	//Basic mock map, 48x48 2d vector filled with 1s
 	/*
@@ -145,7 +147,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 		//Mouse Controls
 		let mouse_state: MouseState = core.event_pump.mouse_state();
-		if mouse_state.right() {
+		if mouse_state.right() && !ui_visible{
 			if old_mouse_x < 0 || old_mouse_y < 0 {
 				old_mouse_x = mouse_state.x();
 				old_mouse_y = mouse_state.y();
@@ -201,6 +203,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		//Draw the banner that appears at the beginning of a turn on top of the map tiles
 		if keystate.contains(&Keycode::Backspace) && current_transparency == 0{ //Very basic next turn
 			current_transparency = 250; //Restart transparency in order to display next banner
+			ui_visible = true;
 			if current_player == 0 {
 				banner_key = "p1_banner";
 				banner_colors = Color::RGBA(0, 89, 178, current_transparency);
@@ -219,6 +222,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		if current_transparency != 0 {
 			banner_colors.a = current_transparency;
 			draw_player_banner(core, &text_textures, banner_key, banner_colors, Color::RGBA(0,0,0, current_transparency))?;
+		} else {
+			ui_visible = false;
 		}
 
 		//The first time we draw the banner we need to keep track of when it first appears
@@ -231,7 +236,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		if initial_banner_output.elapsed() >= Duration::from_millis(BANNER_TIMEOUT) && current_transparency != 0 {
 			current_transparency -= 25;
 		}
-
+		
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
 	}
@@ -241,15 +246,16 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 }
 
 fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_index: &str, rect_color: Color, text_color: Color) -> Result< (), String> {
-	let banner_rect = centered_rect!(core, CAM_W, 128);
-
+	//let banner_rect = centered_rect!(core, CAM_W, 128);
+	let banner_rect = Rect::new(core.cam.x.abs(), core.cam.y.abs() + (360-64), CAM_W, 128);
+	let text_rect = Rect::new(core.cam.x.abs() + (640-107), core.cam.y.abs() + (360-64), CAM_W/6, 128);
 	core.wincan.set_blend_mode(BlendMode::Blend);
 	core.wincan.set_draw_color(rect_color);
 	core.wincan.draw_rect(banner_rect)?;
 	core.wincan.fill_rect(banner_rect)?;
 
 	match text_textures.get(text_index) {
-		Some(texture) => core.wincan.copy(&texture, None, centered_rect!(core, CAM_W/6, 128))?,
+		Some(texture) => core.wincan.copy(&texture, None, text_rect)?,
 		None => {},
 	};
 	
