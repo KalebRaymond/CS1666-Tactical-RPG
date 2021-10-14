@@ -14,6 +14,7 @@ mod credits;
 mod main_menu;
 mod pixel_coordinates;
 mod single_player;
+mod unit_interface;
 
 pub enum GameState {
 	MainMenu,
