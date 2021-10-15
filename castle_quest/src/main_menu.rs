@@ -2,6 +2,8 @@ use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::mouse::MouseState;
 
+use std::time::Instant;
+
 use crate::GameState;
 use crate::SDLCore;
 
@@ -9,6 +11,12 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
     let mut next_game_state = GameState::SinglePlayer;
 	let single_player_button = centered_rect!(core, _, 720/4, 100, 100);
 	let credit_button = centered_rect!(core, _, 3*720/4, 100, 100);
+	let join_code_textbox = Rect::new(750, 200, 400, 60);
+	let mut join_code = String::from("");
+	let mut textbox_selected = false;
+	let mut textbox_select_time = Instant::now();
+
+	let regular_font = core.ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 32)?; //From https://www.fontsquirrel.com/fonts/open-sans
 
 	'menuloop: loop {
 		let mouse_state: MouseState = core.event_pump.mouse_state();
@@ -16,30 +24,68 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 		if mouse_state.left() {
 			let x = mouse_state.x();
 			let y = mouse_state.y();
+			textbox_selected = false;
 			if single_player_button.contains_point((x, y)) {
 				next_game_state = GameState::SinglePlayer;
 				break 'menuloop;
+			} else if join_code_textbox.contains_point((x,y)) {
+				textbox_selected = true;
+				textbox_select_time = Instant::now();
 			} else if credit_button.contains_point((x, y)){
 				next_game_state = GameState::Credits;
 				break 'menuloop;
 			}
 		}
+
 		for event in core.event_pump.poll_iter() {
 			match event {
 				sdl2::event::Event::Quit{..} | sdl2::event::Event::KeyDown{keycode: Some(sdl2::keyboard::Keycode::Escape), ..} => {
 					next_game_state = GameState::Quit;
 					break 'menuloop;
 				},
+				sdl2::event::Event::KeyDown{keycode: Some(sdl2::keyboard::Keycode::Backspace), ..} => {
+					if textbox_selected && join_code.chars().count() > 0 {
+						let mut char_iter = join_code.chars();
+						char_iter.next_back();
+						join_code = char_iter.as_str().to_string();
+					}
+				}
+				sdl2::event::Event::KeyDown{keycode: Some(key), ..} => {
+					let parsed_key = key.to_string();
+					if textbox_selected && join_code.chars().count() < 4 && parsed_key.chars().count() == 1 && parsed_key.chars().next().unwrap().is_numeric() {
+						join_code.push_str(&key.to_string());
+					}
+				},
 				_ => {},
 			}
 		}
 
-		core.wincan.set_draw_color(Color::RGBA(0, 0, 0, 255)); //Black Screen
+		core.wincan.set_draw_color(Color::RGBA(0, 0, 0, 255)); //Black screen
 		core.wincan.clear();
 
 		core.wincan.set_draw_color(Color::RGBA(255,0,0,255));
 		core.wincan.draw_rect(single_player_button)?;
 		
+		core.wincan.set_draw_color(Color::RGBA(255,255,255,255));
+		core.wincan.draw_rect(join_code_textbox)?;
+		
+		//Render text for join code textbox
+		let display_text = format!("{}{}", join_code, if textbox_selected && textbox_select_time.elapsed().subsec_millis()<500 { "|" } else { "" });
+		let text_size = regular_font.size_of(&display_text);
+		match text_size {
+			Ok((w, h)) => {
+				if w > 0 {
+					let text_surface = regular_font.render(&display_text)
+						.blended(Color::RGBA(255,255,255,255))
+						.map_err(|e| e.to_string())?;
+					let text_texture = core.texture_creator.create_texture_from_surface(&text_surface)
+						.map_err(|e| e.to_string())?;
+					core.wincan.copy(&text_texture, None, Rect::new(760, 200 + (60-h as i32)/2, w, h))?;
+				}
+			},
+			_ => {},
+		}
+
 		core.wincan.set_draw_color(Color::RGBA(0,255,0,255));
 		core.wincan.draw_rect(credit_button)?;
 
