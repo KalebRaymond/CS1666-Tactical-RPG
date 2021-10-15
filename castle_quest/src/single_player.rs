@@ -1,48 +1,56 @@
 use sdl2::event::Event;
 use sdl2::image::LoadTexture;
 use sdl2::keyboard::Keycode;
+use sdl2::mouse::MouseState;
 use sdl2::rect::Rect;
 use sdl2::render::Texture;
-use sdl2::mouse::MouseState;
 
-// For accessing map file and reading lines
+//For accessing map file and reading lines
+use std::collections::HashMap;
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::convert::TryInto;
-use std::collections::HashMap;
-
 
 use crate::GameState;
+use crate::level_map::LevelMap;
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::SDLCore;
 use crate::TILE_SIZE;
 
-pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
+pub struct GameplayState {
+	/* Empty for now, but will hold all the flags and booleans
+	 * used to execute different conditions during single player
+	 * or multiplayer
+	 * 
+	 * For example, will be useful when the user clicks on a unit 
+	 * to move it somewhere. This struct will have a "moving_unit"
+	 * boolean. If it is false, we can check to skip over the logic 
+	 * in 'gameloop for moving a unit
+	 *
+	 * Something like that.
+	 */
+}
 
+pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
+	//Load map layout from txt file
 	let mut map_data = File::open("src/maps/map.txt").expect("Unable to open map file");
 	let mut map_data = BufReader::new(map_data);
 	let mut line = String::new();
 
-	// Sets size of the map from the first line of the text file
+	//Sets size of the map from the first line of the text file
 	map_data.read_line(&mut line).unwrap();
 	let map_width: usize = line.trim().parse().unwrap();
 	let map_height: usize = line.trim().parse().unwrap();
-	core.cam.w = (map_width as u32 * TILE_SIZE) as i32;
-	core.cam.h = (map_height as u32 * TILE_SIZE) as i32;
 
-	// Previous mouse positions
-	let mut old_mouse_x = -1;
-	let mut old_mouse_y = -1;
-
-	// Creates map from file
-	let map: Vec<Vec<String>> = map_data.lines()
+	//Creates map from file
+	let map_tiles: Vec<Vec<String>> = map_data.lines()
 		.take(map_width)
 		.map(|x| x.unwrap().chars().collect::<Vec<char>>())
 		.map(|x| x.chunks(2).map(|chunk| chunk[0].to_string()).collect())
 		.collect();
 
 	let mut textures: HashMap<&str, Texture> = HashMap::new();
-	// Mountains
+	//Mountains
 	textures.insert("▉", core.texture_creator.load_texture("images/tiles/mountain_tile.png")?);
 	textures.insert("▒", core.texture_creator.load_texture("images/tiles/mountain2_tile.png")?);
 	textures.insert("▀", core.texture_creator.load_texture("images/tiles/mountain_side_top.png")?);
@@ -53,20 +61,20 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	textures.insert("▜", core.texture_creator.load_texture("images/tiles/mountain_top_right.png")?);
 	textures.insert("▙", core.texture_creator.load_texture("images/tiles/mountain_bottom_left.png")?);
 	textures.insert("▟", core.texture_creator.load_texture("images/tiles/mountain_bottom_right.png")?);
-	// Grass
+	//Grass
 	textures.insert(" ", core.texture_creator.load_texture("images/tiles/grass_tile.png")?);
-	// Rivers
+	//Rivers
 	textures.insert("=", core.texture_creator.load_texture("images/tiles/river_tile.png")?);
 	textures.insert("║", core.texture_creator.load_texture("images/tiles/river_vertical.png")?);
 	textures.insert("^", core.texture_creator.load_texture("images/tiles/river_end_vertical_top.png")?);
 	textures.insert("v", core.texture_creator.load_texture("images/tiles/river_end_vertical_bottom.png")?);
 	textures.insert(">", core.texture_creator.load_texture("images/tiles/river_end_right.png")?);
 	textures.insert("<", core.texture_creator.load_texture("images/tiles/river_end_left.png")?);
-	// Bases
+	//Bases
 	textures.insert("b", core.texture_creator.load_texture("images/tiles/barbarian_camp.png")?);
 	textures.insert("1", core.texture_creator.load_texture("images/tiles/red_castle.png")?);
 	textures.insert("2", core.texture_creator.load_texture("images/tiles/blue_castle.png")?);
-	// Tree
+	//Tree
 	textures.insert("t", core.texture_creator.load_texture("images/tiles/tree_tile.png")?);
 
 	//Mock units map for testing
@@ -74,6 +82,20 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	units[0][0] = 1;
 	units[3][3] = 1;
 	units[4][5] = 1;
+
+	//Put all of the map matrices into one struct
+	let mut level_map = LevelMap {
+		map_tiles: map_tiles,
+		units: units,
+	};
+
+	//Default mouse positions
+	let mut old_mouse_x = -1;
+	let mut old_mouse_y = -1;
+
+	//Camera
+	core.cam.w = (map_width as u32 * TILE_SIZE) as i32;
+	core.cam.h = (map_height as u32 * TILE_SIZE) as i32;
 
 	'gameloop: loop {
 		core.wincan.clear();
@@ -85,7 +107,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}
 
-		// Mouse Controls
+		//Mouse Controls
 		let mouse_state: MouseState = core.event_pump.mouse_state();
 		if mouse_state.right() {
 			if old_mouse_x < 0 || old_mouse_y < 0 {
@@ -106,7 +128,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		//Draw tiles & sprites
 		for i in 0..map_height {
 			for j in 0..map_width {
-				let map_tile = map[i][j].as_ref();
+				let map_tile = level_map.map_tiles[i][j].as_ref();
 				let map_tile_size = match map_tile {
 					"b" => TILE_SIZE * 2,
 					_ => TILE_SIZE,
@@ -121,7 +143,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				}
 
 				//Draw unit at this coordinate if there is one
-				let unit_texture: Option<Texture> = match units[i][j] {
+				let unit_texture: Option<Texture> = match level_map.units[i][j] {
 					1 => Some(core.texture_creator.load_texture("images/player1_melee.png")?),
 					_ => None,
 				};

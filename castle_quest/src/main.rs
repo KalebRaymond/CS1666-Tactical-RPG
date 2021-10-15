@@ -11,6 +11,7 @@ use sdl2::render::Texture;
 #[macro_use] mod sdl_macros;
 
 mod credits;
+mod level_map;
 mod main_menu;
 mod pixel_coordinates;
 mod single_player;
