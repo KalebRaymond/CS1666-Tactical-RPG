@@ -17,20 +17,6 @@ use crate::pixel_coordinates::PixelCoordinates;
 use crate::SDLCore;
 use crate::TILE_SIZE;
 
-pub struct GameplayState {
-	/* Empty for now, but will hold all the flags and booleans
-	 * used to execute different conditions during single player
-	 * or multiplayer
-	 * 
-	 * For example, will be useful when the user clicks on a unit 
-	 * to move it somewhere. This struct will have a "moving_unit"
-	 * boolean. If it is false, we can check to skip over the logic 
-	 * in 'gameloop for moving a unit
-	 *
-	 * Something like that.
-	 */
-}
-
 pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	//Load map layout from txt file
 	let mut map_data = File::open("src/maps/map.txt").expect("Unable to open map file");
