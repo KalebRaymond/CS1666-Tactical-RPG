@@ -8,7 +8,9 @@ use crate::GameState;
 use crate::SDLCore;
 
 pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
-    let mut next_game_state = GameState::SinglePlayer;
+    let texture_creator = core.wincan.texture_creator();
+	
+	let mut next_game_state = GameState::SinglePlayer;
 	let single_player_button = centered_rect!(core, _, 720/4, 100, 100);
 	let credit_button = centered_rect!(core, _, 3*720/4, 100, 100);
 	let join_code_textbox = Rect::new(750, 200, 400, 60);
@@ -78,7 +80,7 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 					let text_surface = regular_font.render(&display_text)
 						.blended(Color::RGBA(255,255,255,255))
 						.map_err(|e| e.to_string())?;
-					let text_texture = core.texture_creator.create_texture_from_surface(&text_surface)
+					let text_texture = texture_creator.create_texture_from_surface(&text_surface)
 						.map_err(|e| e.to_string())?;
 					core.wincan.copy(&text_texture, None, Rect::new(760, 200 + (60-h as i32)/2, w, h))?;
 				}
