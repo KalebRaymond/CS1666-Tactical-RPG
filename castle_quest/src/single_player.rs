@@ -130,7 +130,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 				//Draw unit at this coordinate if there is one
 				let unit_texture: Option<Texture> = match level_map.units[i][j] {
-					1 => Some(core.texture_creator.load_texture("images/player1_melee.png")?),
+					1 => Some(core.texture_creator.load_texture("images/units/player1_melee.png")?),
 					_ => None,
 				};
 
