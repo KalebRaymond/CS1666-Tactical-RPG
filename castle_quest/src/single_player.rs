@@ -6,22 +6,20 @@ use sdl2::image::LoadTexture;
 use sdl2::pixels::Color;
 use sdl2::render::BlendMode;
 use sdl2::keyboard::Keycode;
+use sdl2::mouse::MouseState;
 use sdl2::rect::Rect;
 use sdl2::render::Texture;
-use sdl2::mouse::MouseState;
 
-// For accessing map file and reading lines
+//For accessing map file and reading lines
+use std::collections::HashMap;
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::convert::TryInto;
-use std::collections::HashMap;
 
 use crate::GameState;
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::SDLCore;
-use crate::TILE_SIZE;
-use crate::CAM_W;
-use crate::CAM_H;
+use crate::{TILE_SIZE, CAM_W, CAM_H};
 
 const BANNER_TIMEOUT: u64 = 2500;
 
@@ -42,36 +40,25 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut initial_banner_output = Instant::now();
 
 	let mut banner_visible = true;
-	
-	//Basic mock map, 48x48 2d vector filled with 1s
-	/*
-	let mut map: Vec<Vec<u32>> = vec![vec![1; 48]; 48];
-	let map_width = map[0].len();
-	let map_height = map.len();
-	*/
 
-	let mut map_data = File::open("src/maps/map.txt").expect("Unable to open map file");
+	//Load map from file
+	let mut map_data = File::open("maps/map.txt").expect("Unable to open map file");
 	let mut map_data = BufReader::new(map_data);
 	let mut line = String::new();
 
-	// Sets size of the map from the first line of the text file
+	//Sets size of the map from the first line of the text file
 	map_data.read_line(&mut line).unwrap();
 	let map_width: usize = line.trim().parse().unwrap();
 	let map_height: usize = line.trim().parse().unwrap();
-	core.cam.w = (map_width as u32 * TILE_SIZE) as i32;
-	core.cam.h = (map_height as u32 * TILE_SIZE) as i32;
 
-	// Previous mouse positions
-	let mut old_mouse_x = -1;
-	let mut old_mouse_y = -1;
-
-	// Creates map from file
-	let map: Vec<Vec<String>> = map_data.lines()
+	//Creates map from file
+	let map_tiles: Vec<Vec<String>> = map_data.lines()
 		.take(map_width)
 		.map(|x| x.unwrap().chars().collect::<Vec<char>>())
 		.map(|x| x.chunks(2).map(|chunk| chunk[0].to_string()).collect())
 		.collect();
 
+	//Load map textures
 	let mut tile_textures: HashMap<&str, Texture> = HashMap::new();
 	// Mountains
 	tile_textures.insert("▉", texture_creator.load_texture("images/tiles/mountain_tile.png")?);
@@ -100,8 +87,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	// Tree
 	tile_textures.insert("t", texture_creator.load_texture("images/tiles/tree_tile.png")?);
 
+	//Load unit textures
 	let mut unit_textures: HashMap<&str, Texture> = HashMap::new();
-	unit_textures.insert("p1m", texture_creator.load_texture("images/player1_melee.png")?);
+	unit_textures.insert("p1m", texture_creator.load_texture("images/units/player1_melee.png")?);
 
 	
 	let mut text_textures: HashMap<&str, Texture> = HashMap::new();
@@ -134,11 +122,20 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 					.map_err(|e| e.to_string())?
 		});
 	}
+
 	//Mock units map for testing
 	let mut units: Vec<Vec<u32>> = vec![vec![0; map_width]; map_height];
 	units[0][0] = 1;
 	units[3][3] = 1;
 	units[4][5] = 1;
+
+	//Default mouse positions
+	let mut old_mouse_x = -1;
+	let mut old_mouse_y = -1;
+
+	//Camera
+	core.cam.w = (map_width as u32 * TILE_SIZE) as i32;
+	core.cam.h = (map_height as u32 * TILE_SIZE) as i32;
 
 	'gameloop: loop {
 		core.wincan.clear();
@@ -222,7 +219,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		//Draw tiles & sprites
 		for i in 0..map_height {
 			for j in 0..map_width {
-				let map_tile = map[i][j].as_ref();
+				let map_tile = map_tiles[i][j].as_ref();
 				let map_tile_size = match map_tile {
 					"b" => TILE_SIZE * 2,
 					_ => TILE_SIZE,
