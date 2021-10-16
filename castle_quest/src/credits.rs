@@ -20,6 +20,8 @@ macro_rules! credits_page {
 }
 
 pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
+	let texture_creator = core.wincan.texture_creator();
+
 	let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?; //From https://www.fontsquirrel.com/fonts/open-sans
 	let regular_font = core.ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 16)?; //From https://www.fontsquirrel.com/fonts/open-sans
 
@@ -32,7 +34,7 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 			.blended_wrapped(Color::RGBA(0, 0, 0, 96), 100) //Black font
 			.map_err(|e| e.to_string())?;
 
-		let text_texture = core.texture_creator.create_texture_from_surface(&text_surface)
+		let text_texture = texture_creator.create_texture_from_surface(&text_surface)
 			.map_err(|e| e.to_string())?;
 
 		core.wincan.copy(&text_texture, None, centered_rect!(core, 500, 500))?;
@@ -47,7 +49,7 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 			.blended_wrapped(Color::RGBA(0, 0, 0, 128), 160) //Black font
 			.map_err(|e| e.to_string())?;
 
-		let text_texture = core.texture_creator.create_texture_from_surface(&text_surface)
+		let text_texture = texture_creator.create_texture_from_surface(&text_surface)
 			.map_err(|e| e.to_string())?;
 
 		core.wincan.copy(&text_texture, None, centered_rect!(core, 500, 250))?;
@@ -58,7 +60,7 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 		core.wincan.set_draw_color(Color::RGBA(201, 196, 196, 128));
 		core.wincan.clear();
 
-		let alex_credit = core.texture_creator.load_texture("images/credits/AlexKCreditImageWithText.png")?;
+		let alex_credit = texture_creator.load_texture("images/credits/AlexKCreditImageWithText.png")?;
 		core.wincan.copy(&alex_credit, None, None)?;
 	});
 
@@ -67,7 +69,7 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 		core.wincan.set_draw_color(Color::RGBA(201, 196, 196, 128));
 		core.wincan.clear();
 
-		let kaleb_credit = core.texture_creator.load_texture("images/credits/KalebRCreditImage.png")?;
+		let kaleb_credit = texture_creator.load_texture("images/credits/KalebRCreditImage.png")?;
 		core.wincan.copy(&kaleb_credit, None, None)?;
 	});
 
@@ -76,14 +78,14 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 		core.wincan.set_draw_color(Color::RGBA(255, 255, 255, 128));
 		core.wincan.clear();
 
-		let jared_credit = core.texture_creator.load_texture("images/credits/JaredCCreditImage.png")?;
+		let jared_credit = texture_creator.load_texture("images/credits/JaredCCreditImage.png")?;
 		core.wincan.copy(&jared_credit, None, centered_rect!(core, _, 200, 256, 200))?;
 
 		let text_surface = regular_font.render("Jared Carl")
 			.blended_wrapped(Color::RGBA(0, 0, 0, 128), 320)
 			.map_err(|e| e.to_string())?;
 
-		let text_texture = core.texture_creator.create_texture_from_surface(&text_surface)
+		let text_texture = texture_creator.create_texture_from_surface(&text_surface)
 			.map_err(|e| e.to_string())?;
 
 		core.wincan.copy(&text_texture, None, centered_rect!(core, _, 400, 550, 200))?;
@@ -94,7 +96,7 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 		core.wincan.set_draw_color(Color::RGBA(201, 196, 196, 128));
 		core.wincan.clear();
 
-		let colin_credit = core.texture_creator.load_texture("images/credits/ColinWCreditImage.png")?;
+		let colin_credit = texture_creator.load_texture("images/credits/ColinWCreditImage.png")?;
 		core.wincan.copy(&colin_credit, None, None)?;
 	});
 
@@ -107,7 +109,7 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 			.blended_wrapped(Color::RGBA(0, 0, 0, 128), 320) //Black font
 			.map_err(|e| e.to_string())?;
 
-		let text_texture = core.texture_creator.create_texture_from_surface(&text_surface)
+		let text_texture = texture_creator.create_texture_from_surface(&text_surface)
 			.map_err(|e| e.to_string())?;
 
 		core.wincan.copy(&text_texture, None, centered_rect!(core, 1000, 250))?;
@@ -115,14 +117,14 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 
 	// James Fenn Credit Image
 	credits_page!(core, {
-		let james_credit = core.texture_creator.load_texture("images/credits/JamesFCreditImage.png")?;
+		let james_credit = texture_creator.load_texture("images/credits/JamesFCreditImage.png")?;
 		core.wincan.copy(&james_credit, None, centered_rect!(core, _, 200, 256, 256))?;
 
 		let text_surface = regular_font.render("James Fenn")
 			.blended_wrapped(Color::RGBA(128, 128, 128, 128), 320) //Black font
 			.map_err(|e| e.to_string())?;
 
-		let text_texture = core.texture_creator.create_texture_from_surface(&text_surface)
+		let text_texture = texture_creator.create_texture_from_surface(&text_surface)
 			.map_err(|e| e.to_string())?;
 
 		core.wincan.copy(&text_texture, None, centered_rect!(core, _, 400, 500, 125))?;
@@ -130,19 +132,19 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 
 	//Bianca Finamore Credit Image
 	credits_page!(core, {
-		let bianca_credit = core.texture_creator.load_texture("images/credits/BiancaCredit.png")?;
+		let bianca_credit = texture_creator.load_texture("images/credits/BiancaCredit.png")?;
 		core.wincan.copy(&bianca_credit, None, None)?;
 	});
 
 	//Jake Baumbaugh Credit Image
 	credits_page!(core, {
-		let jake_credit = core.texture_creator.load_texture("images/credits/JakeBCreditImageWithText.png")?;
+		let jake_credit = texture_creator.load_texture("images/credits/JakeBCreditImageWithText.png")?;
 		core.wincan.copy(&jake_credit, None, None)?;
 	});
 
 	// Shane Josapak Credit Image
 	credits_page!(core, {
-		let shane_credit = core.texture_creator.load_texture("images/credits/ShaneJCreditImage.png")?;
+		let shane_credit = texture_creator.load_texture("images/credits/ShaneJCreditImage.png")?;
 		core.wincan.copy(&shane_credit, None, None)?;
 	});
 
