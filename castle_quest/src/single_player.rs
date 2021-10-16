@@ -16,7 +16,6 @@ use std::io::{BufRead, BufReader};
 use std::convert::TryInto;
 use std::collections::HashMap;
 
-
 use crate::GameState;
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::SDLCore;
@@ -26,17 +25,23 @@ use crate::CAM_H;
 
 const BANNER_TIMEOUT: u64 = 2500;
 
+pub enum Team {
+	Player,
+	Enemy,
+	Barbarians,
+}
+
 pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let texture_creator = core.wincan.texture_creator();
 	
-	let mut current_player = 1; //Very basic counter to keep track of player turn (will be changed to something more powerful later on) - start with 1 since 0 will be drawn initially
+	let mut current_player = Team::Player;
 	let mut banner_key = "p1_banner";
-	let mut current_transparency = 250;
-	let mut banner_colors = Color::RGBA(0, 89, 178, current_transparency);
+	let mut current_banner_transparency = 250;
+	let mut banner_colors = Color::RGBA(0, 89, 178, current_banner_transparency);
 
 	let mut initial_banner_output = Instant::now();
 
-	let mut ui_visible = true;
+	let mut banner_visible = true;
 	
 	//Basic mock map, 48x48 2d vector filled with 1s
 	/*
@@ -104,7 +109,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?;
 		text_textures.insert("p1_banner", {
 			let text_surface = bold_font.render("Player 1's Turn")
-					.blended_wrapped(Color::RGBA(0,0,0, current_transparency), 320) //Black font
+					.blended_wrapped(Color::RGBA(0,0,0, current_banner_transparency), 320) //Black font
 					.map_err(|e| e.to_string())?;
 
 			texture_creator.create_texture_from_surface(&text_surface)
@@ -113,7 +118,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 		text_textures.insert("p2_banner", {
 			let text_surface = bold_font.render("Player 2's Turn")
-					.blended_wrapped(Color::RGBA(0,0,0, current_transparency), 320) //Black font
+					.blended_wrapped(Color::RGBA(0,0,0, current_banner_transparency), 320) //Black font
 					.map_err(|e| e.to_string())?;
 
 			texture_creator.create_texture_from_surface(&text_surface)
@@ -122,7 +127,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 		text_textures.insert("b_banner", {
 			let text_surface = bold_font.render("Barbarians' Turn")
-					.blended_wrapped(Color::RGBA(0,0,0, current_transparency), 320) //Black font
+					.blended_wrapped(Color::RGBA(0,0,0, current_banner_transparency), 320) //Black font
 					.map_err(|e| e.to_string())?;
 
 			texture_creator.create_texture_from_surface(&text_surface)
@@ -138,6 +143,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	'gameloop: loop {
 		core.wincan.clear();
 
+		//Check if user tried to quit the program
 		for event in core.event_pump.poll_iter() {
 			match event {
 				Event::Quit{..} | Event::KeyDown{keycode: Some(Keycode::Escape), ..} => break 'gameloop,
@@ -147,7 +153,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 		//Mouse Controls
 		let mouse_state: MouseState = core.event_pump.mouse_state();
-		if mouse_state.right() && !ui_visible{
+		//Check right mouse button. Camera controls should stay enabled even when it is not the player's turn
+		if mouse_state.right() && !banner_visible{
 			if old_mouse_x < 0 || old_mouse_y < 0 {
 				old_mouse_x = mouse_state.x();
 				old_mouse_y = mouse_state.y();
@@ -165,10 +172,52 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 		//Record key inputs
 		let keystate: HashSet<Keycode> = core.event_pump
-				.keyboard_state()
-				.pressed_scancodes()
-				.filter_map(Keycode::from_scancode)
-				.collect();
+		.keyboard_state()
+		.pressed_scancodes()
+		.filter_map(Keycode::from_scancode)
+		.collect();
+
+		//Handle the current team's move
+		match current_player {
+			Team::Player => {
+				if !banner_visible {
+					if keystate.contains(&Keycode::Backspace) {
+						//End turn
+						current_player = Team::Enemy;
+
+						//Start displaying the enemy's banner
+						current_banner_transparency = 250;
+						banner_colors = Color::RGBA(207, 21, 24, current_banner_transparency);
+						banner_key = "p2_banner";
+						banner_visible = true;
+					}
+				}
+			},
+			Team::Enemy => {
+				if !banner_visible {
+					//End turn
+				current_player = Team::Barbarians;
+
+				//Start displaying the barbarians' banner
+				current_banner_transparency = 250;
+				banner_colors = Color::RGBA(163,96,30, current_banner_transparency);
+				banner_key = "b_banner";
+				banner_visible = true;
+				}
+			},
+			Team::Barbarians => {
+				if !banner_visible {
+					//End turn
+					current_player = Team::Player;
+
+					//Start displaying Player 1's banner
+					current_banner_transparency = 250;
+					banner_colors = Color::RGBA(0, 89, 178, current_banner_transparency);
+					banner_key = "p1_banner";
+					banner_visible = true;
+				}
+			},
+		}
 		
 		//Draw tiles & sprites
 		for i in 0..map_height {
@@ -200,41 +249,26 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}
 
-		//Draw the banner that appears at the beginning of a turn on top of the map tiles
-		if keystate.contains(&Keycode::Backspace) && current_transparency == 0{ //Very basic next turn
-			current_transparency = 250; //Restart transparency in order to display next banner
-			ui_visible = true;
-			if current_player == 0 {
-				banner_key = "p1_banner";
-				banner_colors = Color::RGBA(0, 89, 178, current_transparency);
-			} else if current_player == 1 {
-				banner_key = "p2_banner";
-				banner_colors = Color::RGBA(207, 21, 24, current_transparency);
-			} else {
-				banner_key = "b_banner";
-				banner_colors = Color::RGBA(163,96,30, current_transparency);
-				current_player = -1;
+		//Draw banner that appears at beginning of turn
+		{
+			//As long as the banner isn't completely transparent, draw it
+			if current_banner_transparency != 0 {
+				banner_colors.a = current_banner_transparency;
+				draw_player_banner(core, &text_textures, banner_key, banner_colors, Color::RGBA(0,0,0, current_banner_transparency))?;
+			} else if banner_visible {
+				banner_visible = false;
 			}
-			current_player += 1;
-		}
 
-		//As long as the banner won't be completely transparent, draw it
-		if current_transparency != 0 {
-			banner_colors.a = current_transparency;
-			draw_player_banner(core, &text_textures, banner_key, banner_colors, Color::RGBA(0,0,0, current_transparency))?;
-		} else if ui_visible {
-			ui_visible = false;
-		}
+			//The first time we draw the banner we need to keep track of when it first appears
+			if current_banner_transparency == 250 {
+				initial_banner_output = Instant::now();
+				current_banner_transparency -= 25;
+			}
 
-		//The first time we draw the banner we need to keep track of when it first appears
-		if current_transparency == 250 {
-			initial_banner_output = Instant::now();
-			current_transparency -= 25;
-		}
-
-		//After a set amount of seconds pass and if the banner is still visible, start to make the banner disappear
-		if initial_banner_output.elapsed() >= Duration::from_millis(BANNER_TIMEOUT) && current_transparency != 0 {
-			current_transparency -= 25;
+			//After a set amount of seconds pass and if the banner is still visible, start to make the banner disappear
+			if initial_banner_output.elapsed() >= Duration::from_millis(BANNER_TIMEOUT) && current_banner_transparency != 0 {
+				current_banner_transparency -= 25;
+			}
 		}
 		
 		core.wincan.set_viewport(core.cam);
