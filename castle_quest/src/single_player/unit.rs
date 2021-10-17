@@ -3,7 +3,7 @@
 //use rand::Rng;
 
 use sdl2::render::Texture;
-
+use std::fmt;
 
 pub enum Team {
 	Player,
@@ -20,11 +20,11 @@ pub struct Unit<'a> {
     attack_range: u32,
     accuracy: u32,
     max_damage: u32,
-    pub texture: Texture<'a>,
+    pub texture: &'a Texture<'a>,
 }
 
 impl Unit <'_>{
-    pub fn new<'a> (x:u32, y:u32, team: Team, hp: u32, movement_range: u32, attack_range: u32, accuracy: u32, max_damage: u32, texture: Texture<'a>) -> Unit<'a> {
+    pub fn new<'a> (x:u32, y:u32, team: Team, hp: u32, movement_range: u32, attack_range: u32, accuracy: u32, max_damage: u32, texture: &'a Texture) -> Unit<'a> {
         Unit {
             x,
             y,
@@ -48,5 +48,11 @@ impl Unit <'_>{
     }
     pub fn get_tiles_in_attack_range(&self) -> Vec<(u32, u32)> {
         vec!((0,0))
+    }
+}
+
+impl fmt::Display for Unit<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Unit(x:{}, y:{}, hp:{})", self.x, self.y, self.hp)
     }
 }
