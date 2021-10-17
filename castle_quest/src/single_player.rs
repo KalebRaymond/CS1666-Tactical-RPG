@@ -242,7 +242,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			//As long as the banner isn't completely transparent, draw it
 			if current_banner_transparency != 0 {
 				banner_colors.a = current_banner_transparency;
-				draw_player_banner(core, &text_textures, banner_key, banner_colors, Color::RGBA(0,0,0, current_banner_transparency))?;
+				draw_player_banner(core, &text_textures, banner_key, banner_colors)?;
 			} else if banner_visible {
 				banner_visible = false;
 			}
@@ -267,7 +267,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	Ok(GameState::Quit)
 }
 
-fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_index: &str, rect_color: Color, text_color: Color) -> Result< (), String> {
+fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_index: &str, rect_color: Color) -> Result< (), String> {
 	let banner_rect = Rect::new(core.cam.x.abs(), core.cam.y.abs() + (360-64), CAM_W, 128);
 	let text_rect = Rect::new(core.cam.x.abs() + (640-107), core.cam.y.abs() + (360-64), CAM_W/6, 128);
 	core.wincan.set_blend_mode(BlendMode::Blend);
