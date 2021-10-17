@@ -1,4 +1,5 @@
 use sdl2::render::Texture;
+use std::fmt;
 
 pub struct Tile<'a> {
     pub x: u32,
