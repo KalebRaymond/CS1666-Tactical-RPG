@@ -21,13 +21,9 @@ use crate::pixel_coordinates::PixelCoordinates;
 use crate::SDLCore;
 use crate::{TILE_SIZE, CAM_W, CAM_H};
 
-const BANNER_TIMEOUT: u64 = 2500;
+use crate::unit::{Team, Unit};
 
-pub enum Team {
-	Player,
-	Enemy,
-	Barbarians,
-}
+const BANNER_TIMEOUT: u64 = 2500;
 
 pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let texture_creator = core.wincan.texture_creator();
@@ -90,7 +86,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	//Load unit textures
 	let mut unit_textures: HashMap<&str, Texture> = HashMap::new();
 	unit_textures.insert("p1m", texture_creator.load_texture("images/units/player1_melee.png")?);
-
+	unit_textures.insert("bm", texture_creator.load_texture("images/units/barbarian_melee.png")?);
 	
 	let mut text_textures: HashMap<&str, Texture> = HashMap::new();
 	{
@@ -123,12 +119,17 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		});
 	}
 
-	//Mock units map for testing
-	let mut units: Vec<Vec<u32>> = vec![vec![0; map_width]; map_height];
-	units[0][0] = 1;
-	units[3][3] = 1;
-	units[4][5] = 1;
+	//Tried to get this to work with 2d vectors and Option(Unit) but it was not having the macro 
+	let mut p1_units: HashMap<(u32, u32), Unit> = HashMap::new();
+	p1_units.insert((0,0), Unit::new(0, 0, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));
+	p1_units.insert((3,3), Unit::new(3, 3, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));
+	p1_units.insert((4,5), Unit::new(4, 5, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));	
 
+	let mut p2_units: HashMap<(u32, u32), Unit> = HashMap::new();
+	let mut barbarian_units: HashMap<(u32, u32), Unit> = HashMap::new();
+	barbarian_units.insert((4,6), Unit::new(4, 6, Team::Barbarians, 10, 5, 2, 90, 5, unit_textures.get("bm").unwrap()));
+	barbarian_units.insert((10,7), Unit::new(10, 7, Team::Barbarians, 10, 5, 2, 90, 5, unit_textures.get("bm").unwrap()));
+	
 	//Default mouse positions
 	let mut old_mouse_x = -1;
 	let mut old_mouse_y = -1;
@@ -232,17 +233,14 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				if let std::collections::hash_map::Entry::Occupied(entry) = tile_textures.entry(map_tile) {
 					core.wincan.copy(&entry.get(), None, dest)?
 				}
-
-				//Draw unit at this coordinate if there is one
-				let unit_texture: Option<&Texture<'_>> = match units[i][j] {
-					1 => unit_textures.get("p1m"),
-					_ => None,
-				};
-
-				match unit_texture {
-					Some(texture) => core.wincan.copy(&texture, None, dest)?,
-					None => {},
-				};
+				//Draw unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
+				if let std::collections::hash_map::Entry::Occupied(entry) = p1_units.entry((j as u32, i as u32)) {
+					core.wincan.copy(entry.get().texture, None, dest)?
+				}
+				//Draw unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
+				if let std::collections::hash_map::Entry::Occupied(entry) = barbarian_units.entry((j as u32, i as u32)) {
+					core.wincan.copy(entry.get().texture, None, dest)?
+				}
 			}
 		}
 
@@ -251,7 +249,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			//As long as the banner isn't completely transparent, draw it
 			if current_banner_transparency != 0 {
 				banner_colors.a = current_banner_transparency;
-				draw_player_banner(core, &text_textures, banner_key, banner_colors, Color::RGBA(0,0,0, current_banner_transparency))?;
+				draw_player_banner(core, &text_textures, banner_key, banner_colors)?;
 			} else if banner_visible {
 				banner_visible = false;
 			}
@@ -276,7 +274,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	Ok(GameState::Quit)
 }
 
-fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_index: &str, rect_color: Color, text_color: Color) -> Result< (), String> {
+fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_index: &str, rect_color: Color) -> Result< (), String> {
 	let banner_rect = Rect::new(core.cam.x.abs(), core.cam.y.abs() + (360-64), CAM_W, 128);
 	let text_rect = Rect::new(core.cam.x.abs() + (640-107), core.cam.y.abs() + (360-64), CAM_W/6, 128);
 	core.wincan.set_blend_mode(BlendMode::Blend);
