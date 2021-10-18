@@ -229,8 +229,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				if let std::collections::hash_map::Entry::Occupied(entry) = tile_textures.entry(map_tile) {
 					core.wincan.copy(&entry.get(), None, dest)?
 				}
-
-				if let std::collections::hash_map::Entry::Occupied(entry) = p1_units.entry((i as u32, j as u32)) {
+				//Draw unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
+				if let std::collections::hash_map::Entry::Occupied(entry) = p1_units.entry((j as u32, i as u32)) {
 					core.wincan.copy(entry.get().texture, None, dest)?
 				}
 			}
