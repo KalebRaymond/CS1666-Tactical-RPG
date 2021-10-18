@@ -21,10 +21,8 @@ use crate::pixel_coordinates::PixelCoordinates;
 use crate::SDLCore;
 use crate::{TILE_SIZE, CAM_W, CAM_H};
 
-mod unit;
-mod tile;
-use tile::{Tile};
-use unit::{Team, Unit};
+use crate::tile::{Tile};
+use crate::unit::{Team, Unit};
 
 const BANNER_TIMEOUT: u64 = 2500;
 
@@ -127,7 +125,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	p1_units.insert((0,0), Unit::new(0, 0, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));
 	p1_units.insert((3,3), Unit::new(3, 3, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));
 	p1_units.insert((4,5), Unit::new(4, 5, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));	
-
 
 	//Default mouse positions
 	let mut old_mouse_x = -1;

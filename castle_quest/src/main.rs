@@ -14,6 +14,8 @@ mod credits;
 mod main_menu;
 mod pixel_coordinates;
 mod single_player;
+pub mod unit;
+pub mod tile;
 
 pub enum GameState {
 	MainMenu,
