@@ -5,7 +5,6 @@
 use sdl2::render::Texture;
 use std::fmt;
 
-use crate::tile::{Tile};
 
 pub enum Team {
 	Player,
@@ -48,7 +47,7 @@ impl Unit <'_>{
         // }
         0
     }
-    pub fn get_tiles_in_attack_range(&self, map: &Vec<Vec<Tile>>) -> Vec<(u32, u32)> {
+    pub fn get_tiles_in_attack_range(&self, map: &Vec<Vec<String>>) -> Vec<(u32, u32)> {
         let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
         // let lowest_row: u32 = (self.y - self.attack_range).clamp(0, self.y);
         // let highest_row: u32 = (self.y + self.attack_range).clamp(self.y, map.len());

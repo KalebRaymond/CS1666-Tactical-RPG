@@ -21,7 +21,6 @@ use crate::pixel_coordinates::PixelCoordinates;
 use crate::SDLCore;
 use crate::{TILE_SIZE, CAM_W, CAM_H};
 
-use crate::tile::{Tile};
 use crate::unit::{Team, Unit};
 
 const BANNER_TIMEOUT: u64 = 2500;
