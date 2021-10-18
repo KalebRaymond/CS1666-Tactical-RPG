@@ -86,7 +86,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	//Load unit textures
 	let mut unit_textures: HashMap<&str, Texture> = HashMap::new();
 	unit_textures.insert("p1m", texture_creator.load_texture("images/units/player1_melee.png")?);
-
+	unit_textures.insert("bm", texture_creator.load_texture("images/units/barbarian_melee.png")?);
 	
 	let mut text_textures: HashMap<&str, Texture> = HashMap::new();
 	{
@@ -125,6 +125,11 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	p1_units.insert((3,3), Unit::new(3, 3, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));
 	p1_units.insert((4,5), Unit::new(4, 5, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));	
 
+	let mut p2_units: HashMap<(u32, u32), Unit> = HashMap::new();
+	let mut barbarian_units: HashMap<(u32, u32), Unit> = HashMap::new();
+	barbarian_units.insert((4,6), Unit::new(4, 6, Team::Barbarians, 10, 5, 2, 90, 5, unit_textures.get("bm").unwrap()));
+	barbarian_units.insert((10,7), Unit::new(10, 7, Team::Barbarians, 10, 5, 2, 90, 5, unit_textures.get("bm").unwrap()));
+	
 	//Default mouse positions
 	let mut old_mouse_x = -1;
 	let mut old_mouse_y = -1;
@@ -230,6 +235,10 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				}
 				//Draw unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
 				if let std::collections::hash_map::Entry::Occupied(entry) = p1_units.entry((j as u32, i as u32)) {
+					core.wincan.copy(entry.get().texture, None, dest)?
+				}
+				//Draw unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
+				if let std::collections::hash_map::Entry::Occupied(entry) = barbarian_units.entry((j as u32, i as u32)) {
 					core.wincan.copy(entry.get().texture, None, dest)?
 				}
 			}
