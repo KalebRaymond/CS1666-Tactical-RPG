@@ -86,9 +86,12 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	//Load unit textures
 	let mut unit_textures: HashMap<&str, Texture> = HashMap::new();
-	unit_textures.insert("p1m", texture_creator.load_texture("images/units/player1_melee.png")?);
-	unit_textures.insert("bm", texture_creator.load_texture("images/units/barbarian_melee.png")?);
-	
+	unit_textures.insert("pll", texture_creator.load_texture("images/units/player1_melee.png")?);
+	unit_textures.insert("plr", texture_creator.load_texture("images/units/player1_archer.png")?);
+	unit_textures.insert("plm", texture_creator.load_texture("images/units/player1_mage.png")?);
+	unit_textures.insert("bl", texture_creator.load_texture("images/units/barbarian_melee.png")?);
+	unit_textures.insert("br", texture_creator.load_texture("images/units/barbarian_archer.png")?);
+
 	let mut text_textures: HashMap<&str, Texture> = HashMap::new();
 	{
 		let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?;
@@ -141,23 +144,14 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		}
 	}
 
-	//Tried to get this to work with 2d vectors and Option(Unit) but it was not having the macro 
 	let mut p1_units: HashMap<(u32, u32), Unit> = HashMap::new();
-	p1_units.insert((0,0), Unit::new(0, 0, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));
-	p1_units.insert((3,3), Unit::new(3, 3, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));
-	p1_units.insert((4,5), Unit::new(4, 5, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));	
-	map_tiles.get_mut(&(0, 0)).unwrap().update_team(Some(Team::Player));
-	map_tiles.get_mut(&(3, 3)).unwrap().update_team(Some(Team::Player));
-	map_tiles.get_mut(&(4, 5)).unwrap().update_team(Some(Team::Player));
-	// map_tiles.entry((3, 3)).get().contained_unit_team = Team::Player;
-	// map_tiles.entry((4, 5)).get().contained_unit_team = Team::Player;
+	let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (0,0)), ('l', (3,3)), ('l', (4,5)));
+	prepare_player_units(&mut p1_units, Team::Player, p1_units_abrev, &unit_textures, &mut map_tiles);
 
 	let mut p2_units: HashMap<(u32, u32), Unit> = HashMap::new();
 	let mut barbarian_units: HashMap<(u32, u32), Unit> = HashMap::new();
-	barbarian_units.insert((4,6), Unit::new(4, 6, Team::Barbarians, 10, 5, 2, 90, 5, unit_textures.get("bm").unwrap()));
-	barbarian_units.insert((10,7), Unit::new(10, 7, Team::Barbarians, 10, 5, 2, 90, 5, unit_textures.get("bm").unwrap()));
-	map_tiles.get_mut(&(4, 6)).unwrap().update_team(Some(Team::Barbarians));
-	map_tiles.get_mut(&(10, 7)).unwrap().update_team(Some(Team::Barbarians));
+	let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (7,7)), ('l', (4,6)));
+	prepare_player_units(&mut barbarian_units, Team::Barbarians, barb_units_abrev, &unit_textures, &mut map_tiles);
 	
 	//Default mouse positions
 	let mut old_mouse_x = -1;
@@ -317,4 +311,29 @@ fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>
 	};
 	
 	Ok(())
+}
+
+//Method for preparing the HashMap of player units whilst also properly marking them in the map
+//l melee r ranged m mage
+fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>>, player_team: Team, units: Vec<(char, (u32, u32))>, unit_textures: &'a HashMap<&str, Texture<'a>>, map: &'b mut HashMap<(u32, u32), Tile>) {
+	let melee: &str;
+	let range: &str;
+	let mage: &str;
+	let (melee, range, mage)  = match player_team {
+		Team::Player => ("pll", "plr", "plm"),
+		Team::Enemy =>  ("pll", "plr", "plm"),
+		Team::Barbarians => ("bl", "br", ""),
+	};
+	for unit in units {
+		match player_team {
+			Team::Player => map.get_mut(&(unit.1.0, unit.1.1)).unwrap().update_team(Some(Team::Player)),
+			Team::Enemy => map.get_mut(&(unit.1.0, unit.1.1)).unwrap().update_team(Some(Team::Player)),
+			Team::Barbarians => map.get_mut(&(unit.1.0, unit.1.1)).unwrap().update_team(Some(Team::Player)),
+		}
+		match unit.0 {
+			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 20, 6, 2, 90, 5, unit_textures.get(melee).unwrap())),
+			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 15, 5, 4, 70, 7, unit_textures.get(range).unwrap())),
+				_ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 10, 4, 3, 60, 9, unit_textures.get(mage).unwrap())),
+		};
+	}
 }
