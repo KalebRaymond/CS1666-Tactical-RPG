@@ -177,9 +177,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	//Tried to get this to work with 2d vectors and Option(Unit) but it was not having the macro 
 	let mut p1_units: HashMap<(u32, u32), Unit> = HashMap::new();
-	p1_units.insert((0,0), Unit::new(0, 0, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));
 	p1_units.insert((3,3), Unit::new(3, 3, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));
 	p1_units.insert((4,5), Unit::new(4, 5, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));	
+	p1_units.insert((15,7), Unit::new(0, 0, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));
 
 	let mut p2_units: HashMap<(u32, u32), Unit> = HashMap::new();
 	let mut barbarian_units: HashMap<(u32, u32), Unit> = HashMap::new();
@@ -238,7 +238,14 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 					println!("Tile location: ({}, {})", i, j);
 					println!();
 
-					unit_interface = Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture));
+					unit_interface = match p1_units.get(&(j,i)) {
+						Some(_) => {
+							Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture))
+						},
+						_ => {
+							None
+						},
+					}
 				}
 			}
 			else {
