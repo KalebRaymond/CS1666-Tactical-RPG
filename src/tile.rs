@@ -1,0 +1,31 @@
+use sdl2::render::Texture;
+use std::fmt;
+use crate::unit::{Team};
+
+pub struct Tile<'a> {
+    pub x: u32,
+    pub y: u32,
+    pub is_traversable: bool,
+    pub can_attack_through: bool, // e.x. archers and mages can attack over rivers and through trees
+    pub contained_unit_team: Option<Team>, // Storing a unit causes some pains with lifetimes and references, so store an enum that is better than a boolean
+    pub texture: &'a Texture<'a>,
+}
+
+impl Tile <'_>{
+    pub fn new<'a> (x:u32, y:u32, is_traversable: bool, can_attack_through: bool, contained_unit_team: Option<Team>, texture: &'a Texture) -> Tile<'a> {
+        Tile {
+            x,
+            y,
+            is_traversable,
+            can_attack_through,
+            contained_unit_team,
+            texture,
+        }
+    }
+}
+
+impl fmt::Display for Tile<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Tile(x:{}, y:{}, is_traversable:{})", self.x, self.y, self.is_traversable)
+    }
+}

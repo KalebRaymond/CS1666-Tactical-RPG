@@ -3,12 +3,28 @@ extern crate sdl2;
 const TITLE: &str = "Castle Quest";
 const CAM_W: u32 = 1280;
 const CAM_H: u32 = 720;
+pub const TILE_SIZE: u32 = 32;
 
 use sdl2::rect::Rect;
+use sdl2::render::Texture;
 
 #[macro_use] mod sdl_macros;
 
 mod credits;
+mod main_menu;
+mod pixel_coordinates;
+mod single_player;
+pub mod unit;
+pub mod tile;
+mod unit_interface;
+
+pub enum GameState {
+	MainMenu,
+	SinglePlayer,
+	MultiPlayer,
+	Credits,
+	Quit,
+}
 
 pub struct SDLCore {
 	pub sdl_ctx: sdl2::Sdl,
@@ -16,7 +32,6 @@ pub struct SDLCore {
 	pub wincan: sdl2::render::WindowCanvas,
 	pub event_pump: sdl2::EventPump,
 	pub cam: Rect,
-	pub texture_creator: sdl2::render::TextureCreator<sdl2::video::WindowContext>
 }
 
 fn runner(vsync:bool) {
@@ -24,20 +39,42 @@ fn runner(vsync:bool) {
 	print!("\tInitting...");
 	match init_sdl_core(vsync) {
 		Err(e) => println!("\n\t\tFailed to init: {}", e),
-		Ok(core) => {
+		Ok(mut core) => {
 			println!("DONE");
 			print!("\tRunning...");
-			match run(core) {
-				Err(e) => println!("\n\t\tEncountered error while running: {}", e),
-				Ok(_) => println!("DONE\nExiting cleanly"),
-			};
+
+			//Start the game in the menu
+			let mut game_state = GameState::MainMenu;
+
+			loop {
+				match run_game_state(&mut core, &game_state) {
+					Err(e) => {
+						panic!("\n\t\tEncountered error while running: {}", e);
+					},
+					Ok(next_game_state) => {
+						match next_game_state {
+							GameState::Quit => break,
+							_ => { game_state = next_game_state; },
+						}
+					},
+				};
+			}
+
+			println!("DONE\nExiting cleanly");
 		},
 	};
 }
-fn run(mut core: SDLCore) -> Result<(), String> {
-	credits::credits(&mut core)?;
 
-	Ok(())
+fn run_game_state(core: &mut SDLCore, game_state: &GameState) -> Result<GameState, String> {
+	let next_game_state = match game_state {
+		GameState::MainMenu => main_menu::main_menu(core)?,
+		GameState::SinglePlayer => single_player::single_player(core)?,
+		GameState::Credits => credits::credits(core)?,
+		GameState::Quit => GameState::Quit,
+		_ => return Err("Invalid game state".to_string()),
+	};
+
+	Ok(next_game_state)
 }
 
 fn init_sdl_core(vsync:bool) -> Result<SDLCore, String> {
@@ -66,18 +103,15 @@ fn init_sdl_core(vsync:bool) -> Result<SDLCore, String> {
 
 	let cam = Rect::new(0, 0, CAM_W, CAM_H);
 
-	let texture_creator = wincan.texture_creator();
+	let core = SDLCore{
+		sdl_ctx,
+		ttf_ctx,
+		wincan,
+		event_pump,
+		cam,
+	};
 
-	Ok( 
-		SDLCore{
-			sdl_ctx,
-			ttf_ctx,
-			wincan,
-			event_pump,
-			cam,
-			texture_creator,
-		}
-	)
+	Ok(core)
 }
 
 fn main() {
