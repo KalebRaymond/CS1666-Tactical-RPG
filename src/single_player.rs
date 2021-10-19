@@ -121,36 +121,19 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	}
 
 	// Sets up the HashMap of Tiles that can be interacted with
+	//let mut map_tiles: Vec<Vec<Tile>> = Vec::new();
 	let mut map_tiles: HashMap<(u32, u32), Tile> = HashMap::new();
 	{
 		let mut x = 0;
 		let mut y = 0;
 		for row in map_string.iter() {
-			for col in row.iter() {
-				match col.chars().next().unwrap() {
+			for col in row.iter() { 
+				let letter = &col[..];
+				match letter {
 					// I wanted to do something that wasn't just hardcoding all the textures, but it seems that tile_textures.get() refuses anything that isn't a hard-coded string
-					'▉' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▉").unwrap())),
-					'▒' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▒").unwrap())),
-					'▀' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▀").unwrap())),
-					'▐' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▐").unwrap())),
-					'▃' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▃").unwrap())),
-					'▍' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▍").unwrap())),
-					'▛' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▛").unwrap())),
-					'▜' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▜").unwrap())),
-					'▙' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▙").unwrap())),
-					'▟' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▟").unwrap())),
-					'║' => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get("║").unwrap())),
-					'^' => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get("^").unwrap())),
-					'v' => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get("v").unwrap())),
-					'<' => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get("<").unwrap())),
-					'=' => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get("=").unwrap())),
-					'>' => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get(">").unwrap())),
-					'b' => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get("b").unwrap())),
-					'1' => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get("1").unwrap())),
-					'2' => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get("2").unwrap())),
-					' ' => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get(" ").unwrap())),
-					't' => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get("t").unwrap())),
-					_ => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get("_").unwrap())),
+					"║" | "^" | "v" | "<" | "=" | ">" | "t" => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get(&letter).unwrap())),
+					"b" | "1" | "2" | " " => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get(&letter).unwrap())),
+					_ => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get(&letter).unwrap())),
 				};
 				y += 1;
 			}
@@ -164,6 +147,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	p1_units.insert((0,0), Unit::new(0, 0, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));
 	p1_units.insert((3,3), Unit::new(3, 3, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));
 	p1_units.insert((4,5), Unit::new(4, 5, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));	
+	// map_tiles.entry((0, 0)).get().contained_unit_team = Team::Player;
+	// map_tiles.entry((3, 3)).get().contained_unit_team = Team::Player;
+	// map_tiles.entry((4, 5)).get().contained_unit_team = Team::Player;
 
 	let mut p2_units: HashMap<(u32, u32), Unit> = HashMap::new();
 	let mut barbarian_units: HashMap<(u32, u32), Unit> = HashMap::new();
