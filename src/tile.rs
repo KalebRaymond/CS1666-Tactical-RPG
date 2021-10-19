@@ -6,16 +6,18 @@ pub struct Tile<'a> {
     pub x: u32,
     pub y: u32,
     pub is_traversable: bool,
+    pub can_attack_through: bool, // e.x. archers and mages can attack over rivers and through trees
     pub contained_unit: Option<&'a Unit<'a>>,
     pub texture: &'a Texture<'a>,
 }
 
 impl Tile <'_>{
-    pub fn new<'a> (x:u32, y:u32, is_traversable: bool, contained_unit: Option<&'a Unit>, texture: &'a Texture) -> Tile<'a> {
+    pub fn new<'a> (x:u32, y:u32, is_traversable: bool, can_attack_through: bool, contained_unit: Option<&'a Unit>, texture: &'a Texture) -> Tile<'a> {
         Tile {
             x,
             y,
             is_traversable,
+            can_attack_through,
             contained_unit,
             texture,
         }
