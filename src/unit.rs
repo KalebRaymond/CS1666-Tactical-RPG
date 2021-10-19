@@ -22,6 +22,8 @@ pub struct Unit<'a> {
     accuracy: u32,
     max_damage: u32,
     pub texture: &'a Texture<'a>,
+    pub has_attacked: bool,
+    pub has_moved: bool,
 }
 
 impl Unit <'_>{
@@ -36,6 +38,9 @@ impl Unit <'_>{
             accuracy,
             max_damage,
             texture,
+            // Initially both are set to true, when it becomes someone's turn, both will need to be set to false for each unit on team
+            has_attacked: true,
+            has_moved: true,
         }
     }
     pub fn get_attack_damage(&self) -> u32 {

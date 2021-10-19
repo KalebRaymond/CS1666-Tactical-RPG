@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::convert::TryInto;
 use std::time::{Instant, Duration};
 
 use sdl2::event::Event;
@@ -12,7 +13,6 @@ use sdl2::render::Texture;
 
 //For accessing map file and reading lines
 use std::collections::HashMap;
-use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -23,6 +23,7 @@ use crate::{TILE_SIZE, CAM_W, CAM_H};
 use crate::unit_interface::UnitInterface;
 
 use crate::unit::{Team, Unit};
+use crate::tile::{Tile};
 
 const BANNER_TIMEOUT: u64 = 2500;
 
@@ -38,7 +39,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut banner_visible = true;
 
 	//Load map from file
-	let mut map_data = File::open("maps/map.txt").expect("Unable to open map file");
+	let map_data = File::open("maps/map.txt").expect("Unable to open map file");
 	let mut map_data = BufReader::new(map_data);
 	let mut line = String::new();
 
@@ -63,7 +64,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut left_clicked = false; 
 
 	//Creates map from file
-	let map_tiles: Vec<Vec<String>> = map_data.lines()
+	let map_string: Vec<Vec<String>> = map_data.lines()
 		.take(map_width)
 		.map(|x| x.unwrap().chars().collect::<Vec<char>>())
 		.map(|x| x.chunks(2).map(|chunk| chunk[0].to_string()).collect())
@@ -84,6 +85,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	tile_textures.insert("▟", texture_creator.load_texture("images/tiles/mountain_bottom_right.png")?);
 	// Grass
 	tile_textures.insert(" ", texture_creator.load_texture("images/tiles/grass_tile.png")?);
+	tile_textures.insert("_", texture_creator.load_texture("images/tiles/empty_tile.png")?);
 	// Rivers
 	tile_textures.insert("=", texture_creator.load_texture("images/tiles/river_tile.png")?);
 	tile_textures.insert("║", texture_creator.load_texture("images/tiles/river_vertical.png")?);
@@ -132,6 +134,45 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			texture_creator.create_texture_from_surface(&text_surface)
 					.map_err(|e| e.to_string())?
 		});
+	}
+
+	// Sets up the HashMap of Tiles that can be interacted with
+	let mut map_tiles: HashMap<(u32, u32), Tile> = HashMap::new();
+	{
+		let mut x = 0;
+		let mut y = 0;
+		for row in map_string.iter() {
+			for col in row.iter() {
+				match col.chars().next().unwrap() {
+					// I wanted to do something that wasn't just hardcoding all the textures, but it seems that tile_textures.get() refuses anything that isn't a hard-coded string
+					'▉' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▉").unwrap())),
+					'▒' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▒").unwrap())),
+					'▀' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▀").unwrap())),
+					'▐' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▐").unwrap())),
+					'▃' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▃").unwrap())),
+					'▍' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▍").unwrap())),
+					'▛' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▛").unwrap())),
+					'▜' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▜").unwrap())),
+					'▙' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▙").unwrap())),
+					'▟' => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get("▟").unwrap())),
+					'║' => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get("║").unwrap())),
+					'^' => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get("^").unwrap())),
+					'v' => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get("v").unwrap())),
+					'<' => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get("<").unwrap())),
+					'=' => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get("=").unwrap())),
+					'>' => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get(">").unwrap())),
+					'b' => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get("b").unwrap())),
+					'1' => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get("1").unwrap())),
+					'2' => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get("2").unwrap())),
+					' ' => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get(" ").unwrap())),
+					't' => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get("t").unwrap())),
+					_ => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get("_").unwrap())),
+				};
+				y += 1;
+			}
+			x += 1;
+			y = 0;
+		}
 	}
 
 	//Tried to get this to work with 2d vectors and Option(Unit) but it was not having the macro 
@@ -257,7 +298,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		//Draw tiles & sprites
 		for i in 0..map_height {
 			for j in 0..map_width {
-				let map_tile = map_tiles[i][j].as_ref();
+				let map_tile = map_string[i][j].as_ref();
 				let map_tile_size = match map_tile {
 					"b" => TILE_SIZE * 2,
 					_ => TILE_SIZE,
@@ -267,8 +308,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, map_tile_size, map_tile_size);
 
 				//Draw map tile at this coordinate
-				if let std::collections::hash_map::Entry::Occupied(entry) = tile_textures.entry(map_tile) {
-					core.wincan.copy(&entry.get(), None, dest)?
+				if let std::collections::hash_map::Entry::Occupied(entry) = map_tiles.entry((i as u32, j as u32)) {
+					core.wincan.copy(entry.get().texture, None, dest)?
 				}
 				//Draw unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
 				if let std::collections::hash_map::Entry::Occupied(entry) = p1_units.entry((j as u32, i as u32)) {
