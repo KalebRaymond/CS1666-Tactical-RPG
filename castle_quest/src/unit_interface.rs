@@ -1,5 +1,5 @@
-use sdl2::image::LoadTexture;
-use sdl2::render::{Texture, TextureCreator};
+use sdl2::rect::Rect;
+use sdl2::render::Texture;
 
 use crate::SDLCore;
 
@@ -10,39 +10,32 @@ enum AnimState {
 }
 
 pub struct UnitInterface<'a> {
-    pub x: u32,
-    pub y: u32,
+    pub x: i32,
+    pub y: i32,
     txt: Vec<&'a str>,
-    texture: Option<Texture<'a>>,
+    texture: Option<&'a Texture<'a>>,
     anim_progress: f32,
     anim_state: AnimState,
 }
 
 impl<'a> UnitInterface<'a> {
-    pub fn new(i: u32, j: u32, t: Vec<&'a str>) -> UnitInterface<'a> {
+    pub fn new(i: u32, j: u32, t: Vec<&'a str>, tex: &'a Texture<'a>) -> UnitInterface<'a> {
         UnitInterface { 
-            x: j * crate::TILE_SIZE,
-            y: i * crate::TILE_SIZE,
+            x: (j * crate::TILE_SIZE) as i32,
+            y: (i * crate::TILE_SIZE) as i32,
             txt: t,
-            texture: None,
+            texture: Some(tex),
             anim_progress: 0.0,
             anim_state: AnimState::Open,
         }
     }
 
-    pub fn get_texture(&self) -> &Option<Texture> {
-        &self.texture
-    }
-
-    fn generate_texture(&mut self, core: &'a SDLCore) {
-        let texture_creator = core.wincan.texture_creator();
-
-        let base_texture = texture_creator.load_texture("images/interface/unit_interface.png");
-        self.texture = match base_texture {
-            Ok(spritesheet) => {
-                texture_creator.create_texture_target(None, 64, 32+16*self.txt.len() as u32).ok()
+    pub fn draw(&self, core: &mut SDLCore) {
+        match &self.texture {
+            Some(texture) => {
+                core.wincan.copy(texture, None, Rect::new(self.x,self.y,64,64));
             },
-            _ => None
+            _ => {},
         }
     }
 }

@@ -20,6 +20,7 @@ use crate::GameState;
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::SDLCore;
 use crate::{TILE_SIZE, CAM_W, CAM_H};
+use crate::unit_interface::UnitInterface;
 
 use crate::unit::{Team, Unit};
 
@@ -144,6 +145,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	barbarian_units.insert((4,6), Unit::new(4, 6, Team::Barbarians, 10, 5, 2, 90, 5, unit_textures.get("bm").unwrap()));
 	barbarian_units.insert((10,7), Unit::new(10, 7, Team::Barbarians, 10, 5, 2, 90, 5, unit_textures.get("bm").unwrap()));
 
+	let unit_interface_texture = texture_creator.load_texture("images/interface/unit_interface.png")?;
+	let mut unit_interface: Option<UnitInterface> = None;
+
 	'gameloop: loop {
 		core.wincan.clear();
 
@@ -192,6 +196,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 					
 					println!("Tile location: ({}, {})", i, j);
 					println!();
+
+					unit_interface = Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture));
 				}
 			}
 			else {
@@ -297,6 +303,13 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}
 		
+		match &unit_interface {
+			Some(ui) => {
+				ui.draw(core);
+			},
+			_ => {},
+		}
+
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
 	}
