@@ -121,7 +121,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	}
 
 	// Sets up the HashMap of Tiles that can be interacted with
-	//let mut map_tiles: Vec<Vec<Tile>> = Vec::new();
 	let mut map_tiles: HashMap<(u32, u32), Tile> = HashMap::new();
 	{
 		let mut x = 0;
@@ -147,7 +146,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	p1_units.insert((0,0), Unit::new(0, 0, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));
 	p1_units.insert((3,3), Unit::new(3, 3, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));
 	p1_units.insert((4,5), Unit::new(4, 5, Team::Player, 10, 5, 2, 90, 5, unit_textures.get("p1m").unwrap()));	
-	// map_tiles.entry((0, 0)).get().contained_unit_team = Team::Player;
+	map_tiles.get_mut(&(0, 0)).unwrap().update_team(Some(Team::Player));
+	map_tiles.get_mut(&(3, 3)).unwrap().update_team(Some(Team::Player));
+	map_tiles.get_mut(&(4, 5)).unwrap().update_team(Some(Team::Player));
 	// map_tiles.entry((3, 3)).get().contained_unit_team = Team::Player;
 	// map_tiles.entry((4, 5)).get().contained_unit_team = Team::Player;
 
@@ -155,6 +156,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut barbarian_units: HashMap<(u32, u32), Unit> = HashMap::new();
 	barbarian_units.insert((4,6), Unit::new(4, 6, Team::Barbarians, 10, 5, 2, 90, 5, unit_textures.get("bm").unwrap()));
 	barbarian_units.insert((10,7), Unit::new(10, 7, Team::Barbarians, 10, 5, 2, 90, 5, unit_textures.get("bm").unwrap()));
+	map_tiles.get_mut(&(4, 6)).unwrap().update_team(Some(Team::Barbarians));
+	map_tiles.get_mut(&(10, 7)).unwrap().update_team(Some(Team::Barbarians));
 	
 	//Default mouse positions
 	let mut old_mouse_x = -1;
