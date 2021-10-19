@@ -224,9 +224,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			if mouse_state.left() {
 				if  !left_clicked {
 					left_clicked = true;
-					
-					println!("Mouse position: ({}, {})", mouse_state.x(), mouse_state.y());
-					println!("Camera position: ({}, {})", core.cam.x, core.cam.y);
 
 					//Get map matrix indices from mouse position
 					let (i, j) = PixelCoordinates::matrix_indices_from_pixel(	mouse_state.x().try_into().unwrap(), 
@@ -234,17 +231,10 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 																				(-1 * core.cam.x).try_into().unwrap(), 
 																				(-1 * core.cam.y).try_into().unwrap()
 																			);
-					
-					println!("Tile location: ({}, {})", i, j);
-					println!();
 
 					unit_interface = match p1_units.get(&(j,i)) {
-						Some(_) => {
-							Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture))
-						},
-						_ => {
-							None
-						},
+						Some(_) => { Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture)) },
+						_ => { None },
 					}
 				}
 			}
