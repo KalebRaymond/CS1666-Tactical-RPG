@@ -322,7 +322,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		
 		match &unit_interface {
 			Some(ui) => {
-				ui.draw(core);
+				ui.draw(core, &texture_creator);
 			},
 			_ => {},
 		}
