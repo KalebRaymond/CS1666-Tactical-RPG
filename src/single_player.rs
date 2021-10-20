@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-use crate::GameState;
+use crate::{GameState, PlayerAction};
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::SDLCore;
 use crate::{TILE_SIZE, CAM_W, CAM_H};
@@ -57,7 +57,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut old_mouse_y = -1;
 	
 	//Left mouse button state. If true, then the left mouse button was clicked on the current frame
-	let mut left_clicked = false; 
+	let mut left_clicked = false;
+	//Right mouse button state. If true, then the right mouse button was clicked on the current frame
+	let mut right_clicked = false; 
 
 	//Creates map from file
 	let map_string: Vec<Vec<String>> = map_data.lines()
@@ -168,6 +170,11 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let unit_interface_texture = texture_creator.load_texture("images/interface/unit_interface.png")?;
 	let mut unit_interface: Option<UnitInterface> = None;
 
+	//Player action to handle inputs differently based on context
+	let mut current_player_action = PlayerAction::Default;
+	
+	let mut active_unit: Option<&mut Unit> = None;
+
 	'gameloop: loop {
 		core.wincan.clear();
 
@@ -179,47 +186,43 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}
 
-		//Mouse Controls
-		{
-			let mouse_state: MouseState = core.event_pump.mouse_state();
-			//Check right mouse button. Camera controls should stay enabled even when it is not the player's turn
-			if mouse_state.right() && !banner_visible{
-				if old_mouse_x < 0 || old_mouse_y < 0 {
-					old_mouse_x = mouse_state.x();
-					old_mouse_y = mouse_state.y();
-				}
-				core.cam.x = (core.cam.x - (old_mouse_x - mouse_state.x())).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
-				core.cam.y = (core.cam.y - (old_mouse_y - mouse_state.y())).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0,);
-				
+		//Record mouse inputs
+		let mouse_state: MouseState = core.event_pump.mouse_state();
+		//Check if left mouse button was pressed this frame
+		if mouse_state.left() {
+			if !left_clicked {
+				left_clicked = true;
+			}
+		}
+		else {
+			left_clicked = false;
+		}
+		//Check if right mouse button was pressed this frame
+		if mouse_state.right() {
+			if !right_clicked {
+				right_clicked = true;
+			}
+		}
+		else {
+			right_clicked = false;
+		}
+			
+		//Camera controls should stay enabled even when it is not the player's turn,
+		//which is why this code block is not in the player's match statement below
+		if mouse_state.right() && !banner_visible{
+			if old_mouse_x < 0 || old_mouse_y < 0 {
 				old_mouse_x = mouse_state.x();
 				old_mouse_y = mouse_state.y();
 			}
-			else {
-				old_mouse_y = -1;
-				old_mouse_x = -1;
-			}
-
-			//Check left mouse button
-			if mouse_state.left() {
-				if  !left_clicked {
-					left_clicked = true;
-
-					//Get map matrix indices from mouse position
-					let (i, j) = PixelCoordinates::matrix_indices_from_pixel(	mouse_state.x().try_into().unwrap(), 
-																				mouse_state.y().try_into().unwrap(), 
-																				(-1 * core.cam.x).try_into().unwrap(), 
-																				(-1 * core.cam.y).try_into().unwrap()
-																			);
-
-					unit_interface = match p1_units.get(&(j,i)) {
-						Some(_) => { Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture)) },
-						_ => { None },
-					}
-				}
-			}
-			else {
-				left_clicked = false;
-			}
+			core.cam.x = (core.cam.x - (old_mouse_x - mouse_state.x())).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
+			core.cam.y = (core.cam.y - (old_mouse_y - mouse_state.y())).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0,);
+			
+			old_mouse_x = mouse_state.x();
+			old_mouse_y = mouse_state.y();
+		}
+		else {
+			old_mouse_y = -1;
+			old_mouse_x = -1;
 		}
 
 		//Record key inputs
@@ -243,18 +246,74 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 						banner_key = "p2_banner";
 						banner_visible = true;
 					}
+
+					//Get map matrix indices from mouse position
+					let (i, j) = PixelCoordinates::matrix_indices_from_pixel(	mouse_state.x().try_into().unwrap(), 
+																				mouse_state.y().try_into().unwrap(), 
+																				(-1 * core.cam.x).try_into().unwrap(), 
+																				(-1 * core.cam.y).try_into().unwrap()
+																			);
+
+					match current_player_action {
+						PlayerAction::Default => {
+							if left_clicked {
+								//Get the unit that is located at the mouse position
+								//Sets active_unit equal to None if the user did not click on a unit
+								active_unit = p1_units.get_mut(&(j, i));
+
+								//If the user did click on a unit, allow the player to move the unit
+								if !active_unit.is_none() {
+									current_player_action = PlayerAction::MovingUnit;
+								}
+							}	
+						},
+						PlayerAction::MovingUnit => {
+							if right_clicked {
+								//Deselect the active unit
+								active_unit = None;
+								current_player_action = PlayerAction::Default;
+							}
+							if left_clicked {
+								//Move the active unit to the mouse's position
+								if let Some(mut unit) = active_unit.as_ref() {
+									unit.move_to_tile(i, j);
+								}
+
+								//Now that the unit has moved, open its context menu so the player can choose an action
+								current_player_action = PlayerAction::ChoosingUnitAction;
+							}
+						},
+						PlayerAction::ChoosingUnitAction => {
+							unit_interface = match active_unit {
+								Some(_) => { Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture)) },
+								_ => { None },
+							};
+
+							if left_clicked {
+								/* Handle selected menu option here? */
+
+								// Gray out the active unit so that it can't be used again this turn
+								//active_unit = grayed out;
+
+								//Deselect the active unit
+								active_unit = None;
+
+								current_player_action = PlayerAction::Default;
+							}
+						},						
+					}
 				}
 			},
 			Team::Enemy => {
 				if !banner_visible {
 					//End turn
-				current_player = Team::Barbarians;
+					current_player = Team::Barbarians;
 
-				//Start displaying the barbarians' banner
-				current_banner_transparency = 250;
-				banner_colors = Color::RGBA(163,96,30, current_banner_transparency);
-				banner_key = "b_banner";
-				banner_visible = true;
+					//Start displaying the barbarians' banner
+					current_banner_transparency = 250;
+					banner_colors = Color::RGBA(163,96,30, current_banner_transparency);
+					banner_key = "b_banner";
+					banner_visible = true;
 				}
 			},
 			Team::Barbarians => {

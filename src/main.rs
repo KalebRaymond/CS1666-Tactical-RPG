@@ -26,6 +26,12 @@ pub enum GameState {
 	Quit,
 }
 
+pub enum PlayerAction {
+	Default,
+	MovingUnit,
+	ChoosingUnitAction,
+}
+
 pub struct SDLCore {
 	pub sdl_ctx: sdl2::Sdl,
 	pub ttf_ctx: sdl2::ttf::Sdl2TtfContext,
