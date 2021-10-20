@@ -1,7 +1,7 @@
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::mouse::MouseState;
-
+use sdl2::image::LoadTexture;
 use std::time::Instant;
 
 use crate::GameState;
@@ -47,6 +47,9 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 
 	music.play(-1);
 
+	//For animation
+	let mut i = 0;
+
 	'menuloop: loop {
 		let mouse_state: MouseState = core.event_pump.mouse_state();
 
@@ -55,14 +58,14 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 			let y = mouse_state.y();
 			textbox_selected = false;
 			if single_player_button.contains_point((x, y)) {
-				sdl2::mixer::Music::fade_out(400);
+				sdl2::mixer::Music::fade_out(600);
 				next_game_state = GameState::SinglePlayer;
 				break 'menuloop;
 			} else if join_code_textbox.contains_point((x,y)) {
 				textbox_selected = true;
 				textbox_select_time = Instant::now();
 			} else if credit_button.contains_point((x, y)){
-				sdl2::mixer::Music::fade_out(400);
+				sdl2::mixer::Music::fade_out(600);
 				next_game_state = GameState::Credits;
 				break 'menuloop;
 			}
@@ -90,9 +93,23 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 				_ => {},
 			}
 		}
+		i +=1;
+		if i < 24 {
+			sleep_poll!(core, 40);
+			let fr = format!("images/main_menu_animation/{}.png", i);
+			let mm_frame = texture_creator.load_texture(fr)?;
+			core.wincan.copy(&mm_frame, None, None)?;
+		} else {
+			let fr = format!("images/main_menu_animation/{}.png", 24);
+			let mm_frame = texture_creator.load_texture(fr)?;
+			core.wincan.copy(&mm_frame, None, None)?;
+		}
+		if i > 800{
+			i = 1;
+		}
 
-		core.wincan.set_draw_color(Color::RGBA(0, 0, 0, 255)); //Black screen
-		core.wincan.clear();
+		//let fr = format!("images/main_menu_animation/{}.png", i);
+		
 
 		core.wincan.set_draw_color(Color::RGBA(255,0,0,255));
 		core.wincan.draw_rect(single_player_button)?;
@@ -123,6 +140,7 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 		core.wincan.copy(&text_texture2, None, Rect::new(650, 600, 300, 90))?;
 
 		core.wincan.present();
+
 	}
 
 	Ok(next_game_state)
