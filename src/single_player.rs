@@ -333,7 +333,7 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 		match unit.0 {
 			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 20, 6, 2, 90, 5, unit_textures.get(melee).unwrap())),
 			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 15, 5, 4, 70, 7, unit_textures.get(range).unwrap())),
-				_ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 10, 4, 3, 60, 9, unit_textures.get(mage).unwrap())),
+			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 10, 4, 3, 60, 9, unit_textures.get(mage).unwrap())),
 		};
 	}
 }

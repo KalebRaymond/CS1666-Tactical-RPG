@@ -1,10 +1,10 @@
 //Rust complains that it can't find rand crate
 //extern crate rand;
 //use rand::Rng;
-
+use std::collections::HashMap;
 use sdl2::render::Texture;
 use std::fmt;
-
+use crate::tile::{Tile};
 
 pub enum Team {
 	Player,
@@ -52,7 +52,7 @@ impl Unit <'_>{
         // }
         0
     }
-    pub fn get_tiles_in_attack_range(&self, _map: &Vec<Vec<String>>, _other_p_units: &Vec<Vec<Unit>>, _barb_units: &Vec<Vec<Unit>>) -> Vec<(u32, u32)> {
+    pub fn get_tiles_in_attack_range(&self, _map: &HashMap<(u32, u32), Tile>,) -> Vec<(u32, u32)> {
         let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
         tiles_in_range
     }
