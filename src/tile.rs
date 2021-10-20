@@ -22,6 +22,9 @@ impl Tile <'_>{
             texture,
         }
     }
+    pub fn update_team(&mut self, new_team: Option<Team>) {
+        self.contained_unit_team = new_team;
+    }
 }
 
 impl fmt::Display for Tile<'_> {
