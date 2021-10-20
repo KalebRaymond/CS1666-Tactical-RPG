@@ -7,18 +7,45 @@ use std::time::Instant;
 use crate::GameState;
 use crate::SDLCore;
 
+use std::path::Path;
+use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
+
 pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
     let texture_creator = core.wincan.texture_creator();
 	
+	let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?; //From https://www.fontsquirrel.com/fonts/open-sans
+	let regular_font = core.ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 16)?; //From https://www.fontsquirrel.com/fonts/open-sans
+
 	let mut next_game_state = GameState::SinglePlayer;
-	let single_player_button = centered_rect!(core, _, 720/4, 100, 100);
-	let credit_button = centered_rect!(core, _, 3*720/4, 100, 100);
+	//Single player button
+	let single_player_button = Rect::new(100, 600, 400, 100);
+	let text_surface = bold_font.render("Single Player")
+		.blended_wrapped(Color::RGBA(255, 255, 255, 128), 320) //White font
+		.map_err(|e| e.to_string())?;
+
+	let text_texture = texture_creator.create_texture_from_surface(&text_surface)
+		.map_err(|e| e.to_string())?;
+
+	//Credit button
+	let credit_button = Rect::new(600, 600, 400, 100);
+	let text_surface2 = bold_font.render("Credits")
+		.blended_wrapped(Color::RGBA(255, 255, 255, 128), 320) //White font
+		.map_err(|e| e.to_string())?;
+
+	let text_texture2 = texture_creator.create_texture_from_surface(&text_surface2)
+		.map_err(|e| e.to_string())?;
+
+	//Join code textbox
 	let join_code_textbox = Rect::new(750, 200, 400, 60);
 	let mut join_code = String::from("");
 	let mut textbox_selected = false;
 	let mut textbox_select_time = Instant::now();
+	
+	sdl2::mixer::open_audio(44100, AUDIO_S32SYS, DEFAULT_CHANNELS, 1024)?;
+	let _mixer_filetypes = sdl2::mixer::init(InitFlag::MP3)?;
+	let music = sdl2::mixer::Music::from_file(Path::new("./music/main_menu.mp3"))?;
 
-	let regular_font = core.ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 32)?; //From https://www.fontsquirrel.com/fonts/open-sans
+	music.play(-1);
 
 	'menuloop: loop {
 		let mouse_state: MouseState = core.event_pump.mouse_state();
@@ -28,12 +55,14 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 			let y = mouse_state.y();
 			textbox_selected = false;
 			if single_player_button.contains_point((x, y)) {
+				sdl2::mixer::Music::fade_out(400);
 				next_game_state = GameState::SinglePlayer;
 				break 'menuloop;
 			} else if join_code_textbox.contains_point((x,y)) {
 				textbox_selected = true;
 				textbox_select_time = Instant::now();
 			} else if credit_button.contains_point((x, y)){
+				sdl2::mixer::Music::fade_out(400);
 				next_game_state = GameState::Credits;
 				break 'menuloop;
 			}
@@ -67,6 +96,7 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 
 		core.wincan.set_draw_color(Color::RGBA(255,0,0,255));
 		core.wincan.draw_rect(single_player_button)?;
+		core.wincan.copy(&text_texture, None, Rect::new(150, 600, 300, 90))?;
 		
 		core.wincan.set_draw_color(Color::RGBA(255,255,255,255));
 		core.wincan.draw_rect(join_code_textbox)?;
@@ -90,6 +120,7 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 
 		core.wincan.set_draw_color(Color::RGBA(0,255,0,255));
 		core.wincan.draw_rect(credit_button)?;
+		core.wincan.copy(&text_texture2, None, Rect::new(650, 600, 300, 90))?;
 
 		core.wincan.present();
 	}
