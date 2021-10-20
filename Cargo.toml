@@ -1,0 +1,15 @@
+[package]
+name = "castle_quest"
+version = "0.1.0"
+authors = ["Kaleb Raymond <kwr7@pitt.edu>", "Alexander Kwiatkowski <ajk175@pitt.edu>", "Colin Woelfel <cjw102@pitt.edu>", "Jared Carl <jmc316@pitt.edu>", "Bianca Finamore <amf192@pitt.edu>", "Jake Baumbaugh <jtb122@pitt.edu>", "Shane Josapak <shj63@pitt.edu>", "James Fenn <jaf208@pitt.edu>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.sdl2]
+version = "0.34"
+default-features = false
+features = ["ttf","image","mixer"]
+
+[dev-dependencies]
+rand = "0.8.0"
