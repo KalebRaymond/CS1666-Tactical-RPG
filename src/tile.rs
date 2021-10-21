@@ -27,7 +27,7 @@ impl Tile <'_>{
     }
     pub fn unit_can_move_here(&self) -> bool {
         match &self.contained_unit_team {
-            Some(_t) => false,
+            Some(_) => false,
             None => self.is_traversable,
         }
     }
