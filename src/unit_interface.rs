@@ -1,6 +1,7 @@
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::{Texture,TextureCreator};
+use sdl2::ttf::Font;
 use sdl2::video::WindowContext;
 
 use crate::SDLCore;
@@ -41,19 +42,16 @@ impl<'a> UnitInterface<'a> {
                 core.wincan.copy(texture, Rect::new(0,32,64,16), Rect::new(self.x,self.y+48,64,16))?;
 
                 let font = core.ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 16)?;
-                let text_size = font.size_of("test");
-                match text_size {
-                    Ok((w, h)) => {
-                        if w > 0 {
-                            println!("{},{}",w,h);
-                        }
-                    },
-                    _ => {},
+                for (i, text) in self.txt.iter().enumerate() {
+                    let (text_w, text_h) = font.size_of(text)
+                        .map_err( |e| e.to_string() )?;
+                    let text_ratio = text_w as f32 / text_h as f32;
+                    //println!("{}/{} = {}", text_w, text_h, text_ratio);
                 }
 
                 Ok(())
             },
             _ => { Err("Texture not defined.".to_string()) },
         }
-    }
+    }   
 }
