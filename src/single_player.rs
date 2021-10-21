@@ -212,7 +212,14 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 																			);
 
 					unit_interface = match p1_units.get(&(j,i)) {
-						Some(_) => { Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture)) },
+						Some(unit) => { 
+							let possibleMoves = unit.get_tiles_in_movement_range(&mut map_tiles);
+							for pM in possibleMoves {
+								println!("x:{}, y:{}", pM.0, pM.1);
+							}
+							Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture)) 
+							
+						},
 						_ => { None },
 					}
 				}
