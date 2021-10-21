@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::convert::TryInto;
 use std::time::{Instant, Duration};
 
 use sdl2::event::Event;
@@ -19,6 +20,7 @@ use crate::GameState;
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::SDLCore;
 use crate::{TILE_SIZE, CAM_W, CAM_H};
+use crate::unit_interface::UnitInterface;
 
 use crate::unit::{Team, Unit};
 use crate::tile::{Tile};
@@ -28,13 +30,12 @@ const BANNER_TIMEOUT: u64 = 2500;
 pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let texture_creator = core.wincan.texture_creator();
 	
+	//Stuff for banner that appears at beginning of each turn
 	let mut current_player = Team::Player;
 	let mut banner_key = "p1_banner";
 	let mut current_banner_transparency = 250;
 	let mut banner_colors = Color::RGBA(0, 89, 178, current_banner_transparency);
-
 	let mut initial_banner_output = Instant::now();
-
 	let mut banner_visible = true;
 
 	//Load map from file
@@ -46,6 +47,17 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	map_data.read_line(&mut line).unwrap();
 	let map_width: usize = line.trim().parse().unwrap();
 	let map_height: usize = line.trim().parse().unwrap();
+
+	//Set camera size based on map size
+	core.cam.w = (map_width as u32 * TILE_SIZE) as i32;
+	core.cam.h = (map_height as u32 * TILE_SIZE) as i32;
+
+	//Initial mouse positions
+	let mut old_mouse_x = -1;
+	let mut old_mouse_y = -1;
+	
+	//Left mouse button state. If true, then the left mouse button was clicked on the current frame
+	let mut left_clicked = false; 
 
 	//Creates map from file
 	let map_string: Vec<Vec<String>> = map_data.lines()
@@ -153,13 +165,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (7,7)), ('l', (4,6)));
 	prepare_player_units(&mut barbarian_units, Team::Barbarians, barb_units_abrev, &unit_textures, &mut map_tiles);
 	
-	//Default mouse positions
-	let mut old_mouse_x = -1;
-	let mut old_mouse_y = -1;
-
-	//Camera
-	core.cam.w = (map_width as u32 * TILE_SIZE) as i32;
-	core.cam.h = (map_height as u32 * TILE_SIZE) as i32;
+	let unit_interface_texture = texture_creator.load_texture("images/interface/unit_interface.png")?;
+	let mut unit_interface: Option<UnitInterface> = None;
 
 	'gameloop: loop {
 		core.wincan.clear();
@@ -173,22 +180,46 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		}
 
 		//Mouse Controls
-		let mouse_state: MouseState = core.event_pump.mouse_state();
-		//Check right mouse button. Camera controls should stay enabled even when it is not the player's turn
-		if mouse_state.right() && !banner_visible{
-			if old_mouse_x < 0 || old_mouse_y < 0 {
+		{
+			let mouse_state: MouseState = core.event_pump.mouse_state();
+			//Check right mouse button. Camera controls should stay enabled even when it is not the player's turn
+			if mouse_state.right() && !banner_visible{
+				if old_mouse_x < 0 || old_mouse_y < 0 {
+					old_mouse_x = mouse_state.x();
+					old_mouse_y = mouse_state.y();
+				}
+				core.cam.x = (core.cam.x - (old_mouse_x - mouse_state.x())).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
+				core.cam.y = (core.cam.y - (old_mouse_y - mouse_state.y())).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0,);
+				
 				old_mouse_x = mouse_state.x();
 				old_mouse_y = mouse_state.y();
 			}
-			core.cam.x = (core.cam.x - (old_mouse_x - mouse_state.x())).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
-			core.cam.y = (core.cam.y - (old_mouse_y - mouse_state.y())).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0,);
-			
-			old_mouse_x = mouse_state.x();
-			old_mouse_y = mouse_state.y();
-		}
-		else {
-			old_mouse_y = -1;
-			old_mouse_x = -1;
+			else {
+				old_mouse_y = -1;
+				old_mouse_x = -1;
+			}
+
+			//Check left mouse button
+			if mouse_state.left() {
+				if  !left_clicked {
+					left_clicked = true;
+
+					//Get map matrix indices from mouse position
+					let (i, j) = PixelCoordinates::matrix_indices_from_pixel(	mouse_state.x().try_into().unwrap(), 
+																				mouse_state.y().try_into().unwrap(), 
+																				(-1 * core.cam.x).try_into().unwrap(), 
+																				(-1 * core.cam.y).try_into().unwrap()
+																			);
+
+					unit_interface = match p1_units.get(&(j,i)) {
+						Some(_) => { Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture)) },
+						_ => { None },
+					}
+				}
+			}
+			else {
+				left_clicked = false;
+			}
 		}
 
 		//Record key inputs
@@ -239,7 +270,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				}
 			},
 		}
-		
+
 		//Draw tiles & sprites
 		for i in 0..map_height {
 			for j in 0..map_width {
@@ -289,6 +320,13 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}
 		
+		match &unit_interface {
+			Some(ui) => {
+				ui.draw(core);
+			},
+			_ => {},
+		}
+
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
 	}

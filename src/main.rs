@@ -16,6 +16,7 @@ mod pixel_coordinates;
 mod single_player;
 pub mod unit;
 pub mod tile;
+mod unit_interface;
 
 pub enum GameState {
 	MainMenu,

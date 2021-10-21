@@ -5,6 +5,9 @@ use sdl2::rect::Rect;
 use crate::GameState;
 use crate::SDLCore;
 
+use std::path::Path;
+use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
+
 const CREDITS_TIMEOUT: u64 = 3500;
 
 /// Credits page macro: surrounds the provided "closure" (not really a closure) with canvas present() and thread::sleep calls
@@ -24,6 +27,13 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 
 	let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?; //From https://www.fontsquirrel.com/fonts/open-sans
 	let regular_font = core.ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 16)?; //From https://www.fontsquirrel.com/fonts/open-sans
+
+	//Music
+	sdl2::mixer::open_audio(44100, AUDIO_S32SYS, DEFAULT_CHANNELS, 1024)?;
+	let _mixer_filetypes = sdl2::mixer::init(InitFlag::MP3)?;
+	let music = sdl2::mixer::Music::from_file(Path::new("./music/end_credits.mp3"))?;
+
+	music.play(-1);
 
 	// Game title
 	credits_page!(core, {
@@ -148,6 +158,7 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 		core.wincan.copy(&shane_credit, None, None)?;
 	});
 
+	sdl2::mixer::Music::fade_out(600);
 	//Credits finished playing, automatically quit game
 	Ok(GameState::MainMenu)
 }
