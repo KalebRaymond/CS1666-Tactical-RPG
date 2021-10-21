@@ -2,14 +2,48 @@
 //extern crate rand;
 //use rand::Rng;
 use std::collections::HashMap;
+use std::cmp::Ordering;
+use std::collections::BinaryHeap;
+
 use sdl2::render::Texture;
 use std::fmt;
 use crate::tile::{Tile};
+
+const MAP_WIDTH:u32 = 64;
+const MAP_HEIGHT:u32 = 64;
 
 pub enum Team {
 	Player,
 	Enemy,
 	Barbarians,
+}
+
+struct QueueObject {
+    coords: (u32, u32),
+    cost: u32, //Moves remaining if the unit goes to that tile
+}
+
+//Need to implement this and Eq for comparison to work
+impl PartialEq for QueueObject {
+    fn eq(&self, other: &Self) -> bool {
+        self.cost == other.cost && self.coords == other.coords
+    }
+}
+
+impl Eq for QueueObject {}
+
+impl Ord for QueueObject {
+    //Only really want to compare based on the number of moves remaining
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.cost.cmp(&other.cost)
+    }
+}
+
+impl PartialOrd for QueueObject {
+    //Also need to implement partial ordering as per the rust docs
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 pub struct Unit<'a> {
@@ -52,8 +86,13 @@ impl Unit <'_>{
         // }
         0
     }
-    pub fn get_tiles_in_attack_range(&self, _map: &HashMap<(u32, u32), Tile>,) -> Vec<(u32, u32)> {
+    pub fn get_tiles_in_attack_range(&self, map: &mut HashMap<(u32, u32), Tile>,) -> Vec<(u32, u32)> {
         let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
+        let mut visited: HashMap<(u32,u32), bool> = HashMap::new();
+        let mut heap = BinaryHeap::new();
+        heap.push(QueueObject{coords: (self.x, self.y), cost: self.movement_range});
+        visited.insert((self.x, self.y), true);
+        
         tiles_in_range
     }
 }
