@@ -105,6 +105,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	unit_textures.insert("pll", texture_creator.load_texture("images/units/player1_melee.png")?);
 	unit_textures.insert("plr", texture_creator.load_texture("images/units/player1_archer.png")?);
 	unit_textures.insert("plm", texture_creator.load_texture("images/units/player1_mage.png")?);
+	unit_textures.insert("pl2l", texture_creator.load_texture("images/units/player2_melee.png")?);
+	unit_textures.insert("pl2r", texture_creator.load_texture("images/units/player2_archer.png")?);
+	unit_textures.insert("pl2m", texture_creator.load_texture("images/units/player2_mage.png")?);
 	unit_textures.insert("bl", texture_creator.load_texture("images/units/barbarian_melee.png")?);
 	unit_textures.insert("br", texture_creator.load_texture("images/units/barbarian_archer.png")?);
 
@@ -463,7 +466,7 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 	let mage: &str;
 	let (melee, range, mage)  = match player_team {
 		Team::Player => ("pll", "plr", "plm"),
-		Team::Enemy =>  ("pll", "plr", "plm"),
+		Team::Enemy =>  ("pl2l", "pl2r", "pl2m"),
 		Team::Barbarians => ("bl", "br", ""),
 	};
 	for unit in units {
