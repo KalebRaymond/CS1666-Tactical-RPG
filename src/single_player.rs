@@ -56,10 +56,12 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut old_mouse_x = -1;
 	let mut old_mouse_y = -1;
 	
-	//Left mouse button state. If true, then the left mouse button was clicked on the current frame
+	//Left mouse button state
 	let mut left_clicked = false;
-	//Right mouse button state. If true, then the right mouse button was clicked on the current frame
-	let mut right_clicked = false; 
+	let mut left_held = false;
+	//Right mouse button state
+	let mut right_clicked = false;
+	let mut right_held = false;
 
 	//Creates map from file
 	let map_string: Vec<Vec<String>> = map_data.lines()
@@ -173,7 +175,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	//Player action to handle inputs differently based on context
 	let mut current_player_action = PlayerAction::Default;
 	
-	let mut active_unit: Option<&mut Unit> = None;
+	//Matrix coordinates of the currently selected unit. When these are both equal to -1, no unit is selected
+	let mut active_unit_i: i32 = -1;
+	let mut active_unit_j: i32 = -1;
 
 	'gameloop: loop {
 		core.wincan.clear();
@@ -190,21 +194,31 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		let mouse_state: MouseState = core.event_pump.mouse_state();
 		//Check if left mouse button was pressed this frame
 		if mouse_state.left() {
-			if !left_clicked {
+			if !left_held {
 				left_clicked = true;
+				left_held = true;
+			}
+			else {
+				left_clicked = false;
 			}
 		}
 		else {
 			left_clicked = false;
+			left_held = false;
 		}
 		//Check if right mouse button was pressed this frame
 		if mouse_state.right() {
-			if !right_clicked {
+			if !right_held {
 				right_clicked = true;
+				right_held = true;
+			}
+			else {
+				right_clicked = false;
 			}
 		}
 		else {
 			right_clicked = false;
+			right_held = false;
 		}
 			
 		//Camera controls should stay enabled even when it is not the player's turn,
@@ -257,12 +271,16 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 					match current_player_action {
 						PlayerAction::Default => {
 							if left_clicked {
-								//Get the unit that is located at the mouse position
-								//Sets active_unit equal to None if the user did not click on a unit
-								active_unit = p1_units.get_mut(&(j, i));
+								//Get the unit that is located at the mouse position, if there is one
+								{
+									if let Some(unit) = p1_units.get_mut(&(j, i)) {
+										active_unit_i = i as i32;
+										active_unit_j = j as i32;
+									}
+								} 
 
 								//If the user did click on a unit, allow the player to move the unit
-								if !active_unit.is_none() {
+								if !(active_unit_i == -1 || active_unit_j == -1) {
 									current_player_action = PlayerAction::MovingUnit;
 								}
 							}	
@@ -270,13 +288,32 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 						PlayerAction::MovingUnit => {
 							if right_clicked {
 								//Deselect the active unit
-								active_unit = None;
+								active_unit_i = -1;
+								active_unit_j = -1;
+
 								current_player_action = PlayerAction::Default;
 							}
-							if left_clicked {
+							else if left_clicked {
 								//Move the active unit to the mouse's position
-								if let Some(mut unit) = active_unit.as_ref() {
-									unit.move_to_tile(i, j);
+								{
+									if let Some(unit) = p1_units.get_mut(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
+										println!("Moved active unit to ({}, {})", i, j);
+										
+										//Mark the tile where the unit was previously as empty
+										//map.get_mut(&(active_unit_j, active_unit_i)).unwrap().update_team(None);
+										
+										//Remove the active unit from the hash map and reinsert it with the new position as its key
+										//I know there is a better way of doing this
+										{
+											if let Some(unit) = p1_units.remove(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
+												p1_units.insert((j, i), unit);
+											}
+										}
+
+										//Record the unit's updated position
+										active_unit_i = i as i32;
+										active_unit_j = j as i32;
+									}
 								}
 
 								//Now that the unit has moved, open its context menu so the player can choose an action
@@ -284,9 +321,11 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 							}
 						},
 						PlayerAction::ChoosingUnitAction => {
-							unit_interface = match active_unit {
-								Some(_) => { Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture)) },
-								_ => { None },
+							unit_interface = if !(active_unit_i == -1 || active_unit_j == -1) {
+							 	Some(UnitInterface::new(active_unit_i.try_into().unwrap(), active_unit_j.try_into().unwrap(), vec!["Move","Attack"], &unit_interface_texture))
+							}
+							else {
+								None
 							};
 
 							if left_clicked {
@@ -296,7 +335,11 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 								//active_unit = grayed out;
 
 								//Deselect the active unit
-								active_unit = None;
+								active_unit_i = -1;
+								active_unit_j = -1;
+
+								//Hide the interface
+								unit_interface = None;
 
 								current_player_action = PlayerAction::Default;
 							}
@@ -343,16 +386,18 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, map_tile_size, map_tile_size);
 
 				//Draw map tile at this coordinate
-				if let std::collections::hash_map::Entry::Occupied(entry) = map_tiles.entry((i as u32, j as u32)) {
-					core.wincan.copy(entry.get().texture, None, dest)?
+				if let Some(map_tile) = map_tiles.get(&(i as u32, j as u32)) {
+					core.wincan.copy(map_tile.texture, None, dest)?
 				}
-				//Draw unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let std::collections::hash_map::Entry::Occupied(entry) = p1_units.entry((j as u32, i as u32)) {
-					core.wincan.copy(entry.get().texture, None, dest)?
+
+				//Draw player unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
+				if let Some(unit) = p1_units.get(&(j as u32, i as u32)) {
+					core.wincan.copy(unit.texture, None, dest)?
 				}
-				//Draw unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let std::collections::hash_map::Entry::Occupied(entry) = barbarian_units.entry((j as u32, i as u32)) {
-					core.wincan.copy(entry.get().texture, None, dest)?
+
+				//Draw barbarian unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
+				if let Some(barbarian) = barbarian_units.get(&(j as u32, i as u32)) {
+					core.wincan.copy(barbarian.texture, None, dest)?
 				}
 			}
 		}

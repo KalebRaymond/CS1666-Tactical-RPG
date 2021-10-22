@@ -58,11 +58,6 @@ impl Unit <'_>{
         let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
         tiles_in_range
     }
-
-    pub fn move_to_tile(&mut self, i: u32, j: u32) {
-        self.x = j;
-        self.y = i;
-    }
 }
 
 impl fmt::Display for Unit<'_> {
