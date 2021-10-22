@@ -72,7 +72,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	//Load map textures
 	let mut tile_textures: HashMap<&str, Texture> = HashMap::new();
-	// Mountains
+	//Mountains
 	tile_textures.insert("▉", texture_creator.load_texture("images/tiles/mountain_tile.png")?);
 	tile_textures.insert("▒", texture_creator.load_texture("images/tiles/mountain2_tile.png")?);
 	tile_textures.insert("▀", texture_creator.load_texture("images/tiles/mountain_side_top.png")?);
@@ -83,21 +83,21 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	tile_textures.insert("▜", texture_creator.load_texture("images/tiles/mountain_top_right.png")?);
 	tile_textures.insert("▙", texture_creator.load_texture("images/tiles/mountain_bottom_left.png")?);
 	tile_textures.insert("▟", texture_creator.load_texture("images/tiles/mountain_bottom_right.png")?);
-	// Grass
+	//Grass
 	tile_textures.insert(" ", texture_creator.load_texture("images/tiles/grass_tile.png")?);
 	tile_textures.insert("_", texture_creator.load_texture("images/tiles/empty_tile.png")?);
-	// Rivers
+	//Rivers
 	tile_textures.insert("=", texture_creator.load_texture("images/tiles/river_tile.png")?);
 	tile_textures.insert("║", texture_creator.load_texture("images/tiles/river_vertical.png")?);
 	tile_textures.insert("^", texture_creator.load_texture("images/tiles/river_end_vertical_top.png")?);
 	tile_textures.insert("v", texture_creator.load_texture("images/tiles/river_end_vertical_bottom.png")?);
 	tile_textures.insert(">", texture_creator.load_texture("images/tiles/river_end_right.png")?);
 	tile_textures.insert("<", texture_creator.load_texture("images/tiles/river_end_left.png")?);
-	// Bases
+	//Bases
 	tile_textures.insert("b", texture_creator.load_texture("images/tiles/barbarian_camp.png")?);
 	tile_textures.insert("1", texture_creator.load_texture("images/tiles/red_castle.png")?);
 	tile_textures.insert("2", texture_creator.load_texture("images/tiles/blue_castle.png")?);
-	// Tree
+	//Tree
 	tile_textures.insert("t", texture_creator.load_texture("images/tiles/tree_tile.png")?);
 
 	//Load unit textures
@@ -142,7 +142,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		});
 	}
 
-	// Sets up the HashMap of Tiles that can be interacted with
+	//Sets up the HashMap of Tiles that can be interacted with
 	let mut map_tiles: HashMap<(u32, u32), Tile> = HashMap::new();
 	{
 		let mut x = 0;
@@ -151,7 +151,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			for col in row.iter() { 
 				let letter = &col[..];
 				match letter {
-					// I wanted to do something that wasn't just hardcoding all the textures, but it seems that tile_textures.get() refuses anything that isn't a hard-coded string
+					//I wanted to do something that wasn't just hardcoding all the textures, but it seems that tile_textures.get() refuses anything that isn't a hard-coded string
 					"║" | "^" | "v" | "<" | "=" | ">" | "t" => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get(&letter).unwrap())),
 					"b" | "1" | "2" | " " => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get(&letter).unwrap())),
 					_ => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get(&letter).unwrap())),
@@ -300,11 +300,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 								//Move the active unit to the mouse's position
 								{
 									if let Some(unit) = p1_units.get_mut(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
-										println!("Moved active unit to ({}, {})", i, j);
-										
-										//Mark the tile where the unit was previously as empty
-										//map.get_mut(&(active_unit_j, active_unit_i)).unwrap().update_team(None);
-										
 										//Remove the active unit from the hash map and reinsert it with the new position as its key
 										//I know there is a better way of doing this
 										{
@@ -334,7 +329,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 							if left_clicked {
 								/* Handle selected menu option here? */
 
-								// Gray out the active unit so that it can't be used again this turn
+								//Gray out the active unit so that it can't be used again this turn
 								//active_unit = grayed out;
 
 								//Deselect the active unit
