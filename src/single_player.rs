@@ -217,7 +217,10 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 							possible_moves = unit.get_tiles_in_movement_range(&mut map_tiles);
 							Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture)) 
 						},
-						_ => { None },
+						_ => { 
+							possible_moves = Vec::new();
+							None 
+						},
 					}
 				}
 			}
