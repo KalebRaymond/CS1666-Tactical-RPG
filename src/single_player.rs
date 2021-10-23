@@ -38,6 +38,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut initial_banner_output = Instant::now();
 	let mut banner_visible = true;
 	let mut possible_moves: Vec<(u32, u32)> = Vec::new();
+	let mut possible_attacks: Vec<(u32, u32)> = Vec::new();
 
 	//Load map from file
 	let map_data = File::open("maps/map.txt").expect("Unable to open map file");
@@ -215,10 +216,12 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 					unit_interface = match p1_units.get(&(j,i)) {
 						Some(unit) => { 
 							possible_moves = unit.get_tiles_in_movement_range(&mut map_tiles);
+							possible_attacks = unit.get_tiles_in_attack_range(&mut map_tiles);
 							Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture)) 
 						},
 						_ => { 
 							possible_moves = Vec::new();
+							possible_attacks = Vec::new();
 							None 
 						},
 					}
@@ -334,7 +337,10 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			_ => {},
 		}
 		if !possible_moves.is_empty() {
-			draw_possible_moves(core, &possible_moves);
+			draw_possible_moves(core, &possible_moves, Color::RGBA(0, 89, 178, 50));
+		}
+		if !possible_attacks.is_empty() {
+			draw_possible_moves(core, &possible_attacks, Color::RGBA(178, 89, 0, 100));
 		}
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
@@ -360,13 +366,13 @@ fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>
 	Ok(())
 }
 
-fn draw_possible_moves(core: &mut SDLCore, tiles: &Vec<(u32, u32)>) -> Result< (), String> {
+fn draw_possible_moves(core: &mut SDLCore, tiles: &Vec<(u32, u32)>, color:Color) -> Result< (), String> {
 	//Draw tiles & sprites
 	for (x,y) in tiles.into_iter() {
 		let pixel_location = PixelCoordinates::from_matrix_indices(*y, *x);
 		let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
 		core.wincan.set_blend_mode(BlendMode::Blend);
-		core.wincan.set_draw_color(Color::RGBA(0, 89, 178, 50));
+		core.wincan.set_draw_color(color);
 		core.wincan.draw_rect(dest)?;
 		core.wincan.fill_rect(dest)?;
 	}
@@ -392,7 +398,7 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 			Team::Barbarians => map.get_mut(&(unit.1.1, unit.1.0)).unwrap().update_team(Some(Team::Barbarians)),
 		}
 		match unit.0 {
-			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 20, 4, 2, 90, 5, unit_textures.get(melee).unwrap())),
+			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 20, 4, 1, 90, 5, unit_textures.get(melee).unwrap())),
 			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 15, 2, 4, 70, 7, unit_textures.get(range).unwrap())),
 			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 10, 3, 3, 60, 9, unit_textures.get(mage).unwrap())),
 		};

@@ -92,6 +92,7 @@ impl Unit <'_>{
         let mut heap = BinaryHeap::new();
         heap.push(QueueObject{coords: (self.x, self.y), cost: self.movement_range});
         visited.insert((self.x, self.y), true);
+        tiles_in_range.push((self.x, self.y));
         while let Some(QueueObject { coords, cost }) = heap.pop() {
             if cost == 0 {
                 continue
@@ -131,6 +132,60 @@ impl Unit <'_>{
                 if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1+1 as u32, coords.0 as u32)) {
                     //As long as a unit can move to this tile and we have not already visited this tile
                     if entry.get().unit_can_move_here() && !visited.contains_key(&(coords.0, coords.1+1)){
+                        heap.push(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1});
+                        visited.insert((coords.0, coords.1+1), true);
+                        tiles_in_range.push((coords.0, coords.1+1));
+                    }
+                }
+            }
+        }
+        tiles_in_range
+    }
+    pub fn get_tiles_in_attack_range(&self, map: &mut HashMap<(u32, u32), Tile>,) -> Vec<(u32, u32)> {
+        let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
+        let mut visited: HashMap<(u32,u32), bool> = HashMap::new();
+        let mut heap = BinaryHeap::new();
+        heap.push(QueueObject{coords: (self.x, self.y), cost: self.attack_range});
+        visited.insert((self.x, self.y), true);
+        while let Some(QueueObject { coords, cost }) = heap.pop() {
+            if cost == 0 {
+                continue
+            }
+            //Since we know that we can make a move here need to check each of the 4 sides of the current position to see if we can make a move
+            if coords.0 > 0 {
+                if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0-1 as u32)) {
+                    //As long as a unit can move to this tile and we have not already visited this tile
+                    if !visited.contains_key(&(coords.0-1, coords.1)){
+                        heap.push(QueueObject { coords: (coords.0-1, coords.1), cost:cost-1});
+                        visited.insert((coords.0-1, coords.1), true);
+                        tiles_in_range.push((coords.0-1, coords.1));
+                    }
+                }
+            }
+            if coords.0 < MAP_WIDTH-1 {
+                if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0+1 as u32)) {
+                    //As long as a unit can move to this tile and we have not already visited this tile
+                    if !visited.contains_key(&(coords.0+1, coords.1)){
+                        heap.push(QueueObject { coords: (coords.0+1, coords.1), cost:cost-1});
+                        visited.insert((coords.0+1, coords.1), true);
+                        tiles_in_range.push((coords.0+1, coords.1));
+                    }
+                }
+            }
+            if coords.1 > 0 {
+                if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1-1 as u32, coords.0 as u32)) {
+                    //As long as a unit can move to this tile and we have not already visited this tile
+                    if !visited.contains_key(&(coords.0, coords.1-1)){
+                        heap.push(QueueObject { coords: (coords.0, coords.1-1), cost:cost-1});
+                        visited.insert((coords.0, coords.1-1), true);
+                        tiles_in_range.push((coords.0, coords.1-1));
+                    }
+                }
+            }
+            if coords.1 < MAP_HEIGHT-1 {
+                if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1+1 as u32, coords.0 as u32)) {
+                    //As long as a unit can move to this tile and we have not already visited this tile
+                    if !visited.contains_key(&(coords.0, coords.1+1)){
                         heap.push(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1});
                         visited.insert((coords.0, coords.1+1), true);
                         tiles_in_range.push((coords.0, coords.1+1));
