@@ -37,6 +37,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut banner_colors = Color::RGBA(0, 89, 178, current_banner_transparency);
 	let mut initial_banner_output = Instant::now();
 	let mut banner_visible = true;
+	let mut possible_moves: Vec<(u32, u32)> = Vec::new();
+	let mut possible_attacks: Vec<(u32, u32)> = Vec::new();
+	let mut actual_attacks: Vec<(u32, u32)> = Vec::new();
 
 	//Load map from file
 	let map_data = File::open("maps/map.txt").expect("Unable to open map file");
@@ -153,7 +156,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				match letter {
 					//I wanted to do something that wasn't just hardcoding all the textures, but it seems that tile_textures.get() refuses anything that isn't a hard-coded string
 					"║" | "^" | "v" | "<" | "=" | ">" | "t" => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get(&letter).unwrap())),
-					"b" | "1" | "2" | " " => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get(&letter).unwrap())),
+					"b" | "1" | "2" | " " | "_" => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get(&letter).unwrap())),
 					_ => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get(&letter).unwrap())),
 				};
 				y += 1;
@@ -196,14 +199,32 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		//Record mouse inputs
 		let mouse_state: MouseState = core.event_pump.mouse_state();
 		//Check if left mouse button was pressed this frame
-		if mouse_state.left() {
-			if !left_held {
-				left_clicked = true;
-				left_held = true;
-			}
-			else {
-				left_clicked = false;
-			}
+			if mouse_state.left() {
+				if  !left_clicked {
+					left_clicked = true;
+
+					//Get map matrix indices from mouse position
+					let (i, j) = PixelCoordinates::matrix_indices_from_pixel(	mouse_state.x().try_into().unwrap(), 
+																				mouse_state.y().try_into().unwrap(), 
+																				(-1 * core.cam.x).try_into().unwrap(), 
+																				(-1 * core.cam.y).try_into().unwrap()
+																			);
+
+					unit_interface = match p1_units.get(&(j,i)) {
+						Some(unit) => { 
+							possible_moves = unit.get_tiles_in_movement_range(&mut map_tiles);
+							possible_attacks = unit.get_tiles_in_attack_range(&mut map_tiles);
+							actual_attacks = unit.get_tiles_can_attack(&mut map_tiles);
+							Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture)) 
+						},
+						_ => { 
+							possible_moves = Vec::new();
+							possible_attacks = Vec::new();
+							actual_attacks = Vec::new();
+							None 
+						},
+					}
+				}
 		}
 		else {
 			left_clicked = false;
@@ -428,7 +449,15 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			},
 			_ => {},
 		}
-
+		if !possible_moves.is_empty() {
+			draw_possible_moves(core, &possible_moves, Color::RGBA(0, 89, 178, 50));
+		}
+		if !possible_attacks.is_empty() {
+			draw_possible_moves(core, &possible_attacks, Color::RGBA(178, 89, 0, 100));
+		}
+		if !actual_attacks.is_empty() {
+			draw_possible_moves(core, &actual_attacks, Color::RGBA(128, 0, 128, 100));
+		}
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
 	}
@@ -453,6 +482,19 @@ fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>
 	Ok(())
 }
 
+fn draw_possible_moves(core: &mut SDLCore, tiles: &Vec<(u32, u32)>, color:Color) -> Result< (), String> {
+	//Draw tiles & sprites
+	for (x,y) in tiles.into_iter() {
+		let pixel_location = PixelCoordinates::from_matrix_indices(*y, *x);
+		let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
+		core.wincan.set_blend_mode(BlendMode::Blend);
+		core.wincan.set_draw_color(color);
+		core.wincan.draw_rect(dest)?;
+		core.wincan.fill_rect(dest)?;
+	}
+	Ok(())
+}
+
 //Method for preparing the HashMap of player units whilst also properly marking them in the map
 //l melee r ranged m mage
 fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>>, player_team: Team, units: Vec<(char, (u32, u32))>, unit_textures: &'a HashMap<&str, Texture<'a>>, map: &'b mut HashMap<(u32, u32), Tile>) {
@@ -465,15 +507,16 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 		Team::Barbarians => ("bl", "br", ""),
 	};
 	for unit in units {
+		//Remember map is flipped indexing
 		match player_team {
-			Team::Player => map.get_mut(&(unit.1.0, unit.1.1)).unwrap().update_team(Some(Team::Player)),
-			Team::Enemy => map.get_mut(&(unit.1.0, unit.1.1)).unwrap().update_team(Some(Team::Player)),
-			Team::Barbarians => map.get_mut(&(unit.1.0, unit.1.1)).unwrap().update_team(Some(Team::Player)),
+			Team::Player => map.get_mut(&(unit.1.1, unit.1.0)).unwrap().update_team(Some(Team::Player)),
+			Team::Enemy => map.get_mut(&(unit.1.1, unit.1.0)).unwrap().update_team(Some(Team::Enemy)),
+			Team::Barbarians => map.get_mut(&(unit.1.1, unit.1.0)).unwrap().update_team(Some(Team::Barbarians)),
 		}
 		match unit.0 {
-			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 20, 6, 2, 90, 5, unit_textures.get(melee).unwrap())),
-			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 15, 5, 4, 70, 7, unit_textures.get(range).unwrap())),
-			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 10, 4, 3, 60, 9, unit_textures.get(mage).unwrap())),
+			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 4, 1, 90, 5, unit_textures.get(melee).unwrap())),
+			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 2, 4, 70, 7, unit_textures.get(range).unwrap())),
+			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 3, 3, 60, 9, unit_textures.get(mage).unwrap())),
 		};
 	}
 }

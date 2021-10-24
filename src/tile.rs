@@ -25,6 +25,12 @@ impl Tile <'_>{
     pub fn update_team(&mut self, new_team: Option<Team>) {
         self.contained_unit_team = new_team;
     }
+    pub fn unit_can_move_here(&self) -> bool {
+        match &self.contained_unit_team {
+            Some(_) => false,
+            None => self.is_traversable,
+        }
+    }
 }
 
 impl fmt::Display for Tile<'_> {
