@@ -27,7 +27,15 @@ impl PartialEq for Team {
         }
     }
 }
-
+impl Clone for Team {
+    fn clone(&self) -> Team {
+        match self {
+            Team::Player => Team::Player,
+            Team::Enemy => Team::Enemy,
+            Team::Barbarians => Team::Barbarians,
+        }
+    }
+}
 struct QueueObject {
     coords: (u32, u32),
     cost: u32, //Moves remaining if the unit goes to that tile
