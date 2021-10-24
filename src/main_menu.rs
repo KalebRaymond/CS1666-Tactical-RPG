@@ -16,7 +16,6 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 	let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?; //From https://www.fontsquirrel.com/fonts/open-sans
 	let regular_font = core.ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 16)?; //From https://www.fontsquirrel.com/fonts/open-sans
 
-	let mut next_game_state = GameState::SinglePlayer;
 	//Single player button
 	let single_player_button = Rect::new(40, 600, 380, 100);
 	let text_surface = bold_font.render("Single Player")
