@@ -39,6 +39,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut banner_visible = true;
 	let mut possible_moves: Vec<(u32, u32)> = Vec::new();
 	let mut possible_attacks: Vec<(u32, u32)> = Vec::new();
+	let mut actual_attacks: Vec<(u32, u32)> = Vec::new();
 
 	//Load map from file
 	let map_data = File::open("maps/map.txt").expect("Unable to open map file");
@@ -217,11 +218,13 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 						Some(unit) => { 
 							possible_moves = unit.get_tiles_in_movement_range(&mut map_tiles);
 							possible_attacks = unit.get_tiles_in_attack_range(&mut map_tiles);
+							actual_attacks = unit.get_tiles_can_attack(&mut map_tiles);
 							Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture)) 
 						},
 						_ => { 
 							possible_moves = Vec::new();
 							possible_attacks = Vec::new();
+							actual_attacks = Vec::new();
 							None 
 						},
 					}
@@ -341,6 +344,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		}
 		if !possible_attacks.is_empty() {
 			draw_possible_moves(core, &possible_attacks, Color::RGBA(178, 89, 0, 100));
+		}
+		if !actual_attacks.is_empty() {
+			draw_possible_moves(core, &possible_attacks, Color::RGBA(128, 0, 128, 100));
 		}
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
