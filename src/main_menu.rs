@@ -82,26 +82,28 @@ pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
 		let mouse_pos = (mouse_state.x(), mouse_state.y());
 
 		if mouse_state.left() && multiplayer_selected {
-			match mouse_pos {
-				_ if multiplayer_selected && join_code_textbox.contains_point(mouse_pos) => {
-					textbox_selected = true;
-					textbox_select_time = Instant::now();
-				},
-				_ => {
-					textbox_selected = false;
-					multiplayer_selected = false;
-				}
+			if join_code_textbox.contains_point(mouse_pos) {
+				textbox_selected = true;
+				textbox_select_time = Instant::now();
+			} else if multiplayer_create_rect.contains_point(mouse_pos) {
+				println!("TODO: create multiplayer room");
+				multiplayer_selected = false;
+			} else if multiplayer_join_rect.contains_point(mouse_pos) {
+				println!("TODO: join multiplayer room");
+				multiplayer_selected = false;
+			} else {
+				textbox_selected = false;
+				multiplayer_selected = false;
 			}
 		}
 
 		if mouse_state.left() && !multiplayer_selected {
-			match mouse_pos {
-				_ if single_player_button.contains_point(mouse_pos) => return Ok(GameState::SinglePlayer),
-				_ if multiplayer_button.contains_point(mouse_pos) => {
-					multiplayer_selected = true;
-				},
-				_ if credit_button.contains_point(mouse_pos) => return Ok(GameState::Credits),
-				_ => {}
+			if single_player_button.contains_point(mouse_pos) {
+				return Ok(GameState::SinglePlayer);
+			} else if multiplayer_button.contains_point(mouse_pos) {
+				multiplayer_selected = true;
+			} else if credit_button.contains_point(mouse_pos) {
+				return Ok(GameState::Credits);
 			}
 		}
 
