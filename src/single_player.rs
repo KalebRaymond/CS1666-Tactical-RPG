@@ -346,7 +346,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			draw_possible_moves(core, &possible_attacks, Color::RGBA(178, 89, 0, 100));
 		}
 		if !actual_attacks.is_empty() {
-			draw_possible_moves(core, &possible_attacks, Color::RGBA(128, 0, 128, 100));
+			draw_possible_moves(core, &actual_attacks, Color::RGBA(128, 0, 128, 100));
 		}
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
@@ -404,9 +404,9 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 			Team::Barbarians => map.get_mut(&(unit.1.1, unit.1.0)).unwrap().update_team(Some(Team::Barbarians)),
 		}
 		match unit.0 {
-			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 20, 4, 1, 90, 5, unit_textures.get(melee).unwrap())),
-			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 15, 2, 4, 70, 7, unit_textures.get(range).unwrap())),
-			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, Team::Player, 10, 3, 3, 60, 9, unit_textures.get(mage).unwrap())),
+			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 4, 1, 90, 5, unit_textures.get(melee).unwrap())),
+			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 2, 4, 70, 7, unit_textures.get(range).unwrap())),
+			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 3, 3, 60, 9, unit_textures.get(mage).unwrap())),
 		};
 	}
 }

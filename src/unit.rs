@@ -27,6 +27,7 @@ impl PartialEq for Team {
         }
     }
 }
+impl Copy for Team {}
 impl Clone for Team {
     fn clone(&self) -> Team {
         match self {
@@ -230,9 +231,9 @@ impl Unit <'_>{
                     if !visited.contains_key(&(coords.0-1, coords.1)){
                         heap.push(QueueObject { coords: (coords.0-1, coords.1), cost:cost-1});
                         visited.insert((coords.0-1, coords.1), true);
-                        match &entry.get().contained_unit_team {
+                        match entry.get().contained_unit_team {
                             Some(team) => {
-                                if *team != self.team {
+                                if team != self.team {
                                     tiles_in_range.push((coords.0-1, coords.1));
                                 }
                             },
@@ -247,9 +248,9 @@ impl Unit <'_>{
                     if !visited.contains_key(&(coords.0+1, coords.1)){
                         heap.push(QueueObject { coords: (coords.0+1, coords.1), cost:cost-1});
                         visited.insert((coords.0+1, coords.1), true);
-                        match &entry.get().contained_unit_team {
+                        match entry.get().contained_unit_team {
                             Some(team) => {
-                                if *team != self.team {
+                                if team != self.team {
                                     tiles_in_range.push((coords.0+1, coords.1));
                                 }
                             },
@@ -264,9 +265,9 @@ impl Unit <'_>{
                     if !visited.contains_key(&(coords.0, coords.1-1)){
                         heap.push(QueueObject { coords: (coords.0, coords.1-1), cost:cost-1});
                         visited.insert((coords.0, coords.1-1), true);
-                        match &entry.get().contained_unit_team {
+                        match entry.get().contained_unit_team {
                             Some(team) => {
-                                if *team != self.team {
+                                if team != self.team {
                                     tiles_in_range.push((coords.0, coords.1-1));
                                 }
                             },
@@ -281,9 +282,9 @@ impl Unit <'_>{
                     if !visited.contains_key(&(coords.0, coords.1+1)){
                         heap.push(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1});
                         visited.insert((coords.0, coords.1+1), true);
-                        match &entry.get().contained_unit_team {
+                        match entry.get().contained_unit_team {
                             Some(team) => {
-                                if *team != self.team {
+                                if team != self.team {
                                     tiles_in_range.push((coords.0, coords.1+1));
                                 }
                             },
