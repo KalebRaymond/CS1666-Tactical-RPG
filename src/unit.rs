@@ -96,6 +96,7 @@ impl Unit <'_>{
             has_moved: true,
         }
     }
+
     pub fn get_attack_damage(&self) -> u32 {
         // let chance = rand::thread_rng().gen_range(0..100);
         // if chance < self.accuracy {
@@ -105,6 +106,7 @@ impl Unit <'_>{
         // }
         0
     }
+
     pub fn get_tiles_in_movement_range(&self, map: &mut HashMap<(u32, u32), Tile>,) -> Vec<(u32, u32)> {
         let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
         let mut visited: HashMap<(u32,u32), bool> = HashMap::new();
