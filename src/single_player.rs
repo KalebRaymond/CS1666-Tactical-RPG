@@ -25,7 +25,7 @@ use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
 use crate::tile::{Tile};
 
-const BANNER_TIMEOUT: u64 = 2500;
+const BANNER_TIMEOUT: u64 = 1500;
 
 pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let texture_creator = core.wincan.texture_creator();
@@ -201,38 +201,22 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 		//Record mouse inputs
 		let mouse_state: MouseState = core.event_pump.mouse_state();
+		
 		//Check if left mouse button was pressed this frame
-			if mouse_state.left() {
-				if  !left_clicked {
-					left_clicked = true;
-
-					//Get map matrix indices from mouse position
-					let (i, j) = PixelCoordinates::matrix_indices_from_pixel(	mouse_state.x().try_into().unwrap(), 
-																				mouse_state.y().try_into().unwrap(), 
-																				(-1 * core.cam.x).try_into().unwrap(), 
-																				(-1 * core.cam.y).try_into().unwrap()
-																			);
-
-					unit_interface = match p1_units.get(&(j,i)) {
-						Some(unit) => { 
-							possible_moves = unit.get_tiles_in_movement_range(&mut map_tiles);
-							possible_attacks = unit.get_tiles_in_attack_range(&mut map_tiles);
-							actual_attacks = unit.get_tiles_can_attack(&mut map_tiles);
-							Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture)) 
-						},
-						_ => { 
-							possible_moves = Vec::new();
-							possible_attacks = Vec::new();
-							actual_attacks = Vec::new();
-							None 
-						},
-					}
-				}
+		if mouse_state.left() {
+			if  !left_held {
+				left_clicked = true;
+				left_held = true;
+			}
+			else {
+				left_clicked = false;
+			}
 		}
 		else {
 			left_clicked = false;
 			left_held = false;
 		}
+
 		//Check if right mouse button was pressed this frame
 		if mouse_state.right() {
 			if !right_held {
@@ -247,7 +231,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			right_clicked = false;
 			right_held = false;
 		}
-			
+
 		//Camera controls should stay enabled even when it is not the player's turn,
 		//which is why this code block is not in the player's match statement below
 		if mouse_state.right() && !banner_visible{
@@ -303,12 +287,15 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 									if let Some(unit) = p1_units.get_mut(&(j, i)) {
 										active_unit_i = i as i32;
 										active_unit_j = j as i32;
-									}
-								} 
 
-								//If the user did click on a unit, allow the player to move the unit
-								if !(active_unit_i == -1 || active_unit_j == -1) {
-									current_player_action = PlayerAction::MovingUnit;
+										//If the user did click on a unit, allow the player to move the unit
+										if !(active_unit_i == -1 || active_unit_j == -1) {
+											possible_moves = unit.get_tiles_in_movement_range(&mut map_tiles);
+											unit_interface = Some(UnitInterface::new(i, j, vec!["Move"], &unit_interface_texture));
+										
+											current_player_action = PlayerAction::MovingUnit;
+										}
+									}
 								}
 							}	
 						},
@@ -333,10 +320,20 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 												p1_units.insert((j, i), unit);
 											}
 										}
-
+									
 										//Record the unit's updated position
 										active_unit_i = i as i32;
 										active_unit_j = j as i32;
+
+										//Hide the movement range overlay and show the attack range overlay
+										{
+											if let Some(mut unit) = p1_units.get_mut(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
+												possible_moves = Vec::new();
+												possible_attacks = unit.get_tiles_in_attack_range(&mut map_tiles);
+												actual_attacks = unit.get_tiles_can_attack(&mut map_tiles);
+												unit_interface = Some(UnitInterface::new(i, j, vec!["Attack"], &unit_interface_texture));
+											}
+										}
 									}
 								}
 
@@ -345,13 +342,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 							}
 						},
 						PlayerAction::ChoosingUnitAction => {
-							unit_interface = if !(active_unit_i == -1 || active_unit_j == -1) {
-							 	Some(UnitInterface::new(active_unit_i.try_into().unwrap(), active_unit_j.try_into().unwrap(), vec!["Move","Attack"], &unit_interface_texture))
-							}
-							else {
-								None
-							};
-
 							if left_clicked {
 								/* Handle selected menu option here? */
 
@@ -363,6 +353,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 								active_unit_j = -1;
 
 								//Hide the interface
+								possible_moves = Vec::new();
+								possible_attacks = Vec::new();
+								actual_attacks = Vec::new();
 								unit_interface = None;
 
 								current_player_action = PlayerAction::Default;
@@ -447,15 +440,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			if initial_banner_output.elapsed() >= Duration::from_millis(BANNER_TIMEOUT) && current_banner_transparency != 0 {
 				current_banner_transparency -= 25;
 			}
-		}
-		
-		match &unit_interface {
-			Some(ui) => {
-				ui.draw(core);
-			},
-			_ => {},
-		}
-		
+		}	
 		
 		// Gets active character and checks to see if they have moved before showing attack tiles
 		match p1_units.get(&(active_unit_j as u32,active_unit_i as u32)) {
@@ -473,6 +458,15 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		if !actual_attacks.is_empty() {
 			draw_possible_moves(core, &actual_attacks, Color::RGBA(128, 0, 128, 100));
 		}
+
+		//Draw the scroll sprite UI
+		match &unit_interface {
+			Some(ui) => {
+				ui.draw(core);
+			},
+			_ => {},
+		}
+		
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
 	}
