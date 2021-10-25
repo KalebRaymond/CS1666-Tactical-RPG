@@ -116,9 +116,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	let mut text_textures: HashMap<&str, Texture> = HashMap::new();
 	{
-		let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?;
 		text_textures.insert("p1_banner", {
-			let text_surface = bold_font.render("Player 1's Turn")
+			let text_surface = core.bold_font.render("Player 1's Turn")
 					.blended_wrapped(Color::RGBA(0,0,0, current_banner_transparency), 320) //Black font
 					.map_err(|e| e.to_string())?;
 
@@ -127,7 +126,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		});
 
 		text_textures.insert("p2_banner", {
-			let text_surface = bold_font.render("Player 2's Turn")
+			let text_surface = core.bold_font.render("Player 2's Turn")
 					.blended_wrapped(Color::RGBA(0,0,0, current_banner_transparency), 320) //Black font
 					.map_err(|e| e.to_string())?;
 
@@ -136,7 +135,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		});
 
 		text_textures.insert("b_banner", {
-			let text_surface = bold_font.render("Barbarians' Turn")
+			let text_surface = core.bold_font.render("Barbarians' Turn")
 					.blended_wrapped(Color::RGBA(0,0,0, current_banner_transparency), 320) //Black font
 					.map_err(|e| e.to_string())?;
 
