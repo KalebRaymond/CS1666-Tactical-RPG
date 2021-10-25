@@ -167,7 +167,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	}
 
 	let mut p1_units: HashMap<(u32, u32), Unit> = HashMap::new();
-	let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (0,0)), ('l', (3,3)), ('l', (4,5)));
+	let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (0,0)), ('l', (3,3)), ('l', (4,5)), ('l', (21,11)), ('l', (13,22)));
 	prepare_player_units(&mut p1_units, Team::Player, p1_units_abrev, &unit_textures, &mut map_tiles);
 
 	let mut p2_units: HashMap<(u32, u32), Unit> = HashMap::new();
@@ -185,6 +185,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut active_unit_i: i32 = -1;
 	let mut active_unit_j: i32 = -1;
 
+	// Do this right before the game starts so that player 1 starts
+	p1_units = initialize_next_turn(p1_units);
+	
 	'gameloop: loop {
 		core.wincan.clear();
 
@@ -320,11 +323,13 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 							else if left_clicked {
 								//Move the active unit to the mouse's position
 								{
-									if let Some(unit) = p1_units.get_mut(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
+									if let Some(mut unit) = p1_units.get_mut(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
 										//Remove the active unit from the hash map and reinsert it with the new position as its key
 										//I know there is a better way of doing this
 										{
-											if let Some(unit) = p1_units.remove(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
+											if let Some(mut unit) = p1_units.remove(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
+												unit.update_pos(j, i);
+												unit.has_moved = true;
 												p1_units.insert((j, i), unit);
 											}
 										}
@@ -381,6 +386,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			Team::Barbarians => {
 				if !banner_visible {
 					//End turn
+					p1_units = initialize_next_turn(p1_units);
 					current_player = Team::Player;
 
 					//Start displaying Player 1's banner
@@ -449,12 +455,21 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			},
 			_ => {},
 		}
-		if !possible_moves.is_empty() {
-			draw_possible_moves(core, &possible_moves, Color::RGBA(0, 89, 178, 50));
-		}
-		if !possible_attacks.is_empty() {
-			draw_possible_moves(core, &possible_attacks, Color::RGBA(178, 89, 0, 100));
-		}
+		
+		
+		// Gets active character and checks to see if they have moved before showing attack tiles
+		match p1_units.get(&(active_unit_j as u32,active_unit_i as u32)) {
+			Some(unit) => {
+				if !unit.has_moved && !possible_moves.is_empty() {
+					draw_possible_moves(core, &possible_moves, Color::RGBA(0, 89, 178, 50));
+				}
+				if unit.has_moved && !possible_attacks.is_empty() {
+					draw_possible_moves(core, &possible_attacks, Color::RGBA(178, 89, 0, 100));
+				}
+			}
+			_ => ()
+		};
+
 		if !actual_attacks.is_empty() {
 			draw_possible_moves(core, &actual_attacks, Color::RGBA(128, 0, 128, 100));
 		}
@@ -464,6 +479,14 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	//Single player finished running cleanly, automatically quit game
 	Ok(GameState::Quit)
+}
+
+// Function that takes a HashMap of units and sets all has_attacked and has_moved to false so that they can move again
+fn initialize_next_turn(mut team_units: HashMap<(u32, u32), Unit>) -> HashMap<(u32, u32), Unit>{
+	for unit in &mut team_units.values_mut() {
+		unit.next_turn();
+	}
+	team_units
 }
 
 fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_index: &str, rect_color: Color) -> Result< (), String> {
@@ -514,7 +537,7 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 			Team::Barbarians => map.get_mut(&(unit.1.1, unit.1.0)).unwrap().update_team(Some(Team::Barbarians)),
 		}
 		match unit.0 {
-			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 4, 1, 90, 5, unit_textures.get(melee).unwrap())),
+			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 4, 6, 90, 5, unit_textures.get(melee).unwrap())),
 			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 2, 4, 70, 7, unit_textures.get(range).unwrap())),
 			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 3, 3, 60, 9, unit_textures.get(mage).unwrap())),
 		};

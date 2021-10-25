@@ -107,6 +107,16 @@ impl Unit <'_>{
         0
     }
 
+    pub fn update_pos(&mut self, x: u32, y: u32) {
+        self.x = x;
+        self.y = y;
+    }
+
+    pub fn next_turn(&mut self) {
+        self.has_attacked = false;
+        self.has_moved = false;
+    }
+
     pub fn get_tiles_in_movement_range(&self, map: &mut HashMap<(u32, u32), Tile>,) -> Vec<(u32, u32)> {
         let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
         let mut visited: HashMap<(u32,u32), bool> = HashMap::new();
@@ -176,7 +186,7 @@ impl Unit <'_>{
             if coords.0 > 0 {
                 if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0-1 as u32)) {
                     //As long as we have not already visited this tile
-                    if !visited.contains_key(&(coords.0-1, coords.1)){
+                    if entry.get().can_attack_through && !visited.contains_key(&(coords.0-1, coords.1)){
                         heap.push(QueueObject { coords: (coords.0-1, coords.1), cost:cost-1});
                         visited.insert((coords.0-1, coords.1), true);
                         tiles_in_range.push((coords.0-1, coords.1));
@@ -186,7 +196,7 @@ impl Unit <'_>{
             if coords.0 < MAP_WIDTH-1 {
                 if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0+1 as u32)) {
                     //As long as we have not already visited this tile
-                    if !visited.contains_key(&(coords.0+1, coords.1)){
+                    if entry.get().can_attack_through && !visited.contains_key(&(coords.0+1, coords.1)){
                         heap.push(QueueObject { coords: (coords.0+1, coords.1), cost:cost-1});
                         visited.insert((coords.0+1, coords.1), true);
                         tiles_in_range.push((coords.0+1, coords.1));
@@ -196,7 +206,7 @@ impl Unit <'_>{
             if coords.1 > 0 {
                 if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1-1 as u32, coords.0 as u32)) {
                     //As long as we have not already visited this tile
-                    if !visited.contains_key(&(coords.0, coords.1-1)){
+                    if entry.get().can_attack_through && !visited.contains_key(&(coords.0, coords.1-1)){
                         heap.push(QueueObject { coords: (coords.0, coords.1-1), cost:cost-1});
                         visited.insert((coords.0, coords.1-1), true);
                         tiles_in_range.push((coords.0, coords.1-1));
@@ -206,7 +216,7 @@ impl Unit <'_>{
             if coords.1 < MAP_HEIGHT-1 {
                 if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1+1 as u32, coords.0 as u32)) {
                     //As long as we have not already visited this tile
-                    if !visited.contains_key(&(coords.0, coords.1+1)){
+                    if entry.get().can_attack_through && !visited.contains_key(&(coords.0, coords.1+1)){
                         heap.push(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1});
                         visited.insert((coords.0, coords.1+1), true);
                         tiles_in_range.push((coords.0, coords.1+1));
