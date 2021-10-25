@@ -185,6 +185,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut active_unit_i: i32 = -1;
 	let mut active_unit_j: i32 = -1;
 
+	// Do this right before the game starts so that player 1 starts
+	p1_units = initialize_next_turn(p1_units);
+	
 	'gameloop: loop {
 		core.wincan.clear();
 
@@ -326,7 +329,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 										{
 											if let Some(mut unit) = p1_units.remove(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
 												unit.update_pos(j, i);
-												unit.has_moved = false;
+												unit.has_moved = true;
 												p1_units.insert((j, i), unit);
 											}
 										}
@@ -383,6 +386,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			Team::Barbarians => {
 				if !banner_visible {
 					//End turn
+					p1_units = initialize_next_turn(p1_units);
 					current_player = Team::Player;
 
 					//Start displaying Player 1's banner
@@ -475,6 +479,14 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	//Single player finished running cleanly, automatically quit game
 	Ok(GameState::Quit)
+}
+
+// Function that takes a HashMap of units and sets all has_attacked and has_moved to false so that they can move again
+fn initialize_next_turn(mut team_units: HashMap<(u32, u32), Unit>) -> HashMap<(u32, u32), Unit>{
+	for unit in &mut team_units.values_mut() {
+		unit.next_turn();
+	}
+	team_units
 }
 
 fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_index: &str, rect_color: Color) -> Result< (), String> {

@@ -112,6 +112,11 @@ impl Unit <'_>{
         self.y = y;
     }
 
+    pub fn next_turn(&mut self) {
+        self.has_attacked = false;
+        self.has_moved = false;
+    }
+
     pub fn get_tiles_in_movement_range(&self, map: &mut HashMap<(u32, u32), Tile>,) -> Vec<(u32, u32)> {
         let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
         let mut visited: HashMap<(u32,u32), bool> = HashMap::new();
