@@ -171,7 +171,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	let mut p2_units: HashMap<(u32, u32), Unit> = HashMap::new();
 	let p2_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (46,8)), ('l', (45,10)), ('l', (53,10)), ('l', (46,12)), ('l', (51,17)), ('l', (55,17)), ('l', (53,18)), ('r', (49,9)), ('r', (47,10)), ('r', (50,13)), ('r', (54,14)), ('r', (53,16)), ('m', (50,10)), ('m', (52,10)), ('m', (53,11)), ('m', (53,13)));
-	prepare_player_units(&mut p1_units, Team::Enemy, p2_units_abrev, &unit_textures, &mut map_tiles);
+	prepare_player_units(&mut p2_units, Team::Enemy, p2_units_abrev, &unit_textures, &mut map_tiles);
 
 	let mut barbarian_units: HashMap<(u32, u32), Unit> = HashMap::new();
 	let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (7,7)), ('l', (4,6)));
@@ -424,6 +424,11 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				//Draw player unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
 				if let Some(unit) = p1_units.get(&(j as u32, i as u32)) {
 					core.wincan.copy(unit.texture, None, dest)?
+				}
+
+				//Draw enemy unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
+				if let Some(enemy) = p2_units.get(&(j as u32, i as u32)) {
+					core.wincan.copy(enemy.texture, None, dest)?
 				}
 
 				//Draw barbarian unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
