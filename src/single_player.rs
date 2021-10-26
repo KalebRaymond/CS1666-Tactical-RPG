@@ -166,7 +166,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	}
 
 	let mut p1_units: HashMap<(u32, u32), Unit> = HashMap::new();
-	let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (0,0)), ('l', (3,3)), ('l', (4,5)), ('l', (21,11)), ('l', (13,22)));
+	let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (8,46)), ('l', (10,45)), ('l', (10,53)), ('l', (12,46)), ('l', (17,51)), ('l', (17,55)), ('l', (18,52)), ('r', (9,49)), ('r', (10,46)), ('r', (13,50)), ('r', (14,54)), ('r', (16,53)), ('m', (10,50)), ('m', (10,52)), ('m', (11,53)), ('m', (13,53)));
 	prepare_player_units(&mut p1_units, Team::Player, p1_units_abrev, &unit_textures, &mut map_tiles);
 
 	let mut p2_units: HashMap<(u32, u32), Unit> = HashMap::new();
@@ -541,7 +541,7 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 			Team::Barbarians => map.get_mut(&(unit.1.1, unit.1.0)).unwrap().update_team(Some(Team::Barbarians)),
 		}
 		match unit.0 {
-			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 4, 6, 90, 5, unit_textures.get(melee).unwrap())),
+			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 4, 1, 90, 5, unit_textures.get(melee).unwrap())),
 			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 2, 4, 70, 7, unit_textures.get(range).unwrap())),
 			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 3, 3, 60, 9, unit_textures.get(mage).unwrap())),
 		};
