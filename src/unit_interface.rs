@@ -6,6 +6,7 @@ use sdl2::render::{Texture,TextureCreator};
 use sdl2::video::WindowContext;
 
 use crate::SDLCore;
+use crate::PlayerAction;
 
 const ANIM_LENGTH: f32 = 0.15;
 
@@ -69,15 +70,14 @@ impl<'a> UnitInterface<'a> {
                     core.wincan.copy(texture, Rect::new(0,16,64,16), Rect::new(self.x,self.y+32,64,16))?;
                 }
                 
-                let font = core.ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 10)?;
                 for (i, text) in self.txt.iter().enumerate() {
                     if i == 1 && self.anim_progress <= 0.5 {
                         continue;
                     }
-                    let (text_w, text_h) = font.size_of(text)
+                    let (text_w, text_h) = core.regular_font.size_of(text)
                     .map_err( |e| e.to_string() )?;
                     let text_ratio = text_w as f32 / text_h as f32;
-                    let text_surface = font.render(text)
+                    let text_surface = core.regular_font.render(text)
                     .blended_wrapped(Color::RGBA(0, 0, 0, 0), 320)
                     .map_err(|e| e.to_string())?;
                     let text_texture = texture_creator.create_texture_from_surface(&text_surface)
@@ -95,5 +95,32 @@ impl<'a> UnitInterface<'a> {
 
     pub fn animate_close(&mut self) {
         self.anim_state = AnimState::Close;
+    }
+
+    pub fn point_in_bounds(&self, x: u32, y: u32) -> bool {
+        Rect::new(self.x, self.y, 64, 64).contains_point((x as i32, y as i32))
+    }
+
+    pub fn get_click_selection(&self, x: u32, y: u32) -> PlayerAction {
+        let move_rect = Rect::new(self.x+7, self.y+16, 55, 16);
+        let attack_rect = Rect::new(self.x+7, self.y+32, 55, 16);
+        // Click off of scroll, deselect
+        if !self.point_in_bounds(x, y) {
+            return PlayerAction::Default;
+        }
+        // Click too early, don't change
+        if self.anim_progress < 1.0 {
+            return PlayerAction::ChoosingUnitAction;
+        }
+        // Click on option, return option
+        let x = x as i32;
+        let y = y as i32;
+        if move_rect.contains_point((x,y)) {
+            return PlayerAction::MovingUnit;
+        } else if attack_rect.contains_point((x,y)) {
+            return PlayerAction::AttackingUnit;
+        }
+        // Click on edges of scroll, don't change
+        PlayerAction::ChoosingUnitAction
     }
 }

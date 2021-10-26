@@ -19,4 +19,10 @@ impl PixelCoordinates {
         
         (i, j)
     }
+
+    pub fn global_coordinates(x: u32, y: u32, cam_x: u32, cam_y: u32) -> (u32, u32) {
+        //Have to add the camera offsets because the camera is weird and cam_x and cam_y 
+        //are both always less than or equal to zero
+        (x + cam_x, y + cam_y)
+    }
 }
