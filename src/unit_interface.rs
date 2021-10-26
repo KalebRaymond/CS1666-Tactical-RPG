@@ -59,7 +59,12 @@ impl<'a> UnitInterface<'a> {
         match &self.texture {
             Some(texture) => {
                 core.wincan.copy(texture, Rect::new(0,0,64,16), Rect::new(self.x,self.y,64,16))?;
-                core.wincan.copy(texture, Rect::new(0,16,64,16), Rect::new(self.x,self.y+16,64,16))?;
+                if self.anim_progress < 0.5 {
+                    let h = (32.0*self.anim_progress)as u32;
+                    core.wincan.copy(texture, Rect::new(0,16,64,h), Rect::new(self.x,self.y+16,64,h))?;
+                } else {
+                    core.wincan.copy(texture, Rect::new(0,16,64,16), Rect::new(self.x,self.y+16,64,16))?;
+                }
                 if self.anim_progress > 0.5 {
                     core.wincan.copy(texture, Rect::new(0,16,64,16), Rect::new(self.x,self.y+32,64,16))?;
                 }
