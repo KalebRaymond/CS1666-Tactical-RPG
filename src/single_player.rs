@@ -339,10 +339,12 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 							}
 							else if left_clicked {
 								//Move the active unit to the mouse's position
-								let selected_unit = p1_units.remove(&(active_unit_j as u32, active_unit_i as u32)).unwrap();
-								selected_unit.update_pos(j, i);
-								selected_unit.has_moved = true;
-								p1_units.insert((j, i), unit);
+								if possible_moves.contains(&(j,i)) {
+									let mut selected_unit = p1_units.remove(&(active_unit_j as u32, active_unit_i as u32)).unwrap();
+									selected_unit.update_pos(j, i);
+									selected_unit.has_moved = true;
+									p1_units.insert((j, i), selected_unit);
+								}
 								
 								//Now that the unit has moved, deselect
 								active_unit_i = -1;
@@ -358,6 +360,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 								current_player_action = PlayerAction::Default;
 							} else if left_clicked {
 								// Attack unit clicked on
+								// After attack, deselect
+								active_unit_i = -1;
+								active_unit_j = -1;
 								current_player_action = PlayerAction::Default;
 							}
 						},				
