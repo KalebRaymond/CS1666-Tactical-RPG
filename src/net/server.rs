@@ -13,7 +13,7 @@ struct Server {
 	addr: String,
 	rand: ThreadRng,
 
-	// rooms: code -> (host, participant)
+	// rooms: map code -> Room info
 	rooms: HashMap<u32, Room>,
 }
 
@@ -73,6 +73,7 @@ impl Server {
 				}
 			}
 
+			// respond with new code of created room
 			let send_buffer = to_u32_bytes(code_new);
 			stream.write(&send_buffer).map_err(|_e| "Could not write code response to stream")?;
 		} else {
@@ -84,10 +85,13 @@ impl Server {
 
 				println!("Joining room");
 				room.try_join(&addr)?;
+
+				// respond with 1 byte to indicate success
 				stream.write(&[1]).map_err(|_e| "Could not write join response to stream")?;
 			} else if buffer[0] == MSG_EVENT {
 				// sending an event
 
+				// respond with 1 byte to indicate success
 				stream.write(&[1]).map_err(|_e| "Could not write event response to stream")?;
 			} else if buffer[0] == MSG_POLL {
 				// polling for events
