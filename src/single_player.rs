@@ -309,30 +309,41 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 							else if left_clicked {
 								//Move the active unit to the mouse's position
 								{
-									if let Some(mut unit) = p1_units.get_mut(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
-										//Remove the active unit from the hash map and reinsert it with the new position as its key
-										//I know there is a better way of doing this
-										{
-											if let Some(mut unit) = p1_units.remove(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
-												unit.update_pos(j, i);
-												unit.has_moved = true;
-												p1_units.insert((j, i), unit);
+									if let Some(unit) = p1_units.get_mut(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
+										// Skip movement if it has already happened, probably a cleaner way to do it than wrapping everything in an if statement
+										if !unit.has_moved {
+											//Remove the active unit from the hash map and reinsert it with the new position as its key
+											//I know there is a better way of doing this
+											{
+												if let Some(mut unit) = p1_units.remove(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
+													unit.update_pos(j, i);
+													unit.has_moved = true;
+													p1_units.insert((j, i), unit);
+												}
+												// update tile where player was and where they are going to reflect that they exist on that tile
+												if let Some(old_map_tile) = map_tiles.get_mut(&(active_unit_i.try_into().unwrap(), active_unit_j.try_into().unwrap())) {
+													old_map_tile.update_team(None);
+												}
+												if let Some(new_map_tile) = map_tiles.get_mut(&(i, j)) {
+													new_map_tile.update_team(Some(Team::Player));
+												}
 											}
-										}
-									
-										//Record the unit's updated position
-										active_unit_i = i as i32;
-										active_unit_j = j as i32;
+										
+											//Record the unit's updated position
+											active_unit_i = i as i32;
+											active_unit_j = j as i32;
 
-										//Hide the movement range overlay and show the attack range overlay
-										{
-											if let Some(mut unit) = p1_units.get_mut(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
-												possible_moves = Vec::new();
-												possible_attacks = unit.get_tiles_in_attack_range(&mut map_tiles);
-												actual_attacks = unit.get_tiles_can_attack(&mut map_tiles);
-												unit_interface = Some(UnitInterface::new(i, j, vec!["Attack"], &unit_interface_texture));
+											//Hide the movement range overlay and show the attack range overlay
+											{
+												if let Some(mut unit) = p1_units.get_mut(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
+													possible_moves = Vec::new();
+													possible_attacks = unit.get_tiles_in_attack_range(&mut map_tiles);
+													actual_attacks = unit.get_tiles_can_attack(&mut map_tiles);
+													unit_interface = Some(UnitInterface::new(i, j, vec!["Attack"], &unit_interface_texture));
+												}
 											}
 										}
+										
 									}
 								}
 
@@ -442,6 +453,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		}	
 		
 		// Gets active character and checks to see if they have moved before showing attack tiles
+		// If they have not moved, show movement tiles
 		match p1_units.get(&(active_unit_j as u32,active_unit_i as u32)) {
 			Some(unit) => {
 				if !unit.has_moved && !possible_moves.is_empty() {
@@ -450,13 +462,12 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				if unit.has_moved && !possible_attacks.is_empty() {
 					draw_possible_moves(core, &possible_attacks, Color::RGBA(178, 89, 0, 100));
 				}
+				if unit.has_moved && !actual_attacks.is_empty() {
+					draw_possible_moves(core, &actual_attacks, Color::RGBA(128, 0, 128, 100));
+				}
 			}
 			_ => ()
 		};
-
-		if !actual_attacks.is_empty() {
-			draw_possible_moves(core, &actual_attacks, Color::RGBA(128, 0, 128, 100));
-		}
 
 		//Draw the scroll sprite UI
 		match &unit_interface {
