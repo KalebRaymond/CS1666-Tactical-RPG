@@ -332,47 +332,35 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 						},		
 						PlayerAction::MovingUnit => {
 							if right_clicked {
-								//Deselect the active unit
+								// Deselect the active unit
 								active_unit_i = -1;
 								active_unit_j = -1;
-
 								current_player_action = PlayerAction::Default;
 							}
 							else if left_clicked {
 								//Move the active unit to the mouse's position
-								{
-									if let Some(mut unit) = p1_units.get_mut(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
-										//Remove the active unit from the hash map and reinsert it with the new position as its key
-										//I know there is a better way of doing this
-										{
-											if let Some(mut unit) = p1_units.remove(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
-												unit.update_pos(j, i);
-												unit.has_moved = true;
-												p1_units.insert((j, i), unit);
-											}
-										}
-									
-										//Record the unit's updated position
-										active_unit_i = i as i32;
-										active_unit_j = j as i32;
-
-										//Hide the movement range overlay and show the attack range overlay
-										{
-											if let Some(mut unit) = p1_units.get_mut(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
-												possible_moves = Vec::new();
-												possible_attacks = unit.get_tiles_in_attack_range(&mut map_tiles);
-												actual_attacks = unit.get_tiles_can_attack(&mut map_tiles);
-												unit_interface = Some(UnitInterface::new(i, j, vec!["Attack"], &unit_interface_texture));
-											}
-										}
-									}
-								}
-
-								//Now that the unit has moved, open its context menu so the player can choose an action
-								current_player_action = PlayerAction::ChoosingUnitAction;
+								let selected_unit = p1_units.remove(&(active_unit_j as u32, active_unit_i as u32)).unwrap();
+								selected_unit.update_pos(j, i);
+								selected_unit.has_moved = true;
+								p1_units.insert((j, i), unit);
+								
+								//Now that the unit has moved, deselect
+								active_unit_i = -1;
+								active_unit_j = -1;
+								current_player_action = PlayerAction::Default;
 							}
 						},
-						PlayerAction::AttackingUnit => {},				
+						PlayerAction::AttackingUnit => {
+							if right_clicked {
+								// Deselect the active unit
+								active_unit_i = -1;
+								active_unit_j = -1;
+								current_player_action = PlayerAction::Default;
+							} else if left_clicked {
+								// Attack unit clicked on
+								current_player_action = PlayerAction::Default;
+							}
+						},				
 					}
 				}
 			},
