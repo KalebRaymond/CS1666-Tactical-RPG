@@ -213,7 +213,15 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 					unit_interface = match p1_units.get(&(j,i)) {
 						Some(_) => { Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture)) },
-						_ => { None },
+						_ => {
+							match unit_interface {
+								Some(mut ui) => {
+									ui.animate_close();
+									Some(ui)
+								},
+								_ => { None },
+							}
+						},
 					}
 				}
 			}
@@ -320,12 +328,15 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}
 		
-		match &unit_interface {
-			Some(ui) => {
-				ui.draw(core, &texture_creator);
+		unit_interface = match unit_interface {
+			Some(mut ui) => {
+				match ui.draw(core, &texture_creator) {
+					Ok(_) => { Some(ui) },
+					_ => { None },
+				}
 			},
-			_ => {},
-		}
+			_ => { None },
+		};
 
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
