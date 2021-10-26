@@ -7,6 +7,7 @@ use sdl2::video::WindowContext;
 
 use crate::SDLCore;
 use crate::PlayerAction;
+use crate::unit::Unit;
 
 const ANIM_LENGTH: f32 = 0.15;
 
@@ -31,6 +32,20 @@ impl<'a> UnitInterface<'a> {
             x: ((j-2) * crate::TILE_SIZE) as i32,
             y: ((i-1) * crate::TILE_SIZE) as i32,
             txt: t,
+            texture: Some(tex),
+            anim_progress: 0.0,
+            anim_state: AnimState::Open,
+            last_drawn: Instant::now(),
+        }
+    }
+
+    pub fn from_unit(unit: &Unit, tex: &'a Texture<'a>) -> UnitInterface<'a> {
+        let x_off = if unit.x < 2 { 1 } else { -2 };
+        let y_off = if unit.y < 1 { 0 } else { -1 };
+        UnitInterface {
+            x: (unit.x as i32 + x_off) * crate::TILE_SIZE as i32,
+            y: (unit.y as i32 + y_off) * crate::TILE_SIZE as i32,
+            txt: vec!["Move","Attack"],
             texture: Some(tex),
             anim_progress: 0.0,
             anim_state: AnimState::Open,

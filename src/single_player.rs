@@ -290,12 +290,12 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 							if left_clicked {
 								//Get the unit that is located at the mouse position, if there is one
 								match p1_units.get_mut(&(j,i)) {
-									Some(_) => {
+									Some(active_unit) => {
 										active_unit_i = i as i32;
 										active_unit_j = j as i32;
 		
 										//If the user did click on a unit, allow the player to move the unit
-										unit_interface = Some(UnitInterface::new(i, j, vec!["Move","Attack"], &unit_interface_texture));
+										unit_interface = Some(UnitInterface::from_unit(active_unit, &unit_interface_texture));
 										current_player_action = PlayerAction::ChoosingUnitAction;
 									},
 									_ => {},
