@@ -8,6 +8,7 @@ pub const TILE_SIZE: u32 = 32;
 use sdl2::rect::Rect;
 use sdl2::render::TextureCreator;
 use std::path::Path;
+use std::env;
 use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
 
 #[macro_use] mod sdl_macros;
@@ -20,6 +21,7 @@ mod single_player;
 pub mod unit;
 pub mod tile;
 mod unit_interface;
+mod net;
 
 use crate::main_menu::MainMenu;
 
@@ -143,5 +145,16 @@ fn run_game_state<'i, 'r>(core: &'i mut SDLCore<'r>, game_state: &GameState) -> 
 }
 
 fn main() {
-	runner(true);
+	let args: Vec<String> = env::args().collect();
+	let mut args_iter = args.iter();
+	if args_iter.any(|s| s == "--server") {
+		let address = match args_iter.next() {
+			Some(addr) => addr,
+			_ => "127.0.0.1:5776"
+		};
+
+		net::server::run(address);
+	} else {
+		runner(true);
+	}
 }
