@@ -1,3 +1,8 @@
+pub const MSG_CREATE: u8 = 0;
+pub const MSG_JOIN: u8 = 1;
+pub const MSG_EVENT: u8 = 2;
+pub const MSG_POLL: u8 = 3;
+
 pub fn to_u32_bytes(num: u32) -> [u8; 4] {
 	[
 		(num >> 24) as u8,

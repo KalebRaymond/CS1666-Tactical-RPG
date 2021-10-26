@@ -7,7 +7,7 @@ use std::convert::TryInto;
 use rand::Rng;
 use rand::prelude::ThreadRng;
 
-use crate::net::util;
+use crate::net::util::*;
 
 struct Server {
 	addr: String,
@@ -45,11 +45,11 @@ impl Server {
 	}
 
 	fn handle_request<'s>(&mut self, stream: &'s mut TcpStream) -> Result<(), String> {
-		let mut buffer = [0; 5];
+		let mut buffer = [0; 5]; // parse request header: 1 byte (MSG_ type) + 4 bytes (u32 room code)
 		stream.read(&mut buffer).map_err(|_e| "Could not read request stream.")?;
 
 		let addr = stream.peer_addr().map_err(|_e| "Could not read request address.")?.to_string();
-		let code = util::from_u32_bytes(
+		let code = from_u32_bytes(
 			buffer[1..5].try_into().map_err(|_e| "Could not convert room code integer")?
 		);
 
@@ -57,7 +57,7 @@ impl Server {
 			return Err(String::from("Invalid request"));
 		}
 
-		if buffer[0] == 0 {
+		if buffer[0] == MSG_CREATE {
 			// creating a room
 			let mut code_new: u32;
 			loop {
@@ -73,23 +73,23 @@ impl Server {
 				}
 			}
 
-			let send_buffer = util::to_u32_bytes(code_new);
+			let send_buffer = to_u32_bytes(code_new);
 			stream.write(&send_buffer).map_err(|_e| "Could not write code response to stream")?;
 		} else {
 			println!("Locating room {:?}", code);
 			let room = self.rooms.get_mut(&code).ok_or("Could not find a matching room")?;
 
-			if buffer[0] == 1 {
+			if buffer[0] == MSG_JOIN {
 				// joining a room
 
 				println!("Joining room");
 				room.try_join(&addr)?;
 				stream.write(&[1]).map_err(|_e| "Could not write join response to stream")?;
-			} else if buffer[0] == 2 {
+			} else if buffer[0] == MSG_EVENT {
 				// sending an event
 
 				stream.write(&[1]).map_err(|_e| "Could not write event response to stream")?;
-			} else if buffer[0] == 3 {
+			} else if buffer[0] == MSG_POLL {
 				// polling for events
 			}
 		}
