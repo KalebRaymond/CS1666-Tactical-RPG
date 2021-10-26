@@ -174,7 +174,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	prepare_player_units(&mut p2_units, Team::Enemy, p2_units_abrev, &unit_textures, &mut map_tiles);
 
 	let mut barbarian_units: HashMap<(u32, u32), Unit> = HashMap::new();
-	let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (7,7)), ('l', (4,6)));
+	let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (7,7)), ('l', (4,6)), ('r', (6,6)),);
 	prepare_player_units(&mut barbarian_units, Team::Barbarians, barb_units_abrev, &unit_textures, &mut map_tiles);
 	
 	let unit_interface_texture = texture_creator.load_texture("images/interface/unit_interface.png")?;
@@ -420,7 +420,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				if let Some(map_tile) = map_tiles.get(&(i as u32, j as u32)) {
 					core.wincan.copy(map_tile.texture, None, dest)?
 				}
-
+				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
 				//Draw player unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
 				if let Some(unit) = p1_units.get(&(j as u32, i as u32)) {
 					core.wincan.copy(unit.texture, None, dest)?
