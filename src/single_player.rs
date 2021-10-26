@@ -290,7 +290,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 							if left_clicked {
 								//Get the unit that is located at the mouse position, if there is one
 								match p1_units.get_mut(&(j,i)) {
-									Some(unit) => {
+									Some(_) => {
 										active_unit_i = i as i32;
 										active_unit_j = j as i32;
 		
@@ -305,7 +305,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 						PlayerAction::ChoosingUnitAction => {
 							if left_clicked {
 								// Handle clicking based on unit interface
-								let selected_unit = p1_units.get(&(active_unit_j as u32, active_unit_i as u32)).unwrap();
+								let active_unit = p1_units.get(&(active_unit_j as u32, active_unit_i as u32)).unwrap();
 								current_player_action = unit_interface.as_ref().unwrap().get_click_selection(glob_x, glob_y);
 								match current_player_action {
 									PlayerAction::Default => {
@@ -317,13 +317,13 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 									},
 									PlayerAction::ChoosingUnitAction => {},
 									PlayerAction::MovingUnit => {
-										possible_moves = selected_unit.get_tiles_in_movement_range(&mut map_tiles);
+										possible_moves = active_unit.get_tiles_in_movement_range(&mut map_tiles);
 										// Close interface
 										unit_interface.as_mut().unwrap().animate_close();
 									},
 									PlayerAction::AttackingUnit => {
-										possible_attacks = selected_unit.get_tiles_in_attack_range(&mut map_tiles);
-										actual_attacks = selected_unit.get_tiles_can_attack(&mut map_tiles);
+										possible_attacks = active_unit.get_tiles_in_attack_range(&mut map_tiles);
+										actual_attacks = active_unit.get_tiles_can_attack(&mut map_tiles);
 										// Close interface
 										unit_interface.as_mut().unwrap().animate_close();
 									},
@@ -340,10 +340,10 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 							else if left_clicked {
 								//Move the active unit to the mouse's position
 								if possible_moves.contains(&(j,i)) {
-									let mut selected_unit = p1_units.remove(&(active_unit_j as u32, active_unit_i as u32)).unwrap();
-									selected_unit.update_pos(j, i);
-									selected_unit.has_moved = true;
-									p1_units.insert((j, i), selected_unit);
+									let mut active_unit = p1_units.remove(&(active_unit_j as u32, active_unit_i as u32)).unwrap();
+									active_unit.update_pos(j, i);
+									active_unit.has_moved = true;
+									p1_units.insert((j, i), active_unit);
 								}
 								
 								//Now that the unit has moved, deselect
@@ -449,14 +449,14 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		
 		// Gets active character and checks to see if they have moved before showing attack tiles
 		match p1_units.get(&(active_unit_j as u32,active_unit_i as u32)) {
-			Some(unit) => {
+			Some(_) => {
 				match current_player_action {
 					PlayerAction::MovingUnit => {
-						draw_possible_moves(core, &possible_moves, Color::RGBA(0, 89, 178, 50));
+						draw_possible_moves(core, &possible_moves, Color::RGBA(0, 89, 178, 50))?;
 					},
 					PlayerAction::AttackingUnit => {
-						draw_possible_moves(core, &possible_attacks, Color::RGBA(178, 89, 0, 100));
-						draw_possible_moves(core, &actual_attacks, Color::RGBA(128, 0, 128, 100));
+						draw_possible_moves(core, &possible_attacks, Color::RGBA(178, 89, 0, 100))?;
+						draw_possible_moves(core, &actual_attacks, Color::RGBA(128, 0, 128, 100))?;
 					},
 					_ => {},
 				}
