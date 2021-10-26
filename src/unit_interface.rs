@@ -7,7 +7,7 @@ use sdl2::video::WindowContext;
 
 use crate::SDLCore;
 
-const ANIM_LENGTH: f32 = 0.2;
+const ANIM_LENGTH: f32 = 0.15;
 
 enum AnimState {
     Open,
@@ -77,7 +77,7 @@ impl<'a> UnitInterface<'a> {
                     .map_err(|e| e.to_string())?;
                     let text_texture = texture_creator.create_texture_from_surface(&text_surface)
                     .map_err(|e| e.to_string())?;
-                    core.wincan.copy(&text_texture, None, Rect::new(self.x+10, self.y+16*(i+1)as i32, 16*text_w/text_h, 16))?;
+                    core.wincan.copy(&text_texture, None, Rect::new(self.x+10, self.y+16*(i+1)as i32, (16.0*text_ratio)as u32, 16))?;
                 }
                 
                 core.wincan.copy(texture, Rect::new(0,32,64,16), Rect::new(self.x,self.y+16+(32.0*self.anim_progress)as i32,64,16))?;
