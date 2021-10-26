@@ -328,10 +328,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 										unit_interface.as_mut().unwrap().animate_close();
 									},
 								}
-								// Reset tile arrays
-								possible_moves = Vec::new();
-								possible_attacks = Vec::new();
-								actual_attacks = Vec::new();
 							}
 						},		
 						PlayerAction::MovingUnit => {
@@ -461,19 +457,19 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		// Gets active character and checks to see if they have moved before showing attack tiles
 		match p1_units.get(&(active_unit_j as u32,active_unit_i as u32)) {
 			Some(unit) => {
-				if !unit.has_moved && !possible_moves.is_empty() {
-					draw_possible_moves(core, &possible_moves, Color::RGBA(0, 89, 178, 50));
-				}
-				if unit.has_moved && !possible_attacks.is_empty() {
-					draw_possible_moves(core, &possible_attacks, Color::RGBA(178, 89, 0, 100));
+				match current_player_action {
+					PlayerAction::MovingUnit => {
+						draw_possible_moves(core, &possible_moves, Color::RGBA(0, 89, 178, 50));
+					},
+					PlayerAction::AttackingUnit => {
+						draw_possible_moves(core, &possible_attacks, Color::RGBA(178, 89, 0, 100));
+						draw_possible_moves(core, &actual_attacks, Color::RGBA(128, 0, 128, 100));
+					},
+					_ => {},
 				}
 			}
 			_ => ()
 		};
-
-		if !actual_attacks.is_empty() {
-			draw_possible_moves(core, &actual_attacks, Color::RGBA(128, 0, 128, 100));
-		}
 
 		//Draw the scroll sprite UI
 		unit_interface = match unit_interface {
