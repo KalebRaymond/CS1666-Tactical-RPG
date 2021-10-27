@@ -240,7 +240,7 @@ impl Unit <'_>{
             if coords.0 > 0 {
                 if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0-1 as u32)) {
                     //As we have not already visited this tile
-                    if !visited.contains_key(&(coords.0-1, coords.1)){
+                    if entry.get().can_attack_through && !visited.contains_key(&(coords.0-1, coords.1)){
                         heap.push(QueueObject { coords: (coords.0-1, coords.1), cost:cost-1});
                         visited.insert((coords.0-1, coords.1), true);
                         match entry.get().contained_unit_team {
@@ -257,7 +257,7 @@ impl Unit <'_>{
             if coords.0 < MAP_WIDTH-1 {
                 if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0+1 as u32)) {
                     //As long as we have not already visited this tile
-                    if !visited.contains_key(&(coords.0+1, coords.1)){
+                    if entry.get().can_attack_through && !visited.contains_key(&(coords.0+1, coords.1)){
                         heap.push(QueueObject { coords: (coords.0+1, coords.1), cost:cost-1});
                         visited.insert((coords.0+1, coords.1), true);
                         match entry.get().contained_unit_team {
@@ -274,7 +274,7 @@ impl Unit <'_>{
             if coords.1 > 0 {
                 if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1-1 as u32, coords.0 as u32)) {
                     //As long as we have not already visited this tile
-                    if !visited.contains_key(&(coords.0, coords.1-1)){
+                    if entry.get().can_attack_through && !visited.contains_key(&(coords.0, coords.1-1)){
                         heap.push(QueueObject { coords: (coords.0, coords.1-1), cost:cost-1});
                         visited.insert((coords.0, coords.1-1), true);
                         match entry.get().contained_unit_team {
@@ -291,7 +291,7 @@ impl Unit <'_>{
             if coords.1 < MAP_HEIGHT-1 {
                 if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1+1 as u32, coords.0 as u32)) {
                     //As long as we have not already visited this tile
-                    if !visited.contains_key(&(coords.0, coords.1+1)){
+                    if entry.get().can_attack_through && !visited.contains_key(&(coords.0, coords.1+1)){
                         heap.push(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1});
                         visited.insert((coords.0, coords.1+1), true);
                         match entry.get().contained_unit_team {

@@ -166,12 +166,15 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	}
 
 	let mut p1_units: HashMap<(u32, u32), Unit> = HashMap::new();
-	let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (0,0)), ('l', (3,3)), ('l', (4,5)), ('l', (21,11)), ('l', (13,22)));
+	let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (8,46)), ('l', (10,45)), ('l', (10,53)), ('l', (12,46)), ('l', (17,51)), ('l', (17,55)), ('l', (18,53)), ('r', (9,49)), ('r', (10,46)), ('r', (13,50)), ('r', (14,54)), ('r', (16,53)), ('m', (10,50)), ('m', (10,52)), ('m', (11,53)), ('m', (13,53)));
 	prepare_player_units(&mut p1_units, Team::Player, p1_units_abrev, &unit_textures, &mut map_tiles);
 
 	let mut p2_units: HashMap<(u32, u32), Unit> = HashMap::new();
+	let p2_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (46,8)), ('l', (45,10)), ('l', (53,10)), ('l', (46,12)), ('l', (51,17)), ('l', (55,17)), ('l', (53,18)), ('r', (49,9)), ('r', (47,10)), ('r', (50,13)), ('r', (54,14)), ('r', (53,16)), ('m', (50,10)), ('m', (52,10)), ('m', (53,11)), ('m', (53,13)));
+	prepare_player_units(&mut p2_units, Team::Enemy, p2_units_abrev, &unit_textures, &mut map_tiles);
+
 	let mut barbarian_units: HashMap<(u32, u32), Unit> = HashMap::new();
-	let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (7,7)), ('l', (4,6)));
+	let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (4,6)), ('l', (6,8)), ('l', (7,7)), ('l', (9,7)), ('r', (6,6)), ('r', (8,5)), ('l', (55,55)), ('l', (59,56)), ('l', (56,56)), ('l', (54,57)), ('r', (56,59)), ('r', (57,57)), ('l', (28,15)), ('l', (29,10)), ('l', (31,12)), ('l', (31,17)), ('l', (32,11)), ('l', (35,15)), ('l', (34,11)), ('r', (31,10)), ('r', (33,9)), ('r', (30,8)), ('r', (36,10)), ('l', (28,52)), ('l', (28,48)), ('l', (33,51)), ('l', (31,46)), ('l', (31,52)), ('l', (35,52)), ('l', (35,48)), ('r', (32,53)), ('r', (33,56)), ('r', (30,54)), ('r', (34,54)),);
 	prepare_player_units(&mut barbarian_units, Team::Barbarians, barb_units_abrev, &unit_textures, &mut map_tiles);
 	
 	let unit_interface_texture = texture_creator.load_texture("images/interface/unit_interface.png")?;
@@ -338,12 +341,20 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 								current_player_action = PlayerAction::Default;
 							}
 							else if left_clicked {
-								//Move the active unit to the mouse's position
+								// Ensure valid tile to move to
 								if possible_moves.contains(&(j,i)) {
+									// Move unit
 									let mut active_unit = p1_units.remove(&(active_unit_j as u32, active_unit_i as u32)).unwrap();
 									active_unit.update_pos(j, i);
 									active_unit.has_moved = true;
 									p1_units.insert((j, i), active_unit);
+									// Update map tiles
+									if let Some(old_map_tile) = map_tiles.get_mut(&(active_unit_i as u32, active_unit_j as u32)) {
+										old_map_tile.update_team(None);
+									}
+									if let Some(new_map_tile) = map_tiles.get_mut(&(i, j)) {
+										new_map_tile.update_team(Some(Team::Player));
+									}
 								}
 								
 								//Now that the unit has moved, deselect
@@ -412,10 +423,15 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				if let Some(map_tile) = map_tiles.get(&(i as u32, j as u32)) {
 					core.wincan.copy(map_tile.texture, None, dest)?
 				}
-
+				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
 				//Draw player unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
 				if let Some(unit) = p1_units.get(&(j as u32, i as u32)) {
 					core.wincan.copy(unit.texture, None, dest)?
+				}
+
+				//Draw enemy unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
+				if let Some(enemy) = p2_units.get(&(j as u32, i as u32)) {
+					core.wincan.copy(enemy.texture, None, dest)?
 				}
 
 				//Draw barbarian unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
@@ -447,7 +463,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}	
 		
-		// Gets active character and checks to see if they have moved before showing attack tiles
 		match p1_units.get(&(active_unit_j as u32,active_unit_i as u32)) {
 			Some(_) => {
 				match current_player_action {
@@ -539,7 +554,7 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 			Team::Barbarians => map.get_mut(&(unit.1.1, unit.1.0)).unwrap().update_team(Some(Team::Barbarians)),
 		}
 		match unit.0 {
-			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 4, 6, 90, 5, unit_textures.get(melee).unwrap())),
+			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 4, 1, 90, 5, unit_textures.get(melee).unwrap())),
 			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 2, 4, 70, 7, unit_textures.get(range).unwrap())),
 			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 3, 3, 60, 9, unit_textures.get(mage).unwrap())),
 		};

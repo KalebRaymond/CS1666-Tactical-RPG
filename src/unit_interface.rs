@@ -16,10 +16,15 @@ enum AnimState {
     Close,
 }
 
+struct SelectOption<'a> {
+    text: &'a str,
+    valid: bool,
+}
+
 pub struct UnitInterface<'a> {
     pub x: i32,
     pub y: i32,
-    txt: Vec<&'a str>,
+    txt: Vec<SelectOption<'a>>,
     texture: Option<&'a Texture<'a>>,
     anim_progress: f32,
     anim_state: AnimState,
@@ -31,7 +36,7 @@ impl<'a> UnitInterface<'a> {
         UnitInterface { 
             x: ((j-2) * crate::TILE_SIZE) as i32,
             y: ((i-1) * crate::TILE_SIZE) as i32,
-            txt: t,
+            txt: t.iter().map( |text| SelectOption{ text:text, valid:true } ).collect(),
             texture: Some(tex),
             anim_progress: 0.0,
             anim_state: AnimState::Open,
@@ -45,7 +50,10 @@ impl<'a> UnitInterface<'a> {
         UnitInterface {
             x: (unit.x as i32 + x_off) * crate::TILE_SIZE as i32,
             y: (unit.y as i32 + y_off) * crate::TILE_SIZE as i32,
-            txt: vec!["Move","Attack"],
+            txt: vec![
+                SelectOption {text:"Move",   valid:!unit.has_moved },
+                SelectOption {text:"Attack", valid:!unit.has_attacked },
+            ],
             texture: Some(tex),
             anim_progress: 0.0,
             anim_state: AnimState::Open,
@@ -89,14 +97,15 @@ impl<'a> UnitInterface<'a> {
                     if i == 1 && self.anim_progress <= 0.5 {
                         continue;
                     }
-                    let (text_w, text_h) = core.regular_font.size_of(text)
+                    let (text_w, text_h) = core.regular_font.size_of(text.text)
                     .map_err( |e| e.to_string() )?;
                     let text_ratio = text_w as f32 / text_h as f32;
-                    let text_surface = core.regular_font.render(text)
-                    .blended_wrapped(Color::RGBA(0, 0, 0, 0), 320)
-                    .map_err(|e| e.to_string())?;
+                    let brightness = if text.valid { 0 } else { 128 };
+                    let text_surface = core.regular_font.render(text.text)
+                        .blended_wrapped(Color::RGBA(brightness, brightness, brightness, 0), 320)
+                        .map_err(|e| e.to_string())?;
                     let text_texture = texture_creator.create_texture_from_surface(&text_surface)
-                    .map_err(|e| e.to_string())?;
+                        .map_err(|e| e.to_string())?;
                     core.wincan.copy(&text_texture, None, Rect::new(self.x+10, self.y+16*(i+1)as i32, (16.0*text_ratio)as u32, 16))?;
                 }
                 
@@ -131,9 +140,9 @@ impl<'a> UnitInterface<'a> {
         let x = x as i32;
         let y = y as i32;
         if move_rect.contains_point((x,y)) {
-            return PlayerAction::MovingUnit;
+            return if self.txt[0].valid { PlayerAction::MovingUnit } else { PlayerAction::ChoosingUnitAction };
         } else if attack_rect.contains_point((x,y)) {
-            return PlayerAction::AttackingUnit;
+            return if self.txt[1].valid { PlayerAction::AttackingUnit } else { PlayerAction::ChoosingUnitAction };
         }
         // Click on edges of scroll, don't change
         PlayerAction::ChoosingUnitAction
