@@ -33,10 +33,10 @@ impl Input {
 		.filter_map(Keycode::from_scancode)
 		.collect();
         
-        let mouse_state = event_pump.mouse_state();
+        self.mouse_state = event_pump.mouse_state();
 
         //Check if left mouse button was pressed this frame
-		if mouse_state.left() {
+		if self.mouse_state.left() {
 			if  !self.left_held {
 				self.left_clicked = true;
 				self.left_held = true;
@@ -51,7 +51,7 @@ impl Input {
 		}
 
 		//Check if right mouse button was pressed this frame
-		if mouse_state.right() {
+		if self.mouse_state.right() {
 			if !self.right_held {
 				self.right_clicked = true;
 				self.right_held = true;

@@ -1,13 +1,8 @@
-use std::collections::HashSet;
-use std::convert::TryInto;
-use std::time::{Instant, Duration};
-
 use sdl2::event::Event;
 use sdl2::image::LoadTexture;
 use sdl2::pixels::Color;
 use sdl2::render::BlendMode;
 use sdl2::keyboard::Keycode;
-use sdl2::mouse::MouseState;
 use sdl2::rect::Rect;
 use sdl2::render::Texture;
 
@@ -15,6 +10,7 @@ use sdl2::render::Texture;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::time::{Instant, Duration};
 
 use crate::game_map::GameMap;
 use crate::GameState;
@@ -218,7 +214,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		//Handle the current team's move
 		match current_player {
 			Team::Player => {
-				//player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player);
+				player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player);
 			},
 			Team::Enemy => {
 				if !turn_banner.banner_visible {

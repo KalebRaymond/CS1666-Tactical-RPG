@@ -11,7 +11,7 @@ use crate::player_action::PlayerAction;
 use crate::player_state::PlayerState;
 use crate::SDLCore;
 use crate::unit_interface::UnitInterface;
-use crate::unit::{Team, Unit};
+use crate::unit::Team;
 use crate::turn_banner::TurnBanner;
 
 pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, game_map: &mut GameMap, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team) {
