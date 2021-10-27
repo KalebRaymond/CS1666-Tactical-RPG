@@ -8,6 +8,7 @@ pub const TILE_SIZE: u32 = 32;
 use sdl2::rect::Rect;
 use sdl2::render::TextureCreator;
 use std::path::Path;
+use std::env;
 use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
 
 #[macro_use] mod sdl_macros;
@@ -20,7 +21,9 @@ mod single_player;
 pub mod unit;
 pub mod tile;
 mod unit_interface;
+mod net;
 
+use crate::net::client::Client;
 use crate::main_menu::MainMenu;
 
 pub enum GameState {
@@ -135,6 +138,25 @@ fn run_game_state<'i, 'r>(core: &'i mut SDLCore<'r>, game_state: &GameState) -> 
 			}
 		},
 		GameState::SinglePlayer => single_player::single_player(core)?,
+		GameState::MultiPlayer => {
+			let client = Client::new()?;
+
+			// poll every 1000ms for second player join event
+			// TODO: should be integrated with map rendering to poll every 1s between frame draws
+			// (e.g. store a let mut last_poll = Instant::now(); in this scope, compare on each frame & update on each poll)
+			loop {
+				sleep_poll!(core, 1000);
+
+				if let Some(event) = client.poll()? {
+					// listen for the join event, indicating that the other player has connected
+					if event.action == net::util::EVENT_JOIN {
+						println!("The other player has joined the room.");
+					}
+				}
+			}
+
+			return Ok(GameState::MainMenu);
+		},
 		GameState::Credits => credits::credits(core)?,
 		_ => return Err("Exit game state".to_string())
 	};
@@ -142,6 +164,31 @@ fn run_game_state<'i, 'r>(core: &'i mut SDLCore<'r>, game_state: &GameState) -> 
 	Ok(state)
 }
 
+static mut ARGS: Vec<String> = Vec::new();
+
+// to start client: `cargo run -- tcp://server-address.example.com:0000`
+// to start server: `cargo run -- --server tcp://127.0.0.1:0000`
 fn main() {
-	runner(true);
+	// give args a static lifetime
+	// (only unsafe for threading concerns; since we don't use multithreading, this is not a problem)
+	unsafe { ARGS.extend(env::args()) };
+
+	// if address is specified in args, update static variable
+	if let Some(addr) = unsafe { ARGS.last() } {
+		if addr.get(..6) == Some("tcp://") {
+			if let Some(address) = addr.get(6..) {
+				unsafe {
+					net::SERVER_ADDR = address;
+				}
+			}
+		}
+	}
+
+	if unsafe { ARGS.iter() }.any(|s| s == "--server") {
+		net::server::run();
+	} else {
+		if let Err(e) = runner(true) {
+			println!("Exiting: {}", e);
+		}
+	}
 }

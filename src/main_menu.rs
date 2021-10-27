@@ -8,6 +8,7 @@ use std::time::Instant;
 use crate::GameState;
 use crate::SDLCore;
 use crate::button::Button;
+use crate::net::client;
 
 pub struct MainMenu<'i, 'r> {
 	core: &'i mut SDLCore<'r>,
@@ -87,11 +88,14 @@ impl MainMenu<'_, '_> {
 				self.join_code_selected = true;
 				self.join_code_selected_time = Instant::now();
 			} else if self.multiplayer_create_button.is_mouse(self.core) {
-				println!("TODO: create multiplayer room");
-				self.is_multiplayer_open = false;
+				// create a new multiplayer room
+				client::set_code(None);
+				return Ok(GameState::MultiPlayer);
 			} else if self.multiplayer_join_button.is_mouse(self.core) {
-				println!("TODO: join multiplayer room");
-				self.is_multiplayer_open = false;
+				// join multiplayer room with code
+				let code: u32 = self.join_code.parse().map_err(|_e| "Couldn't parse join code")?;
+				client::set_code(Some(code));
+				return Ok(GameState::MultiPlayer);
 			} else {
 				self.join_code_selected = false;
 				self.is_multiplayer_open = false;
