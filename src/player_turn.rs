@@ -14,7 +14,7 @@ use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
 use crate::turn_banner::TurnBanner;
 
-pub fn handle_player_turn(core: &SDLCore, player_state: &mut PlayerState, game_map: &mut GameMap, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface>, unit_interface_texture: &Texture, current_player: &mut Team) {
+pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, game_map: &mut GameMap, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team) {
     if !turn_banner.banner_visible {
         if input.keystate.contains(&Keycode::Backspace) {
             //End turn
@@ -51,7 +51,7 @@ pub fn handle_player_turn(core: &SDLCore, player_state: &mut PlayerState, game_m
                             player_state.active_unit_j = j as i32;
 
                             //If the user did click on a unit, allow the player to move the unit
-                            *unit_interface = Some(UnitInterface::from_unit(active_unit, &unit_interface_texture));
+                            *unit_interface = Some(UnitInterface::from_unit(active_unit, unit_interface_texture));
                             player_state.current_player_action = PlayerAction::ChoosingUnitAction;
                         },
                         _ => {},
