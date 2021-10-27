@@ -33,8 +33,9 @@ pub enum GameState {
 
 pub enum PlayerAction {
 	Default,
-	MovingUnit,
 	ChoosingUnitAction,
+	MovingUnit,
+	AttackingUnit,
 }
 
 pub struct SDLCore<'t> {

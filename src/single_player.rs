@@ -275,105 +275,108 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 					}
 
 					//Get map matrix indices from mouse position
-					let (i, j) = PixelCoordinates::matrix_indices_from_pixel(	mouse_state.x().try_into().unwrap(), 
-																				mouse_state.y().try_into().unwrap(), 
-																				(-1 * core.cam.x).try_into().unwrap(), 
-																				(-1 * core.cam.y).try_into().unwrap()
-																			);
+					let (i, j) = PixelCoordinates::matrix_indices_from_pixel(
+						mouse_state.x().try_into().unwrap(), 
+						mouse_state.y().try_into().unwrap(), 
+						(-1 * core.cam.x).try_into().unwrap(), 
+						(-1 * core.cam.y).try_into().unwrap()
+					);
+					let (glob_x, glob_y) = PixelCoordinates::global_coordinates(
+						mouse_state.x().try_into().unwrap(), 
+						mouse_state.y().try_into().unwrap(), 
+						(-1 * core.cam.x).try_into().unwrap(), 
+						(-1 * core.cam.y).try_into().unwrap()
+					);
 
 					match current_player_action {
 						PlayerAction::Default => {
 							if left_clicked {
 								//Get the unit that is located at the mouse position, if there is one
-								{
-									if let Some(unit) = p1_units.get_mut(&(j, i)) {
+								match p1_units.get_mut(&(j,i)) {
+									Some(active_unit) => {
 										active_unit_i = i as i32;
 										active_unit_j = j as i32;
-
+		
 										//If the user did click on a unit, allow the player to move the unit
-										if !(active_unit_i == -1 || active_unit_j == -1) {
-											possible_moves = unit.get_tiles_in_movement_range(&mut map_tiles);
-											unit_interface = Some(UnitInterface::new(i, j, vec!["Move"], &unit_interface_texture));
-										
-											current_player_action = PlayerAction::MovingUnit;
-										}
-									}
+										unit_interface = Some(UnitInterface::from_unit(active_unit, &unit_interface_texture));
+										current_player_action = PlayerAction::ChoosingUnitAction;
+									},
+									_ => {},
 								}
 							}	
 						},
+						PlayerAction::ChoosingUnitAction => {
+							if left_clicked {
+								// Handle clicking based on unit interface
+								let active_unit = p1_units.get(&(active_unit_j as u32, active_unit_i as u32)).unwrap();
+								current_player_action = unit_interface.as_ref().unwrap().get_click_selection(glob_x, glob_y);
+								match current_player_action {
+									PlayerAction::Default => {
+										// Deselect the active unit
+										active_unit_i = -1;
+										active_unit_j = -1;
+										// Close interface
+										unit_interface.as_mut().unwrap().animate_close();
+									},
+									PlayerAction::ChoosingUnitAction => {},
+									PlayerAction::MovingUnit => {
+										possible_moves = active_unit.get_tiles_in_movement_range(&mut map_tiles);
+										// Close interface
+										unit_interface.as_mut().unwrap().animate_close();
+									},
+									PlayerAction::AttackingUnit => {
+										possible_attacks = active_unit.get_tiles_in_attack_range(&mut map_tiles);
+										actual_attacks = active_unit.get_tiles_can_attack(&mut map_tiles);
+										// Close interface
+										unit_interface.as_mut().unwrap().animate_close();
+									},
+								}
+							}
+						},		
 						PlayerAction::MovingUnit => {
 							if right_clicked {
-								//Deselect the active unit
+								// Deselect the active unit
 								active_unit_i = -1;
 								active_unit_j = -1;
-
 								current_player_action = PlayerAction::Default;
 							}
 							else if left_clicked {
-								//Move the active unit to the mouse's position
-								{
-									if let Some(unit) = p1_units.get_mut(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
-										// Skip movement if it has already happened, probably a cleaner way to do it than wrapping everything in an if statement
-										if !unit.has_moved {
-											//Remove the active unit from the hash map and reinsert it with the new position as its key
-											//I know there is a better way of doing this
-											{
-												if let Some(mut unit) = p1_units.remove(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
-													unit.update_pos(j, i);
-													unit.has_moved = true;
-													p1_units.insert((j, i), unit);
-												}
-												// update tile where player was and where they are going to reflect that they exist on that tile
-												if let Some(old_map_tile) = map_tiles.get_mut(&(active_unit_i.try_into().unwrap(), active_unit_j.try_into().unwrap())) {
-													old_map_tile.update_team(None);
-												}
-												if let Some(new_map_tile) = map_tiles.get_mut(&(i, j)) {
-													new_map_tile.update_team(Some(Team::Player));
-												}
-											}
-										
-											//Record the unit's updated position
-											active_unit_i = i as i32;
-											active_unit_j = j as i32;
-
-											//Hide the movement range overlay and show the attack range overlay
-											{
-												if let Some(mut unit) = p1_units.get_mut(&(active_unit_j.try_into().unwrap(), active_unit_i.try_into().unwrap())) {
-													possible_moves = Vec::new();
-													possible_attacks = unit.get_tiles_in_attack_range(&mut map_tiles);
-													actual_attacks = unit.get_tiles_can_attack(&mut map_tiles);
-													unit_interface = Some(UnitInterface::new(i, j, vec!["Attack"], &unit_interface_texture));
-												}
-											}
-										}
-										
+								// Ensure valid tile to move to
+								if possible_moves.contains(&(j,i)) {
+									// Move unit
+									let mut active_unit = p1_units.remove(&(active_unit_j as u32, active_unit_i as u32)).unwrap();
+									active_unit.update_pos(j, i);
+									active_unit.has_moved = true;
+									p1_units.insert((j, i), active_unit);
+									// Update map tiles
+									if let Some(old_map_tile) = map_tiles.get_mut(&(active_unit_i as u32, active_unit_j as u32)) {
+										old_map_tile.update_team(None);
+									}
+									if let Some(new_map_tile) = map_tiles.get_mut(&(i, j)) {
+										new_map_tile.update_team(Some(Team::Player));
 									}
 								}
-
-								//Now that the unit has moved, open its context menu so the player can choose an action
-								current_player_action = PlayerAction::ChoosingUnitAction;
-							}
-						},
-						PlayerAction::ChoosingUnitAction => {
-							if left_clicked {
-								/* Handle selected menu option here? */
-
-								//Gray out the active unit so that it can't be used again this turn
-								//active_unit = grayed out;
-
-								//Deselect the active unit
+								
+								//Now that the unit has moved, deselect
 								active_unit_i = -1;
 								active_unit_j = -1;
-
-								//Hide the interface
-								possible_moves = Vec::new();
-								possible_attacks = Vec::new();
-								actual_attacks = Vec::new();
-								unit_interface = None;
-
 								current_player_action = PlayerAction::Default;
 							}
-						},						
+						},
+						PlayerAction::AttackingUnit => {
+							if right_clicked {
+								// Deselect the active unit
+								active_unit_i = -1;
+								active_unit_j = -1;
+								current_player_action = PlayerAction::Default;
+							} else if left_clicked {
+								// Attack unit clicked on
+								// After attack, deselect
+								active_unit_i = -1;
+								active_unit_j = -1;
+								current_player_action = PlayerAction::Default;
+							}
+						},				
 					}
 				}
 			},
@@ -460,30 +463,32 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}	
 		
-		// Gets active character and checks to see if they have moved before showing attack tiles
-		// If they have not moved, show movement tiles
 		match p1_units.get(&(active_unit_j as u32,active_unit_i as u32)) {
-			Some(unit) => {
-				if !unit.has_moved && !possible_moves.is_empty() {
-					draw_possible_moves(core, &possible_moves, Color::RGBA(0, 89, 178, 50));
-				}
-				if unit.has_moved && !possible_attacks.is_empty() {
-					draw_possible_moves(core, &possible_attacks, Color::RGBA(178, 89, 0, 100));
-				}
-				if unit.has_moved && !actual_attacks.is_empty() {
-					draw_possible_moves(core, &actual_attacks, Color::RGBA(128, 0, 128, 100));
+			Some(_) => {
+				match current_player_action {
+					PlayerAction::MovingUnit => {
+						draw_possible_moves(core, &possible_moves, Color::RGBA(0, 89, 178, 50))?;
+					},
+					PlayerAction::AttackingUnit => {
+						draw_possible_moves(core, &possible_attacks, Color::RGBA(178, 89, 0, 100))?;
+						draw_possible_moves(core, &actual_attacks, Color::RGBA(128, 0, 128, 100))?;
+					},
+					_ => {},
 				}
 			}
 			_ => ()
 		};
 
 		//Draw the scroll sprite UI
-		match &unit_interface {
-			Some(ui) => {
-				ui.draw(core);
+		unit_interface = match unit_interface {
+			Some(mut ui) => {
+				match ui.draw(core, &texture_creator) {
+					Ok(_) => { Some(ui) },
+					_ => { None },
+				}
 			},
-			_ => {},
-		}
+			_ => { None },
+		};
 		
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
