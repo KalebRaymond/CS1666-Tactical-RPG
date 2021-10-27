@@ -33,7 +33,7 @@ pub struct UnitInterface<'a> {
 
 impl<'a> UnitInterface<'a> {
     pub fn new(i: u32, j: u32, t: Vec<&'a str>, tex: &'a Texture<'a>) -> UnitInterface<'a> {
-        UnitInterface { 
+        UnitInterface {
             x: ((j-2) * crate::TILE_SIZE) as i32,
             y: ((i-1) * crate::TILE_SIZE) as i32,
             txt: t.iter().map( |text| SelectOption{ text:text, valid:true } ).collect(),
@@ -92,23 +92,22 @@ impl<'a> UnitInterface<'a> {
                 if self.anim_progress > 0.5 {
                     core.wincan.copy(texture, Rect::new(0,16,64,16), Rect::new(self.x,self.y+32,64,16))?;
                 }
-                
+
                 for (i, text) in self.txt.iter().enumerate() {
                     if i == 1 && self.anim_progress <= 0.5 {
                         continue;
                     }
-                    let (text_w, text_h) = core.regular_font.size_of(text.text)
+                    let (text_w, text_h) = core.tiny_font.size_of(text.text)
                     .map_err( |e| e.to_string() )?;
-                    let text_ratio = text_w as f32 / text_h as f32;
                     let brightness = if text.valid { 0 } else { 128 };
-                    let text_surface = core.regular_font.render(text.text)
+                    let text_surface = core.tiny_font.render(text.text)
                         .blended_wrapped(Color::RGBA(brightness, brightness, brightness, 0), 320)
                         .map_err(|e| e.to_string())?;
                     let text_texture = texture_creator.create_texture_from_surface(&text_surface)
                         .map_err(|e| e.to_string())?;
-                    core.wincan.copy(&text_texture, None, Rect::new(self.x+10, self.y+16*(i+1)as i32, (16.0*text_ratio)as u32, 16))?;
+                    core.wincan.copy(&text_texture, None, Rect::new(self.x+10, self.y+16*(i+1)as i32, text_w, text_h))?;
                 }
-                
+
                 core.wincan.copy(texture, Rect::new(0,32,64,16), Rect::new(self.x,self.y+16+(32.0*self.anim_progress)as i32,64,16))?;
 
                 Ok(())
