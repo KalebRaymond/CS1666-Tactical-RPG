@@ -1,11 +1,13 @@
-pub const MSG_CREATE: u8 = 0;
-pub const MSG_JOIN: u8 = 1;
-pub const MSG_EVENT: u8 = 2;
-pub const MSG_POLL: u8 = 3;
+pub const MSG_CREATE: u8 = 0; // create a new room
+pub const MSG_JOIN: u8 = 1;   // join an existing room
+pub const MSG_EVENT: u8 = 2;  // push an event to a room
+pub const MSG_POLL: u8 = 3;   // poll for new events in a room
 
 pub const EVENT_NONE: u8 = 0; // there are no events to poll
 pub const EVENT_JOIN: u8 = 1; // a player has joined the room
 
+// allows a range of indeces in an array to be set with one expression
+// e.g. set_range!(arr[4..6] = [4, 5, 6, 7, 8]); will set arr[4] = 4 and arr[5] = 5
 macro_rules! set_range {
 	($to:ident[$range:expr] = $from:expr) => {
 		{
@@ -18,16 +20,16 @@ macro_rules! set_range {
 }
 
 pub struct Event {
-	action: u8,
-	id: u8,
-	from_pos: (u32, u32),
-	to_pos: (u32, u32),
+	pub action: u8,
+	pub id: u8,
+	pub from_pos: (u32, u32),
+	pub to_pos: (u32, u32),
 }
 
 impl Event {
-	pub fn new() -> Event {
+	pub fn new(action: u8) -> Event {
 		Event {
-			action: EVENT_NONE,
+			action,
 			id: 0,
 			from_pos: (0, 0),
 			to_pos: (0, 0),
@@ -40,11 +42,11 @@ impl Event {
 			id: arr[1],
 			from_pos: (
 				from_u32_bytes(&arr[2..6]),
-				from_u32_bytes(&arr[7..10]),
+				from_u32_bytes(&arr[6..10]),
 			),
 			to_pos: (
-				from_u32_bytes(&arr[11..14]),
-				from_u32_bytes(&arr[15..18]),
+				from_u32_bytes(&arr[10..14]),
+				from_u32_bytes(&arr[14..18]),
 			),
 		}
 	}
@@ -55,10 +57,10 @@ impl Event {
 		arr[1] = self.id;
 
 		set_range!(arr[2..6] = to_u32_bytes(self.from_pos.0));
-		set_range!(arr[7..10] = to_u32_bytes(self.from_pos.1));
+		set_range!(arr[6..10] = to_u32_bytes(self.from_pos.1));
 
-		set_range!(arr[11..14] = to_u32_bytes(self.to_pos.0));
-		set_range!(arr[15..18] = to_u32_bytes(self.to_pos.1));
+		set_range!(arr[10..14] = to_u32_bytes(self.to_pos.0));
+		set_range!(arr[14..18] = to_u32_bytes(self.to_pos.1));
 
 		arr
 	}

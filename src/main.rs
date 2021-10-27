@@ -139,8 +139,21 @@ fn run_game_state<'i, 'r>(core: &'i mut SDLCore<'r>, game_state: &GameState) -> 
 		},
 		GameState::SinglePlayer => single_player::single_player(core)?,
 		GameState::MultiPlayer => {
-			let client = Client::new();
-			// TODO: poll for second player join event
+			let client = Client::new()?;
+
+			// poll every 1000ms for second player join event
+			// TODO: should be integrated with map rendering to poll every 1s between frame draws
+			// (e.g. store a let mut last_poll = Instant::now(); in this scope, compare on each frame & update on each poll)
+			loop {
+				sleep_poll!(core, 1000);
+
+				if let Some(event) = client.poll()? {
+					// listen for the join event, indicating that the other player has connected
+					if event.action == net::util::EVENT_JOIN {
+						println!("The other player has joined the room.");
+					}
+				}
+			}
 
 			return Ok(GameState::MainMenu);
 		},
@@ -174,6 +187,8 @@ fn main() {
 	if unsafe { ARGS.iter() }.any(|s| s == "--server") {
 		net::server::run();
 	} else {
-		runner(true);
+		if let Err(e) = runner(true) {
+			println!("Exiting: {}", e);
+		}
 	}
 }
