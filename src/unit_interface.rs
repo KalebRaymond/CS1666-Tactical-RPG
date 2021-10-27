@@ -6,7 +6,7 @@ use sdl2::render::{Texture,TextureCreator};
 use sdl2::video::WindowContext;
 
 use crate::SDLCore;
-use crate::PlayerAction;
+use crate::player_action::PlayerAction;
 use crate::unit::Unit;
 
 const ANIM_LENGTH: f32 = 0.15;

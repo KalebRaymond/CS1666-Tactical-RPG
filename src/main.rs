@@ -13,13 +13,19 @@ use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
 #[macro_use] mod sdl_macros;
 
 mod credits;
-pub mod button;
+mod game_map;
+mod input;
 mod main_menu;
 mod pixel_coordinates;
+mod player_action;
+mod player_state;
+mod player_turn;
 mod single_player;
-pub mod unit;
-pub mod tile;
+mod turn_banner;
 mod unit_interface;
+pub mod button;
+pub mod tile;
+pub mod unit;
 
 use crate::main_menu::MainMenu;
 
@@ -29,13 +35,6 @@ pub enum GameState {
 	MultiPlayer,
 	Credits,
 	Quit,
-}
-
-pub enum PlayerAction {
-	Default,
-	ChoosingUnitAction,
-	MovingUnit,
-	AttackingUnit,
 }
 
 pub struct SDLCore<'t> {
