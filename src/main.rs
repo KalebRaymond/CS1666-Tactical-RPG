@@ -23,6 +23,7 @@ pub mod tile;
 mod unit_interface;
 mod net;
 
+use crate::net::client::Client;
 use crate::main_menu::MainMenu;
 
 pub enum GameState {
@@ -137,6 +138,12 @@ fn run_game_state<'i, 'r>(core: &'i mut SDLCore<'r>, game_state: &GameState) -> 
 			}
 		},
 		GameState::SinglePlayer => single_player::single_player(core)?,
+		GameState::MultiPlayer => {
+			let client = Client::new();
+			// TODO: poll for second player join event
+
+			return Ok(GameState::MainMenu);
+		},
 		GameState::Credits => credits::credits(core)?,
 		_ => return Err("Exit game state".to_string())
 	};
@@ -144,16 +151,28 @@ fn run_game_state<'i, 'r>(core: &'i mut SDLCore<'r>, game_state: &GameState) -> 
 	Ok(state)
 }
 
-fn main() {
-	let args: Vec<String> = env::args().collect();
-	let mut args_iter = args.iter();
-	if args_iter.any(|s| s == "--server") {
-		let address = match args_iter.next() {
-			Some(addr) => addr,
-			_ => "127.0.0.1:5776"
-		};
+static mut ARGS: Vec<String> = Vec::new();
 
-		net::server::run(address);
+// to start client: `cargo run -- tcp://server-address.example.com:0000`
+// to start server: `cargo run -- --server tcp://127.0.0.1:0000`
+fn main() {
+	// give args a static lifetime
+	// (only unsafe for threading concerns; since we don't use multithreading, this is not a problem)
+	unsafe { ARGS.extend(env::args()) };
+
+	// if address is specified in args, update static variable
+	if let Some(addr) = unsafe { ARGS.last() } {
+		if addr.get(..6) == Some("tcp://") {
+			if let Some(address) = addr.get(6..) {
+				unsafe {
+					net::SERVER_ADDR = address;
+				}
+			}
+		}
+	}
+
+	if unsafe { ARGS.iter() }.any(|s| s == "--server") {
+		net::server::run();
 	} else {
 		runner(true);
 	}

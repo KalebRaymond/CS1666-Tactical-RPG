@@ -7,6 +7,7 @@ use std::convert::TryInto;
 use rand::Rng;
 use rand::prelude::ThreadRng;
 
+use crate::net::SERVER_ADDR;
 use crate::net::util::*;
 
 struct Server {
@@ -67,6 +68,7 @@ impl Server {
 
 				// once an unused room code is found, create the room
 				if !self.rooms.contains_key(&code_new) {
+					println!("{} is creating a room with code {:?}", addr, code_new);
 					let room = Room::new(code_new, &addr);
 					self.rooms.insert(code_new, room);
 					break;
@@ -77,17 +79,16 @@ impl Server {
 			let send_buffer = to_u32_bytes(code_new);
 			stream.write(&send_buffer).map_err(|_e| "Could not write code response to stream")?;
 		} else {
-			println!("Locating room {:?}", code);
 			let room = self.rooms.get_mut(&code).ok_or("Could not find a matching room")?;
 
 			if buffer[0] == MSG_JOIN {
 				// joining a room
 
-				println!("Joining room");
+				println!("{} is joining room {:?}", addr, code);
 				room.try_join(&addr)?;
 
-				// respond with 1 byte to indicate success
-				stream.write(&[1]).map_err(|_e| "Could not write join response to stream")?;
+				// respond with joined room code to indicate success
+				stream.write(&buffer[1..]).map_err(|_e| "Could not write join response to stream")?;
 			} else if buffer[0] == MSG_EVENT {
 				// sending an event
 
@@ -131,9 +132,13 @@ impl Room {
 
 }
 
-pub fn run(addr: &str) {
-	let mut server = Server::new(addr);
+pub fn run() {
+	let addr = unsafe {
+		String::from(SERVER_ADDR)
+	};
 
-	println!("Listening at {}", addr);
+	let mut server = Server::new(&addr);
+
+	println!("Listening at {}", &addr);
 	server.listen();
 }
