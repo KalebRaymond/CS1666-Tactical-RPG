@@ -1,6 +1,5 @@
 use std::io::prelude::*;
-use std::net::TcpListener;
-use std::net::TcpStream;
+use std::net::{TcpListener, TcpStream, IpAddr};
 use std::collections::HashMap;
 use std::convert::TryInto;
 
@@ -48,7 +47,7 @@ impl Server {
 		let mut buffer = [0; 6]; // parse request header: 1 byte (MSG_ type) + 4 bytes (u32 room code)
 		stream.read(&mut buffer).map_err(|_e| "Could not read request stream.")?;
 
-		let addr = stream.peer_addr().map_err(|_e| "Could not read request address.")?.to_string();
+		let addr = stream.peer_addr().map_err(|_e| "Could not read request address.")?.ip();
 		let is_host = if buffer[1] == 0 { false } else if buffer[1] == 1 { true } else {
 			return Err(String::from("Invalid request: is_host not valid"));
 		};
@@ -70,8 +69,8 @@ impl Server {
 
 				// once an unused room code is found, create the room
 				if !self.rooms.contains_key(&code_new) {
-					println!("{} is creating a room with code {:?}", addr, code_new);
-					let room = Room::new(code_new);
+					println!("{} is creating a room with code {:?}", addr.to_string(), code_new);
+					let room = Room::new(code_new, addr);
 					self.rooms.insert(code_new, room);
 					break;
 				}
@@ -89,8 +88,8 @@ impl Server {
 					return Err(String::from("Cannot join a room as the host"));
 				}
 
-				println!("{} is joining room {:?}", addr, code);
-				room.try_join()?;
+				println!("{} is joining room {:?}", addr.to_string(), code);
+				room.try_join(addr)?;
 
 				// respond with joined room code to indicate success
 				stream.write(&buffer[2..]).map_err(|_e| "Could not write join response to stream")?;
@@ -101,13 +100,13 @@ impl Server {
 
 				// push event into room
 				let event = Event::from_bytes(&event_buffer);
-				room.push_event(is_host, event)?;
+				room.push_event(is_host, addr, event)?;
 
 				// respond with 1 byte to indicate success
 				stream.write(&[1]).map_err(|_e| "Could not write event response to stream")?;
 			} else if buffer[0] == MSG_POLL {
 				// polling for events
-				let event = room.pop_event(is_host)?;
+				let event = room.pop_event(is_host, addr)?;
 				let event_buffer = event.to_bytes();
 
 				// respond with event contents
@@ -122,37 +121,39 @@ impl Server {
 
 struct Room {
 	code: u32,
-	peer_joined: bool,
+	host_addr: IpAddr,
+	peer_addr: Option<IpAddr>,
 	host_events: Vec<Event>,
 	peer_events: Vec<Event>,
 }
 
 impl Room {
 
-	fn new(code: u32) -> Room {
+	fn new(code: u32, addr: IpAddr) -> Room {
 		Room {
 			code,
-			peer_joined: false,
+			host_addr: addr,
+			peer_addr: None,
 			host_events: Vec::new(),
 			peer_events: vec![Event::new(EVENT_JOIN)], // initial join event for host -> peer
 		}
 	}
 
-	fn try_join(&mut self) -> Result<(), String> {
-		if !self.peer_joined {
-			self.peer_joined = true;
-			self.push_event(false, Event::new(EVENT_JOIN))?; // new join event for peer -> host
+	fn try_join(&mut self, addr: IpAddr) -> Result<(), String> {
+		if self.peer_addr == None {
+			self.peer_addr = Some(addr);
+			self.push_event(false, addr, Event::new(EVENT_JOIN))?; // new join event for peer -> host
 			Ok(())
 		} else {
 			Err(String::from("Room already full"))
 		}
 	}
 
-	fn push_event(&mut self, is_host: bool, event: Event) -> Result<(), String> {
-		if is_host {
+	fn push_event(&mut self, is_host: bool, addr: IpAddr, event: Event) -> Result<(), String> {
+		if is_host && self.host_addr == addr {
 			// as host, push an event to the peer
 			self.peer_events.push(event);
-		} else if !is_host && self.peer_joined {
+		} else if !is_host && self.peer_addr == Some(addr) {
 			// as peer, push an event to the host
 			self.host_events.push(event);
 		} else {
@@ -162,10 +163,10 @@ impl Room {
 		Ok(())
 	}
 
-	fn pop_event(&mut self, is_host: bool) -> Result<Event, String> {
-		if is_host {
+	fn pop_event(&mut self, is_host: bool, addr: IpAddr) -> Result<Event, String> {
+		if is_host && self.host_addr == addr {
 			Ok(self.host_events.pop().unwrap_or(Event::new(EVENT_NONE)))
-		} else if !is_host && self.peer_joined {
+		} else if !is_host && self.peer_addr == Some(addr) {
 			Ok(self.peer_events.pop().unwrap_or(Event::new(EVENT_NONE)))
 		} else {
 			Err(String::from("Cannot pop_event: Peer has not joined the room"))
