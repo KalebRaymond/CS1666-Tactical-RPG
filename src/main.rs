@@ -42,6 +42,7 @@ pub struct SDLCore<'t> {
 	pub sdl_ctx: sdl2::Sdl,
 	pub bold_font: sdl2::ttf::Font<'t, 't>,
 	pub regular_font: sdl2::ttf::Font<'t, 't>,
+	pub tiny_font: sdl2::ttf::Font<'t, 't>,
 	pub wincan: sdl2::render::WindowCanvas,
 	pub texture_creator: &'t TextureCreator<sdl2::video::WindowContext>,
 	pub event_pump: sdl2::EventPump,
@@ -81,11 +82,13 @@ fn runner(vsync:bool) -> Result<(), String> {
 
 	let bold_font = ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?; //From https://www.fontsquirrel.com/fonts/open-sans
 	let regular_font = ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 16)?; //From https://www.fontsquirrel.com/fonts/open-sans
+	let tiny_font = ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 12)?; //From https://www.fontsquirrel.com/fonts/open-sans
 
 	let mut core = SDLCore{
 		sdl_ctx,
 		bold_font,
 		regular_font,
+		tiny_font,
 		wincan,
 		texture_creator: &texture_creator,
 		event_pump,
