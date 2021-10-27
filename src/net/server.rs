@@ -91,11 +91,22 @@ impl Server {
 				stream.write(&buffer[1..]).map_err(|_e| "Could not write join response to stream")?;
 			} else if buffer[0] == MSG_EVENT {
 				// sending an event
+				let mut event_buffer = [0; 18];
+				stream.read(&mut event_buffer).map_err(|_e| "Could not read event stream.")?;
+
+				// push event into room
+				let event = Event::from_bytes(&event_buffer);
+				room.push_event(&addr, event)?;
 
 				// respond with 1 byte to indicate success
 				stream.write(&[1]).map_err(|_e| "Could not write event response to stream")?;
 			} else if buffer[0] == MSG_POLL {
 				// polling for events
+				let event = room.pop_event(&addr)?;
+				let event_buffer = event.to_bytes();
+
+				// respond with event contents
+				stream.write(&event_buffer).map_err(|_e| "Could not write poll response to stream")?;
 			}
 		}
 
@@ -108,7 +119,8 @@ struct Room {
 	code: u32,
 	host_addr: String,
 	peer_addr: Option<String>,
-	// TODO: Vec<Event>,
+	host_events: Vec<Event>,
+	peer_events: Vec<Event>,
 }
 
 impl Room {
@@ -118,6 +130,8 @@ impl Room {
 			code,
 			host_addr: String::from(addr),
 			peer_addr: None,
+			host_events: Vec::new(),
+			peer_events: Vec::new(),
 		}
 	}
 
@@ -127,6 +141,28 @@ impl Room {
 			Ok(())
 		} else {
 			Err(String::from("Room already full"))
+		}
+	}
+
+	fn push_event(&mut self, addr: &str, event: Event) -> Result<(), String> {
+		if addr == self.host_addr {
+			self.peer_events.push(event);
+		} else if Some(String::from(addr)) == self.peer_addr {
+			self.host_events.push(event);
+		} else {
+			return Err(String::from("Peer has not joined the room"));
+		}
+
+		Ok(())
+	}
+
+	fn pop_event(&mut self, addr: &str) -> Result<Event, String> {
+		if addr == self.host_addr {
+			Ok(self.host_events.pop().unwrap_or(Event::new()))
+		} else if Some(String::from(addr)) == self.peer_addr {
+			Ok(self.peer_events.pop().unwrap_or(Event::new()))
+		} else {
+			Err(String::from("Err"))
 		}
 	}
 
