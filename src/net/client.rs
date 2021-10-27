@@ -17,6 +17,7 @@ pub fn set_code(code: Option<u32>) {
 
 pub struct Client {
 	code: u32,
+	token: u32,
 	is_host: bool,
 	addr: String
 }
@@ -33,19 +34,22 @@ impl Client {
 		};
 
 		// construct the client and either create/join the room
-		let mut client = Client { code, is_host: code == 0, addr };
+		let mut client = Client { code, token: 0, is_host: code == 0, addr };
 		let mut stream = client.connect(if code == 0 { MSG_CREATE } else { MSG_JOIN })?;
 
-		let mut buffer = [0; 4];
+		let mut buffer = [0; 8];
 		stream.read(&mut buffer).map_err(|_e| "Could not read connection response")?;
 
 		// check if the returned room code matches the intended join code in send_bytes (i.e. whether the room was actually joined)
-		let new_code = from_u32_bytes(&buffer);
+		let new_code = from_u32_bytes(&buffer[0..4]);
+		let new_token = from_u32_bytes(&buffer[4..8]);
+
 		if !client.is_host && code != new_code {
 			return Err(String::from("Invalid room code returned"))
 		} else {
 			println!("Entered a room with code {:?}", new_code);
 			client.code = new_code;
+			client.token = new_token;
 		}
 
 		// successfully joined a room & constructed a client
@@ -56,10 +60,11 @@ impl Client {
 	fn connect(&self, action: u8) -> Result<TcpStream, String> {
 		let mut stream = TcpStream::connect(&self.addr).map_err(|_e| "Could not initialize TCP stream")?;
 
-		let mut send_bytes = [0; 6];
+		let mut send_bytes = [0; 10];
 		send_bytes[0] = action;
 		send_bytes[1] = if self.is_host { 1 } else { 0 };
 		set_range!(send_bytes[2..6] = to_u32_bytes(self.code));
+		set_range!(send_bytes[6..10] = to_u32_bytes(self.token));
 
 		stream.write(&send_bytes).map_err(|_e| "Could not send connection info")?;
 
