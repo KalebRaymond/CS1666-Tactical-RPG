@@ -1,98 +1,179 @@
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::mouse::MouseState;
-
+use sdl2::image::LoadTexture;
+use sdl2::render::Texture;
 use std::time::Instant;
 
 use crate::GameState;
 use crate::SDLCore;
+use crate::button::Button;
 
-pub fn main_menu(core: &mut SDLCore) -> Result<GameState, String> {
-    let texture_creator = core.wincan.texture_creator();
-	
-	let mut next_game_state = GameState::SinglePlayer;
-	let single_player_button = centered_rect!(core, _, 720/4, 100, 100);
-	let credit_button = centered_rect!(core, _, 3*720/4, 100, 100);
-	let join_code_textbox = Rect::new(750, 200, 400, 60);
-	let mut join_code = String::from("");
-	let mut textbox_selected = false;
-	let mut textbox_select_time = Instant::now();
+pub struct MainMenu<'i, 'r> {
+	core: &'i mut SDLCore<'r>,
 
-	let regular_font = core.ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 32)?; //From https://www.fontsquirrel.com/fonts/open-sans
+	bg_frame: usize,
+	bg_textures: Vec<Texture<'i>>,
+	bg_interface: Texture<'i>,
 
-	'menuloop: loop {
-		let mouse_state: MouseState = core.event_pump.mouse_state();
+	// main menu buttons
+	singleplayer_button: Button<'i>,
+	multiplayer_button: Button<'i>,
+	credits_button: Button<'i>,
 
-		if mouse_state.left() {
-			let x = mouse_state.x();
-			let y = mouse_state.y();
-			textbox_selected = false;
-			if single_player_button.contains_point((x, y)) {
-				next_game_state = GameState::SinglePlayer;
-				break 'menuloop;
-			} else if join_code_textbox.contains_point((x,y)) {
-				textbox_selected = true;
-				textbox_select_time = Instant::now();
-			} else if credit_button.contains_point((x, y)){
-				next_game_state = GameState::Credits;
-				break 'menuloop;
+	// multiplayer sub-menu buttons
+	is_multiplayer_open: bool,
+	multiplayer_rect: Rect,
+	multiplayer_create_button: Button<'i>,
+	multiplayer_join_button: Button<'i>,
+
+	// join code
+	join_code_rect: Rect,
+	join_code: String,
+	join_code_selected: bool,
+	join_code_selected_time: Instant,
+}
+
+impl MainMenu<'_, '_> {
+
+	pub fn new<'i, 'r>(core: &'i mut SDLCore<'r>) -> Result<MainMenu<'i, 'r>, String> {
+		// bg animation textures
+		let bg_textures: Vec<Texture> = (1..25).map(|i| {
+			core.texture_creator.load_texture(format!("images/main_menu_animation/{}.png", i)).unwrap()
+		}).collect();
+		let bg_interface = core.texture_creator.load_texture("images/interface/unit_interface.png")?;
+
+		// main menu buttons
+		let singleplayer_button = Button::new(core, Rect::new(40, 600, 380, 100), "Single Player")?;
+		let multiplayer_button = Button::new(core, Rect::new(450, 600, 380, 100), "Multiplayer")?;
+		let credits_button = Button::new(core, Rect::new(860, 600, 380, 100), "Credits")?;
+
+		// multiplayer sub-menu buttons
+		let multiplayer_rect = centered_rect!(core, 800, 650);
+		let multiplayer_create_button = Button::new(core, centered_rect!(core, _, 90, 400, 100), "Create Room")?;
+		let multiplayer_join_button = Button::new(core, centered_rect!(core, _, 520, 400, 100), "Join Room")?;
+
+		let join_code_rect = centered_rect!(core, _, 400, 400, 60);
+
+		Ok(MainMenu {
+			core,
+			bg_frame: 0,
+			bg_textures,
+			bg_interface,
+
+			singleplayer_button,
+			multiplayer_button,
+			credits_button,
+
+			is_multiplayer_open: false,
+			multiplayer_rect,
+			multiplayer_create_button,
+			multiplayer_join_button,
+
+			join_code_rect,
+			join_code: String::from(""),
+			join_code_selected: false,
+			join_code_selected_time: Instant::now(),
+		})
+	}
+
+
+	pub fn draw(&mut self) -> Result<GameState, String> {
+		let mouse_state: MouseState = self.core.event_pump.mouse_state();
+		let mouse_pos = (mouse_state.x(), mouse_state.y());
+
+		if mouse_state.left() && self.is_multiplayer_open {
+			if self.join_code_rect.contains_point(mouse_pos) {
+				self.join_code_selected = true;
+				self.join_code_selected_time = Instant::now();
+			} else if self.multiplayer_create_button.is_mouse(self.core) {
+				println!("TODO: create multiplayer room");
+				self.is_multiplayer_open = false;
+			} else if self.multiplayer_join_button.is_mouse(self.core) {
+				println!("TODO: join multiplayer room");
+				self.is_multiplayer_open = false;
+			} else {
+				self.join_code_selected = false;
+				self.is_multiplayer_open = false;
 			}
 		}
 
-		for event in core.event_pump.poll_iter() {
+		if mouse_state.left() && !self.is_multiplayer_open {
+			if self.singleplayer_button.is_mouse(self.core) {
+				return Ok(GameState::SinglePlayer);
+			} else if self.multiplayer_button.is_mouse(self.core) {
+				self.is_multiplayer_open = true;
+			} else if self.credits_button.is_mouse(self.core) {
+				return Ok(GameState::Credits);
+			}
+		}
+
+		for event in self.core.event_pump.poll_iter() {
 			match event {
 				sdl2::event::Event::Quit{..} | sdl2::event::Event::KeyDown{keycode: Some(sdl2::keyboard::Keycode::Escape), ..} => {
-					next_game_state = GameState::Quit;
-					break 'menuloop;
+					return Err("Quit keycode".to_string());
 				},
 				sdl2::event::Event::KeyDown{keycode: Some(sdl2::keyboard::Keycode::Backspace), ..} => {
-					if textbox_selected && join_code.chars().count() > 0 {
-						let mut char_iter = join_code.chars();
+					if self.join_code_selected && self.join_code.chars().count() > 0 {
+						let mut char_iter = self.join_code.chars();
 						char_iter.next_back();
-						join_code = char_iter.as_str().to_string();
+						self.join_code = char_iter.as_str().to_string();
 					}
 				}
 				sdl2::event::Event::KeyDown{keycode: Some(key), ..} => {
 					let parsed_key = key.to_string();
-					if textbox_selected && join_code.chars().count() < 4 && parsed_key.chars().count() == 1 && parsed_key.chars().next().unwrap().is_numeric() {
-						join_code.push_str(&key.to_string());
+					if self.join_code_selected && self.join_code.chars().count() < 4 && parsed_key.chars().count() == 1 && parsed_key.chars().next().unwrap().is_numeric() {
+						self.join_code.push_str(&key.to_string());
 					}
 				},
 				_ => {},
 			}
 		}
 
-		core.wincan.set_draw_color(Color::RGBA(0, 0, 0, 255)); //Black screen
-		core.wincan.clear();
-
-		core.wincan.set_draw_color(Color::RGBA(255,0,0,255));
-		core.wincan.draw_rect(single_player_button)?;
-		
-		core.wincan.set_draw_color(Color::RGBA(255,255,255,255));
-		core.wincan.draw_rect(join_code_textbox)?;
-		
-		//Render text for join code textbox
-		let display_text = format!("{}{}", join_code, if textbox_selected && textbox_select_time.elapsed().subsec_millis()<500 { "|" } else { "" });
-		let text_size = regular_font.size_of(&display_text);
-		match text_size {
-			Ok((w, h)) => {
-				if w > 0 {
-					let text_surface = regular_font.render(&display_text)
-						.blended(Color::RGBA(255,255,255,255))
-						.map_err(|e| e.to_string())?;
-					let text_texture = texture_creator.create_texture_from_surface(&text_surface)
-						.map_err(|e| e.to_string())?;
-					core.wincan.copy(&text_texture, None, Rect::new(760, 200 + (60-h as i32)/2, w, h))?;
-				}
-			},
-			_ => {},
+		// background animation
+		self.bg_frame += 1;
+		if self.bg_frame < self.bg_textures.len() {
+			self.core.wincan.copy(&self.bg_textures[self.bg_frame], None, None)?;
+		} else if let Some(texture) = self.bg_textures.last() {
+			self.core.wincan.copy(&texture, None, None)?;
 		}
 
-		core.wincan.set_draw_color(Color::RGBA(0,255,0,255));
-		core.wincan.draw_rect(credit_button)?;
+		if self.bg_frame > 800 {
+			self.bg_frame = 0;
+		}
 
-		core.wincan.present();
+		// buttons
+		if !self.is_multiplayer_open {
+			self.singleplayer_button.draw(self.core)?;
+			self.multiplayer_button.draw(self.core)?;
+			self.credits_button.draw(self.core)?;
+		} else {
+			// multiplayer sub-menu background
+			self.core.wincan.copy(&self.bg_interface, None, self.multiplayer_rect)?;
+
+			self.multiplayer_create_button.draw(self.core)?;
+			self.multiplayer_join_button.draw(self.core)?;
+
+			// Draw join code box
+			self.core.wincan.set_draw_color(Color::RGBA(0,0,0,255));
+			self.core.wincan.draw_rect(self.join_code_rect)?;
+
+			//Render text for join code textbox
+			let display_text = format!("{}{}", self.join_code, if self.join_code_selected && self.join_code_selected_time.elapsed().subsec_millis()<500 { "|" } else { "" });
+			if let Ok((w, h)) = self.core.regular_font.size_of(&*display_text) {
+				if w > 0 {
+					let text_surface = self.core.regular_font.render(&*display_text)
+						.blended(Color::RGBA(0,0,0,255))
+						.map_err(|e| e.to_string())?;
+					let text_texture = self.core.texture_creator.create_texture_from_surface(&text_surface)
+						.map_err(|e| e.to_string())?;
+					self.core.wincan.copy(&text_texture, None, Rect::new(self.join_code_rect.x + 20, self.join_code_rect.y + (60-h as i32)/2, w, h))?;
+				}
+			}
+		}
+
+		self.core.wincan.present();
+		Ok(GameState::MainMenu)
 	}
 
-	Ok(next_game_state)
 }

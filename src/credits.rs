@@ -5,6 +5,9 @@ use sdl2::rect::Rect;
 use crate::GameState;
 use crate::SDLCore;
 
+use std::path::Path;
+use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
+
 const CREDITS_TIMEOUT: u64 = 3500;
 
 /// Credits page macro: surrounds the provided "closure" (not really a closure) with canvas present() and thread::sleep calls
@@ -22,15 +25,19 @@ macro_rules! credits_page {
 pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 	let texture_creator = core.wincan.texture_creator();
 
-	let bold_font = core.ttf_ctx.load_font("fonts/OpenSans-Bold.ttf", 32)?; //From https://www.fontsquirrel.com/fonts/open-sans
-	let regular_font = core.ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 16)?; //From https://www.fontsquirrel.com/fonts/open-sans
+	//Music
+	sdl2::mixer::open_audio(44100, AUDIO_S32SYS, DEFAULT_CHANNELS, 1024)?;
+	let _mixer_filetypes = sdl2::mixer::init(InitFlag::MP3)?;
+	let music = sdl2::mixer::Music::from_file(Path::new("./music/end_credits.mp3"))?;
+
+	music.play(-1);
 
 	// Game title
 	credits_page!(core, {
 		core.wincan.set_draw_color(Color::RGBA(63, 191, 191, 128));
 		core.wincan.clear();
 
-		let text_surface = bold_font.render("Castle Quest")
+		let text_surface = core.bold_font.render("Castle Quest")
 			.blended_wrapped(Color::RGBA(0, 0, 0, 96), 100) //Black font
 			.map_err(|e| e.to_string())?;
 
@@ -45,7 +52,7 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 		core.wincan.set_draw_color(Color::RGBA(60, 163, 62, 128));
 		core.wincan.clear();
 
-		let text_surface = regular_font.render("AI Subteam")
+		let text_surface = core.regular_font.render("AI Subteam")
 			.blended_wrapped(Color::RGBA(0, 0, 0, 128), 160) //Black font
 			.map_err(|e| e.to_string())?;
 
@@ -81,7 +88,7 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 		let jared_credit = texture_creator.load_texture("images/credits/JaredCCreditImage.png")?;
 		core.wincan.copy(&jared_credit, None, centered_rect!(core, _, 200, 256, 200))?;
 
-		let text_surface = regular_font.render("Jared Carl")
+		let text_surface = core.regular_font.render("Jared Carl")
 			.blended_wrapped(Color::RGBA(0, 0, 0, 128), 320)
 			.map_err(|e| e.to_string())?;
 
@@ -105,7 +112,7 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 		core.wincan.set_draw_color(Color::RGBA(238, 46, 21, 128));
 		core.wincan.clear();
 
-		let text_surface = regular_font.render("Networking Subteam")
+		let text_surface = core.regular_font.render("Networking Subteam")
 			.blended_wrapped(Color::RGBA(0, 0, 0, 128), 320) //Black font
 			.map_err(|e| e.to_string())?;
 
@@ -120,7 +127,7 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 		let james_credit = texture_creator.load_texture("images/credits/JamesFCreditImage.png")?;
 		core.wincan.copy(&james_credit, None, centered_rect!(core, _, 200, 256, 256))?;
 
-		let text_surface = regular_font.render("James Fenn")
+		let text_surface = core.regular_font.render("James Fenn")
 			.blended_wrapped(Color::RGBA(128, 128, 128, 128), 320) //Black font
 			.map_err(|e| e.to_string())?;
 
@@ -148,6 +155,7 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 		core.wincan.copy(&shane_credit, None, None)?;
 	});
 
+	sdl2::mixer::Music::fade_out(600);
 	//Credits finished playing, automatically quit game
 	Ok(GameState::MainMenu)
 }
