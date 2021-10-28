@@ -20,6 +20,7 @@ use crate::pixel_coordinates::PixelCoordinates;
 use crate::player_action::PlayerAction;
 use crate::player_state::PlayerState;
 use crate::player_turn;
+use crate::barbarian_turn;
 use crate::SDLCore;
 use crate::tile::Tile;
 use crate::turn_banner::TurnBanner;
@@ -229,17 +230,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				}
 			},
 			Team::Barbarians => {
-				if !turn_banner.banner_visible {
-					//End turn
-					player_state.p1_units = initialize_next_turn(player_state.p1_units);
-					current_player = Team::Player;
-
-					//Start displaying Player 1's banner
-					turn_banner.current_banner_transparency = 250;
-					turn_banner.banner_colors = Color::RGBA(0, 89, 178, turn_banner.current_banner_transparency);
-					turn_banner.banner_key = "p1_banner";
-					turn_banner.banner_visible = true;
-				}
+				barbarian_turn::handle_barbarian_turn(&mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player);
+				player_state.p1_units = initialize_next_turn(player_state.p1_units);
 			},
 		}
 
@@ -359,7 +351,6 @@ fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>
 }
 
 fn draw_possible_moves(core: &mut SDLCore, tiles: &Vec<(u32, u32)>, color:Color) -> Result< (), String> {
-	//Draw tiles & sprites
 	for (x,y) in tiles.into_iter() {
 		let pixel_location = PixelCoordinates::from_matrix_indices(*y, *x);
 		let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
