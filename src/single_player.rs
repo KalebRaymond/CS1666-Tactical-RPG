@@ -20,6 +20,7 @@ use crate::pixel_coordinates::PixelCoordinates;
 use crate::player_action::PlayerAction;
 use crate::player_state::PlayerState;
 use crate::player_turn;
+use crate::barbarian_turn;
 use crate::SDLCore;
 use crate::tile::Tile;
 use crate::turn_banner::TurnBanner;
@@ -229,17 +230,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				}
 			},
 			Team::Barbarians => {
-				if !turn_banner.banner_visible {
-					//End turn
-					player_state.p1_units = initialize_next_turn(player_state.p1_units);
-					current_player = Team::Player;
-
-					//Start displaying Player 1's banner
-					turn_banner.current_banner_transparency = 250;
-					turn_banner.banner_colors = Color::RGBA(0, 89, 178, turn_banner.current_banner_transparency);
-					turn_banner.banner_key = "p1_banner";
-					turn_banner.banner_visible = true;
-				}
+				barbarian_turn::handle_barbarian_turn(&mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player);
+				player_state.p1_units = initialize_next_turn(player_state.p1_units);
 			},
 		}
 
@@ -342,6 +334,7 @@ fn initialize_next_turn(mut team_units: HashMap<(u32, u32), Unit>) -> HashMap<(u
 	team_units
 }
 
+// Draws a banner at the center of the camera to signify whose turn it currently is
 fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_index: &str, rect_color: Color) -> Result< (), String> {
 	let banner_rect = Rect::new(core.cam.x.abs(), core.cam.y.abs() + (360-64), CAM_W, 128);
 	let text_rect = Rect::new(core.cam.x.abs() + (640-107), core.cam.y.abs() + (360-64), CAM_W/6, 128);
@@ -358,8 +351,8 @@ fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>
 	Ok(())
 }
 
+// Draws a rect of a certain color over all tiles contained within the vector 
 fn draw_possible_moves(core: &mut SDLCore, tiles: &Vec<(u32, u32)>, color:Color) -> Result< (), String> {
-	//Draw tiles & sprites
 	for (x,y) in tiles.into_iter() {
 		let pixel_location = PixelCoordinates::from_matrix_indices(*y, *x);
 		let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
@@ -371,8 +364,8 @@ fn draw_possible_moves(core: &mut SDLCore, tiles: &Vec<(u32, u32)>, color:Color)
 	Ok(())
 }
 
-//Method for preparing the HashMap of player units whilst also properly marking them in the map
-//l melee r ranged m mage
+// Method for preparing the HashMap of player units whilst also properly marking them in the map
+// l melee r ranged m mage
 fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>>, player_team: Team, units: Vec<(char, (u32, u32))>, unit_textures: &'a HashMap<&str, Texture<'a>>, map: &'b mut HashMap<(u32, u32), Tile>) {
 	let melee: &str;
 	let range: &str;
@@ -390,9 +383,9 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 			Team::Barbarians => map.get_mut(&(unit.1.1, unit.1.0)).unwrap().update_team(Some(Team::Barbarians)),
 		}
 		match unit.0 {
-			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 4, 1, 90, 5, unit_textures.get(melee).unwrap())),
-			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 2, 4, 70, 7, unit_textures.get(range).unwrap())),
-			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 3, 3, 60, 9, unit_textures.get(mage).unwrap())),
+			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 7, 1, 90, 5, unit_textures.get(melee).unwrap())),
+			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 5, 4, 70, 7, unit_textures.get(range).unwrap())),
+			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 4, 3, 60, 9, unit_textures.get(mage).unwrap())),
 		};
 	}
 }
