@@ -8,8 +8,8 @@ use crate::turn_banner::TurnBanner;
 
 pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap, turn_banner: &mut TurnBanner, current_player: &mut Team) {
     if !turn_banner.banner_visible {
-        //First set of coords is the original position and the second set is the new coordinates
-        let mut moving_barbs: Vec<((u32, u32), (u32, u32))> = Vec::new();
+        //First set of coords is the new coordinates and second set are the old ones
+        let mut moving_barbs: HashMap<(u32, u32), (u32, u32)> = HashMap::new();
         for barbarian in barb_units.values_mut() {
             let (original_x, original_y) = (barbarian.x, barbarian.y);
             let mut barb_moved = false;
@@ -19,14 +19,12 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
                 barbarian.y = possible_move.1;
                 let actual_attacks: Vec<(u32, u32)> = barbarian.get_tiles_can_attack(&mut game_map.map_tiles);
                 if !actual_attacks.is_empty() {
-                    moving_barbs.push(((original_x, original_y), (barbarian.x, barbarian.y)));
-                    //Need to update the map here so two barbs do not try to move to the same tile
-                    if let Some(old_map_tile) = game_map.map_tiles.get_mut(&(original_x, original_y)) {
-                        old_map_tile.update_team(None);
+                    // Need to check and make sure that a barbarian has not already moved to this tile
+                    if let Some(coordinates) = moving_barbs.get(&(barbarian.x, barbarian.y)) {
+                        continue;
                     }
-                    if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(barbarian.x, barbarian.y)) {
-                        new_map_tile.update_team(Some(Team::Barbarians));
-                    }
+                    moving_barbs.insert((barbarian.x, barbarian.y), (original_x, original_y));
+                    // If we want to implement random movement, we can add a boolean here and then do some probability calculations
                     break;
                 }
             }
@@ -35,10 +33,17 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
             barbarian.y = original_y; 
         }
         
-        for moving_barb in moving_barbs {
-            let mut active_unit = barb_units.remove(&(moving_barb.0.0, moving_barb.0.1)).unwrap();
-            active_unit.update_pos(moving_barb.1.0, moving_barb.1.1);
-            barb_units.insert((moving_barb.1.0, moving_barb.1.1), active_unit);
+        for (newcoord, ogcoord) in moving_barbs.into_iter() {
+            let mut active_unit = barb_units.remove(&(ogcoord.0, ogcoord.1)).unwrap();
+            active_unit.update_pos(newcoord.0, newcoord.1);
+            barb_units.insert((newcoord.0, newcoord.1), active_unit);
+            // Update map tiles
+            if let Some(old_map_tile) = game_map.map_tiles.get_mut(&(ogcoord.0, ogcoord.1)) {
+                old_map_tile.update_team(None);
+            }
+            if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(newcoord.0, newcoord.1)) {
+                new_map_tile.update_team(Some(Team::Barbarians));
+            }
         }
 
         //End turn
