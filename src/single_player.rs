@@ -334,6 +334,7 @@ fn initialize_next_turn(mut team_units: HashMap<(u32, u32), Unit>) -> HashMap<(u
 	team_units
 }
 
+// Draws a banner at the center of the camera to signify whose turn it currently is
 fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_index: &str, rect_color: Color) -> Result< (), String> {
 	let banner_rect = Rect::new(core.cam.x.abs(), core.cam.y.abs() + (360-64), CAM_W, 128);
 	let text_rect = Rect::new(core.cam.x.abs() + (640-107), core.cam.y.abs() + (360-64), CAM_W/6, 128);
@@ -350,6 +351,7 @@ fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>
 	Ok(())
 }
 
+// Draws a rect of a certain color over all tiles contained within the vector 
 fn draw_possible_moves(core: &mut SDLCore, tiles: &Vec<(u32, u32)>, color:Color) -> Result< (), String> {
 	for (x,y) in tiles.into_iter() {
 		let pixel_location = PixelCoordinates::from_matrix_indices(*y, *x);
@@ -362,8 +364,8 @@ fn draw_possible_moves(core: &mut SDLCore, tiles: &Vec<(u32, u32)>, color:Color)
 	Ok(())
 }
 
-//Method for preparing the HashMap of player units whilst also properly marking them in the map
-//l melee r ranged m mage
+// Method for preparing the HashMap of player units whilst also properly marking them in the map
+// l melee r ranged m mage
 fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>>, player_team: Team, units: Vec<(char, (u32, u32))>, unit_textures: &'a HashMap<&str, Texture<'a>>, map: &'b mut HashMap<(u32, u32), Tile>) {
 	let melee: &str;
 	let range: &str;
