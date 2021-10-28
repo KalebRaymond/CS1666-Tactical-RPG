@@ -1,7 +1,7 @@
+use sdl2::mouse::MouseState;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
-use sdl2::mouse::MouseState;
-use sdl2::render::{BlendMode, Texture, TextureCreator};
+use sdl2::render::BlendMode;
 
 use crate::SDLCore;
 
