@@ -38,10 +38,11 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
             active_unit.update_pos(newcoord.0, newcoord.1);
             barb_units.insert((newcoord.0, newcoord.1), active_unit);
             // Update map tiles
-            if let Some(old_map_tile) = game_map.map_tiles.get_mut(&(ogcoord.0, ogcoord.1)) {
+            // Have to remember that map indexing is swapped
+            if let Some(old_map_tile) = game_map.map_tiles.get_mut(&(ogcoord.1, ogcoord.0)) {
                 old_map_tile.update_team(None);
             }
-            if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(newcoord.0, newcoord.1)) {
+            if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(newcoord.1, newcoord.0)) {
                 new_map_tile.update_team(Some(Team::Barbarians));
             }
         }
