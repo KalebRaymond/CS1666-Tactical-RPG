@@ -14,6 +14,7 @@ use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
 #[macro_use] mod sdl_macros;
 
 mod credits;
+mod cursor;
 mod game_map;
 mod input;
 mod main_menu;

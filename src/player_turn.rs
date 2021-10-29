@@ -4,6 +4,7 @@ use sdl2::render::Texture;
 
 use std::convert::TryInto;
 
+use crate::cursor::Cursor;
 use crate::game_map::GameMap;
 use crate::input::Input;
 use crate::pixel_coordinates::PixelCoordinates;
@@ -14,7 +15,7 @@ use crate::unit_interface::UnitInterface;
 use crate::unit::Team;
 use crate::turn_banner::TurnBanner;
 
-pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, game_map: &mut GameMap, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team) {
+pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, game_map: &mut GameMap, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor) {
     if !turn_banner.banner_visible {
         if input.keystate.contains(&Keycode::Backspace) {
             //End turn
@@ -43,6 +44,17 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, ga
 
         match player_state.current_player_action {
             PlayerAction::Default => {
+                //If player hovers over a unit, display cursor above that unit
+                match player_state.p1_units.get_mut(&(j,i)) {
+                    Some(active_unit) => {
+                        cursor.set_cursor(i.try_into().unwrap(), j.try_into().unwrap());
+                    },
+                    _ => {
+                        cursor.hide_cursor();
+                    },
+                }
+
+                //Now check if the player actually clicked on the unit they hovered over
                 if input.left_clicked {
                     //Get the unit that is located at the mouse position, if there is one
                     match player_state.p1_units.get_mut(&(j,i)) {
