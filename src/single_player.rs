@@ -12,6 +12,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::{Instant, Duration};
 
+use crate::cursor::Cursor;
 use crate::game_map::GameMap;
 use crate::GameState;
 use crate::{TILE_SIZE, CAM_W, CAM_H};
@@ -48,6 +49,10 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	//Set camera size based on map size
 	core.cam.w = (map_width as u32 * TILE_SIZE) as i32;
 	core.cam.h = (map_height as u32 * TILE_SIZE) as i32;
+
+	//Start camera in lower left corner, to start with the player castle in view
+	core.cam.x = 0;
+	core.cam.y = -core.cam.h + core.wincan.window().size().1 as i32;
 
 	//Initial mouse positions
 	let mut old_mouse_x = -1;
@@ -160,6 +165,10 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	//Collection of variables useful for determining player's current state
 	let mut player_state = PlayerState::new();
 
+	//Cursor that appears when you hover over one of your units
+	let cursor_texture = texture_creator.load_texture("images/interface/cursor.png")?;
+	let mut cursor = Cursor::new(&cursor_texture);
+
 	player_state.p1_units = HashMap::new();
 	let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (8,46)), ('l', (10,45)), ('l', (10,53)), ('l', (12,46)), ('l', (17,51)), ('l', (17,55)), ('l', (18,53)), ('r', (9,49)), ('r', (10,46)), ('r', (13,50)), ('r', (14,54)), ('r', (16,53)), ('m', (10,50)), ('m', (10,52)), ('m', (11,53)), ('m', (13,53)));
 	prepare_player_units(&mut player_state.p1_units, Team::Player, p1_units_abrev, &unit_textures, &mut game_map.map_tiles);
@@ -215,7 +224,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		//Handle the current team's move
 		match current_player {
 			Team::Player => {
-				player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player);
+				player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor);
 			},
 			Team::Enemy => {
 				if !turn_banner.banner_visible {
@@ -251,7 +260,10 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				if let Some(map_tile) = game_map.map_tiles.get(&(i as u32, j as u32)) {
 					core.wincan.copy(map_tile.texture, None, dest)?
 				}
+
+				//Use default sprite size for all non-map sprites
 				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
+				
 				//Draw player unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
 				if let Some(unit) = player_state.p1_units.get(&(j as u32, i as u32)) {
 					core.wincan.copy(unit.texture, None, dest)?
@@ -306,6 +318,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 			_ => ()
 		};
+
+		//Draw the cursor
+		cursor.draw(core);
 
 		//Draw the scroll sprite UI
 		unit_interface = match unit_interface {
