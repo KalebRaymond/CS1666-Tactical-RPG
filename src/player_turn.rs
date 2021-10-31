@@ -17,15 +17,10 @@ use crate::turn_banner::TurnBanner;
 
 pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, game_map: &mut GameMap, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor) {
     if !turn_banner.banner_visible {
+        //Check if player ended turn by pressing backspace
         if input.keystate.contains(&Keycode::Backspace) {
-            //End turn
-            *current_player = Team::Enemy;
-
-            //Start displaying the enemy's banner
-            turn_banner.current_banner_transparency = 250;
-            turn_banner.banner_colors = Color::RGBA(207, 21, 24, turn_banner.current_banner_transparency);
-            turn_banner.banner_key = "p2_banner";
-            turn_banner.banner_visible = true;
+            end_player_turn(player_state, turn_banner, unit_interface, current_player, cursor);
+            return;
         }
 
         //Get map matrix indices from mouse position
@@ -138,4 +133,24 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, ga
             },				
         }
     }
+}
+
+pub fn end_player_turn<'a>(player_state: &mut PlayerState, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, current_player: &mut Team, cursor: &mut Cursor) {
+    //End player's turn
+    *current_player = Team::Enemy;
+
+    //Clear the player UI if it is still visible
+    *unit_interface = None;
+    cursor.hide_cursor();
+
+    // Deselect the active unit
+    player_state.active_unit_i = -1;
+    player_state.active_unit_j = -1;
+    player_state.current_player_action = PlayerAction::Default;
+
+    //Start displaying the enemy's banner
+    turn_banner.current_banner_transparency = 250;
+    turn_banner.banner_colors = Color::RGBA(207, 21, 24, turn_banner.current_banner_transparency);
+    turn_banner.banner_key = "p2_banner";
+    turn_banner.banner_visible = true;
 }
