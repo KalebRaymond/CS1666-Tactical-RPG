@@ -24,6 +24,7 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
                         continue;
                     }
                     moving_barbs.insert((barbarian.x, barbarian.y), (original_x, original_y));
+                    println!("Barbarian at {}, {} attacking unit at {}, {} for {} damage", barbarian.x, barbarian.y, actual_attacks[0].0, actual_attacks[0].1, barbarian.get_attack_damage());
                     // If we want to implement random movement, we can add a boolean here and then do some probability calculations
                     break;
                 }
