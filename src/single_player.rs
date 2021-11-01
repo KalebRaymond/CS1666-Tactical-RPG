@@ -6,16 +6,17 @@ use sdl2::keyboard::Keycode;
 use sdl2::rect::Rect;
 use sdl2::render::Texture;
 
-//For accessing map file and reading lines
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::{Instant, Duration};
 
+use crate::button::Button;
 use crate::cursor::Cursor;
 use crate::game_map::GameMap;
 use crate::GameState;
-use crate::{TILE_SIZE, CAM_W, CAM_H};
+use crate::{CAM_H, CAM_W, TILE_SIZE};
 use crate::input::Input;
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::player_action::PlayerAction;
@@ -188,6 +189,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	player_state.p1_units = initialize_next_turn(player_state.p1_units);
 	
 	let mut current_player = Team::Player;
+
+	//Button for player to end their turn
+    let mut end_turn_button = Button::new(core, Rect::new((CAM_W - 240).try_into().unwrap(), (CAM_H - 90).try_into().unwrap(), 200, 50), "End Turn")?;
 	
 	'gameloop: loop {
 		core.wincan.clear();
@@ -204,7 +208,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		input.update(&core.event_pump);
 
 		//Camera controls should stay enabled even when it is not the player's turn,
-		//which is why this code block is not in the player's match statement below
+		//which is why this code block is not in player_turn.rs
 		if input.mouse_state.right() && !turn_banner.banner_visible{
 			if old_mouse_x < 0 || old_mouse_y < 0 {
 				old_mouse_x = input.mouse_state.x();
@@ -224,7 +228,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		//Handle the current team's move
 		match current_player {
 			Team::Player => {
-				player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor);
+				player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button);
 			},
 			Team::Enemy => {
 				if !turn_banner.banner_visible {
@@ -319,19 +323,25 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			_ => ()
 		};
 
-		//Draw the cursor
-		cursor.draw(core);
+		if(current_player == Team::Player)
+		{
+			//Draw the cursor
+			cursor.draw(core);
 
-		//Draw the scroll sprite UI
-		unit_interface = match unit_interface {
-			Some(mut ui) => {
-				match ui.draw(core, &texture_creator) {
-					Ok(_) => { Some(ui) },
-					_ => { None },
-				}
-			},
-			_ => { None },
-		};
+			//Draw the scroll sprite UI
+			unit_interface = match unit_interface {
+				Some(mut ui) => {
+					match ui.draw(core, &texture_creator) {
+						Ok(_) => { Some(ui) },
+						_ => { None },
+					}
+				},
+				_ => { None },
+			};
+
+			//Draw the button for the player to end their turn, relative to the camera
+			end_turn_button.draw_relative(core)?;
+		}
 		
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();

@@ -4,6 +4,7 @@ use sdl2::render::Texture;
 
 use std::convert::TryInto;
 
+use crate::button::Button;
 use crate::cursor::Cursor;
 use crate::game_map::GameMap;
 use crate::input::Input;
@@ -15,13 +16,19 @@ use crate::unit_interface::UnitInterface;
 use crate::unit::Team;
 use crate::turn_banner::TurnBanner;
 
-pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, game_map: &mut GameMap, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor) {
+pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, game_map: &mut GameMap, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) {
     if !turn_banner.banner_visible {
         //Check if player ended turn by pressing backspace
         if input.keystate.contains(&Keycode::Backspace) {
             end_player_turn(player_state, turn_banner, unit_interface, current_player, cursor);
             return;
         }
+
+        //Check if user clicked the end turn button
+		if input.left_clicked && end_turn_button.is_mouse(core) {
+			end_player_turn(player_state, turn_banner, unit_interface, current_player, cursor);
+            return;
+		}
 
         //Get map matrix indices from mouse position
         let (i, j) = PixelCoordinates::matrix_indices_from_pixel(
