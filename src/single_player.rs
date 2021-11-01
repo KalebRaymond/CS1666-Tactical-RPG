@@ -215,7 +215,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				old_mouse_y = input.mouse_state.y();
 			}
 			core.cam.x = (core.cam.x - (old_mouse_x - input.mouse_state.x())).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
-			core.cam.y = (core.cam.y - (old_mouse_y - input.mouse_state.y())).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0,);
+			core.cam.y = (core.cam.y - (old_mouse_y - input.mouse_state.y())).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0);
 			
 			old_mouse_x = input.mouse_state.x();
 			old_mouse_y = input.mouse_state.y();
@@ -323,10 +323,10 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			_ => ()
 		};
 
-		if(current_player == Team::Player)
+		if current_player == Team::Player
 		{
 			//Draw the cursor
-			cursor.draw(core);
+			cursor.draw(core)?;
 
 			//Draw the scroll sprite UI
 			unit_interface = match unit_interface {
