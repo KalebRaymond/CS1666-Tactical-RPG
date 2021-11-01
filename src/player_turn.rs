@@ -125,6 +125,9 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, ga
                     player_state.current_player_action = PlayerAction::Default;
                 } else if input.left_clicked {
                     // Attack unit clicked on
+                    let mut active_unit = player_state.p1_units.get_mut(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)).unwrap();
+                    println!("Player unit at {}, {} attacking unit at {}, {} for {} damage", active_unit.x, active_unit.y, j, i, active_unit.get_attack_damage());
+                    active_unit.has_attacked = true;
                     // After attack, deselect
                     player_state.active_unit_i = -1;
                     player_state.active_unit_j = -1;
