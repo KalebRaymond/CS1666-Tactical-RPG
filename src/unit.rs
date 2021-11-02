@@ -1,6 +1,4 @@
-//Rust complains that it can't find rand crate
-//extern crate rand;
-//use rand::Rng;
+use rand::Rng;
 use std::collections::HashMap;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
@@ -98,13 +96,12 @@ impl Unit <'_>{
     }
 
     pub fn get_attack_damage(&self) -> u32 {
-        // let chance = rand::thread_rng().gen_range(0..100);
-        // if chance < self.accuracy {
-        //     rand::thread_rng().gen_range(1..=self.max_damage);
-        // } else {
-        //     0
-        // }
-        0
+        let chance = rand::thread_rng().gen_range(0..100);
+        if chance < self.accuracy {
+            rand::thread_rng().gen_range(1..=self.max_damage)
+        } else {
+            0
+        }
     }
 
     pub fn update_pos(&mut self, x: u32, y: u32) {

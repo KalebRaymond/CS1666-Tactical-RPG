@@ -54,7 +54,7 @@ pub struct SDLCore<'t> {
 }
 
 fn runner(vsync:bool) -> Result<(), String> {
-	print!("\tRunning...");
+	println!("\tRunning...");
 
 	// ----- Initialize SDLCore -----
 	let sdl_ctx = sdl2::init()?;
