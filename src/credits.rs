@@ -30,7 +30,7 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 	let _mixer_filetypes = sdl2::mixer::init(InitFlag::MP3)?;
 	let music = sdl2::mixer::Music::from_file(Path::new("./music/end_credits.mp3"))?;
 
-	music.play(-1);
+	music.play(-1)?;
 
 	// Game title
 	credits_page!(core, {
@@ -155,7 +155,7 @@ pub fn credits(core: &mut SDLCore) -> Result<GameState, String> {
 		core.wincan.copy(&shane_credit, None, None)?;
 	});
 
-	sdl2::mixer::Music::fade_out(600);
+	sdl2::mixer::Music::fade_out(600)?;
 	//Credits finished playing, automatically quit game
 	Ok(GameState::MainMenu)
 }
