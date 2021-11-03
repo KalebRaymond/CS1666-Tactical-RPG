@@ -1,29 +1,33 @@
-use std::collections::HashSet;
-use std::convert::TryInto;
-use std::time::{Instant, Duration};
-
 use sdl2::event::Event;
 use sdl2::image::LoadTexture;
 use sdl2::pixels::Color;
 use sdl2::render::BlendMode;
 use sdl2::keyboard::Keycode;
-use sdl2::mouse::MouseState;
 use sdl2::rect::Rect;
 use sdl2::render::Texture;
 
-//For accessing map file and reading lines
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::time::{Instant, Duration};
 
-use crate::{GameState, PlayerAction};
+use crate::button::Button;
+use crate::cursor::Cursor;
+use crate::game_map::GameMap;
+use crate::GameState;
+use crate::{CAM_H, CAM_W, TILE_SIZE};
+use crate::input::Input;
 use crate::pixel_coordinates::PixelCoordinates;
+use crate::player_action::PlayerAction;
+use crate::player_state::PlayerState;
+use crate::player_turn;
+use crate::barbarian_turn;
 use crate::SDLCore;
-use crate::{TILE_SIZE, CAM_W, CAM_H};
+use crate::tile::Tile;
+use crate::turn_banner::TurnBanner;
 use crate::unit_interface::UnitInterface;
-
 use crate::unit::{Team, Unit};
-use crate::tile::{Tile};
 
 const BANNER_TIMEOUT: u64 = 1500;
 
@@ -31,15 +35,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let texture_creator = core.wincan.texture_creator();
 	
 	//Stuff for banner that appears at beginning of each turn
-	let mut current_player = Team::Player;
-	let mut banner_key = "p1_banner";
-	let mut current_banner_transparency = 250;
-	let mut banner_colors = Color::RGBA(0, 89, 178, current_banner_transparency);
-	let mut initial_banner_output = Instant::now();
-	let mut banner_visible = true;
-	let mut possible_moves: Vec<(u32, u32)> = Vec::new();
-	let mut possible_attacks: Vec<(u32, u32)> = Vec::new();
-	let mut actual_attacks: Vec<(u32, u32)> = Vec::new();
+	let mut turn_banner = TurnBanner::new();
 
 	//Load map from file
 	let map_data = File::open("maps/map.txt").expect("Unable to open map file");
@@ -55,16 +51,16 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	core.cam.w = (map_width as u32 * TILE_SIZE) as i32;
 	core.cam.h = (map_height as u32 * TILE_SIZE) as i32;
 
+	//Start camera in lower left corner, to start with the player castle in view
+	core.cam.x = 0;
+	core.cam.y = -core.cam.h + core.wincan.window().size().1 as i32;
+
 	//Initial mouse positions
 	let mut old_mouse_x = -1;
 	let mut old_mouse_y = -1;
-	
-	//Left mouse button state
-	let mut left_clicked = false;
-	let mut left_held = false;
-	//Right mouse button state
-	let mut right_clicked = false;
-	let mut right_held = false;
+
+	//User input
+	let mut input = Input::new(&core.event_pump);
 
 	//Creates map from file
 	let map_string: Vec<Vec<String>> = map_data.lines()
@@ -118,7 +114,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	{
 		text_textures.insert("p1_banner", {
 			let text_surface = core.bold_font.render("Player 1's Turn")
-					.blended_wrapped(Color::RGBA(0,0,0, current_banner_transparency), 320) //Black font
+					.blended_wrapped(Color::RGBA(0,0,0, turn_banner.current_banner_transparency), 320) //Black font
 					.map_err(|e| e.to_string())?;
 
 			texture_creator.create_texture_from_surface(&text_surface)
@@ -127,7 +123,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 		text_textures.insert("p2_banner", {
 			let text_surface = core.bold_font.render("Player 2's Turn")
-					.blended_wrapped(Color::RGBA(0,0,0, current_banner_transparency), 320) //Black font
+					.blended_wrapped(Color::RGBA(0,0,0, turn_banner.current_banner_transparency), 320) //Black font
 					.map_err(|e| e.to_string())?;
 
 			texture_creator.create_texture_from_surface(&text_surface)
@@ -136,7 +132,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 		text_textures.insert("b_banner", {
 			let text_surface = core.bold_font.render("Barbarians' Turn")
-					.blended_wrapped(Color::RGBA(0,0,0, current_banner_transparency), 320) //Black font
+					.blended_wrapped(Color::RGBA(0,0,0, turn_banner.current_banner_transparency), 320) //Black font
 					.map_err(|e| e.to_string())?;
 
 			texture_creator.create_texture_from_surface(&text_surface)
@@ -144,8 +140,10 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		});
 	}
 
-	//Sets up the HashMap of Tiles that can be interacted with
-	let mut map_tiles: HashMap<(u32, u32), Tile> = HashMap::new();
+	//Collection of variables useful for handling map interaction & tile overlays
+	let mut game_map = GameMap::new();
+	//Set up the HashMap of Tiles that can be interacted with
+	//Ideally this would be handled by the GameMap struct
 	{
 		let mut x = 0;
 		let mut y = 0;
@@ -154,9 +152,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				let letter = &col[..];
 				match letter {
 					//I wanted to do something that wasn't just hardcoding all the textures, but it seems that tile_textures.get() refuses anything that isn't a hard-coded string
-					"║" | "^" | "v" | "<" | "=" | ">" | "t" => map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get(&letter).unwrap())),
-					"b" | "1" | "2" | " " | "_" => map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get(&letter).unwrap())),
-					_ => map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get(&letter).unwrap())),
+					"║" | "^" | "v" | "<" | "=" | ">" | "t" => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get(&letter).unwrap())),
+					"b" | "1" | "2" | " " | "_" => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get(&letter).unwrap())),
+					_ => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get(&letter).unwrap())),
 				};
 				y += 1;
 			}
@@ -165,30 +163,35 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		}
 	}
 
-	let mut p1_units: HashMap<(u32, u32), Unit> = HashMap::new();
+	//Collection of variables useful for determining player's current state
+	let mut player_state = PlayerState::new();
+
+	//Cursor that appears when you hover over one of your units
+	let cursor_texture = texture_creator.load_texture("images/interface/cursor.png")?;
+	let mut cursor = Cursor::new(&cursor_texture);
+
+	player_state.p1_units = HashMap::new();
 	let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (8,46)), ('l', (10,45)), ('l', (10,53)), ('l', (12,46)), ('l', (17,51)), ('l', (17,55)), ('l', (18,53)), ('r', (9,49)), ('r', (10,46)), ('r', (13,50)), ('r', (14,54)), ('r', (16,53)), ('m', (10,50)), ('m', (10,52)), ('m', (11,53)), ('m', (13,53)));
-	prepare_player_units(&mut p1_units, Team::Player, p1_units_abrev, &unit_textures, &mut map_tiles);
+	prepare_player_units(&mut player_state.p1_units, Team::Player, p1_units_abrev, &unit_textures, &mut game_map.map_tiles);
 
 	let mut p2_units: HashMap<(u32, u32), Unit> = HashMap::new();
 	let p2_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (46,8)), ('l', (45,10)), ('l', (53,10)), ('l', (46,12)), ('l', (51,17)), ('l', (55,17)), ('l', (53,18)), ('r', (49,9)), ('r', (47,10)), ('r', (50,13)), ('r', (54,14)), ('r', (53,16)), ('m', (50,10)), ('m', (52,10)), ('m', (53,11)), ('m', (53,13)));
-	prepare_player_units(&mut p2_units, Team::Enemy, p2_units_abrev, &unit_textures, &mut map_tiles);
+	prepare_player_units(&mut p2_units, Team::Enemy, p2_units_abrev, &unit_textures, &mut game_map.map_tiles);
 
 	let mut barbarian_units: HashMap<(u32, u32), Unit> = HashMap::new();
-	let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (4,6)), ('l', (6,8)), ('l', (7,7)), ('l', (9,7)), ('r', (6,6)), ('r', (8,5)), ('l', (55,55)), ('l', (59,56)), ('l', (56,56)), ('l', (54,57)), ('r', (56,59)), ('r', (57,57)), ('l', (28,15)), ('l', (29,10)), ('l', (31,12)), ('l', (31,17)), ('l', (32,11)), ('l', (35,15)), ('l', (34,11)), ('r', (31,10)), ('r', (33,9)), ('r', (30,8)), ('r', (36,10)), ('l', (28,52)), ('l', (28,48)), ('l', (33,51)), ('l', (31,46)), ('l', (31,52)), ('l', (35,52)), ('l', (35,48)), ('r', (32,53)), ('r', (33,56)), ('r', (30,54)), ('r', (34,54)),);
-	prepare_player_units(&mut barbarian_units, Team::Barbarians, barb_units_abrev, &unit_textures, &mut map_tiles);
+	let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (4,6)), ('l', (6,8)), ('l', (7,7)), ('l', (9,7)), ('r', (6,6)), ('r', (8,5)), ('l', (55,55)), ('l', (59,56)), ('l', (56,56)), ('l', (54,57)), ('r', (56,59)), ('r', (57,57)), ('l', (28,15)), ('l', (29,10)), ('l', (31,12)), ('l', (31,17)), ('l', (32,11)), ('l', (35,15)), ('l', (34,11)), ('r', (31,10)), ('r', (33,9)), ('r', (30,8)), ('r', (36,10)), ('l', (28,52)), ('l', (28,48)), ('l', (33,51)), ('l', (31,46)), ('l', (31,52)), ('l', (35,52)), ('l', (35,48)), ('r', (32,53)), ('r', (33,56)), ('r', (30,54)), ('r', (34,54)), ('l', (17,38)), ('l', (16,37)), ('r', (23,36)), ('r', (18,30)), ('l', (46,25)), ('l', (47,26)), ('r', (40,27)), ('r', (45,33)),);
+	prepare_player_units(&mut barbarian_units, Team::Barbarians, barb_units_abrev, &unit_textures, &mut game_map.map_tiles);
 	
 	let unit_interface_texture = texture_creator.load_texture("images/interface/unit_interface.png")?;
 	let mut unit_interface: Option<UnitInterface> = None;
 
-	//Player action to handle inputs differently based on context
-	let mut current_player_action = PlayerAction::Default;
-	
-	//Matrix coordinates of the currently selected unit. When these are both equal to -1, no unit is selected
-	let mut active_unit_i: i32 = -1;
-	let mut active_unit_j: i32 = -1;
-
 	// Do this right before the game starts so that player 1 starts
-	p1_units = initialize_next_turn(p1_units);
+	player_state.p1_units = initialize_next_turn(player_state.p1_units);
+	
+	let mut current_player = Team::Player;
+
+	//Button for player to end their turn
+    let mut end_turn_button = Button::new(core, Rect::new((CAM_W - 240).try_into().unwrap(), (CAM_H - 90).try_into().unwrap(), 200, 50), "End Turn")?;
 	
 	'gameloop: loop {
 		core.wincan.clear();
@@ -201,209 +204,47 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 		}
 
-		//Record mouse inputs
-		let mouse_state: MouseState = core.event_pump.mouse_state();
-		
-		//Check if left mouse button was pressed this frame
-		if mouse_state.left() {
-			if  !left_held {
-				left_clicked = true;
-				left_held = true;
-			}
-			else {
-				left_clicked = false;
-			}
-		}
-		else {
-			left_clicked = false;
-			left_held = false;
-		}
-
-		//Check if right mouse button was pressed this frame
-		if mouse_state.right() {
-			if !right_held {
-				right_clicked = true;
-				right_held = true;
-			}
-			else {
-				right_clicked = false;
-			}
-		}
-		else {
-			right_clicked = false;
-			right_held = false;
-		}
+		//Record user inputs
+		input.update(&core.event_pump);
 
 		//Camera controls should stay enabled even when it is not the player's turn,
-		//which is why this code block is not in the player's match statement below
-		if mouse_state.right() && !banner_visible{
+		//which is why this code block is not in player_turn.rs
+		if input.mouse_state.right() && !turn_banner.banner_visible{
 			if old_mouse_x < 0 || old_mouse_y < 0 {
-				old_mouse_x = mouse_state.x();
-				old_mouse_y = mouse_state.y();
+				old_mouse_x = input.mouse_state.x();
+				old_mouse_y = input.mouse_state.y();
 			}
-			core.cam.x = (core.cam.x - (old_mouse_x - mouse_state.x())).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
-			core.cam.y = (core.cam.y - (old_mouse_y - mouse_state.y())).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0,);
+			core.cam.x = (core.cam.x - (old_mouse_x - input.mouse_state.x())).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
+			core.cam.y = (core.cam.y - (old_mouse_y - input.mouse_state.y())).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0);
 			
-			old_mouse_x = mouse_state.x();
-			old_mouse_y = mouse_state.y();
+			old_mouse_x = input.mouse_state.x();
+			old_mouse_y = input.mouse_state.y();
 		}
 		else {
 			old_mouse_y = -1;
 			old_mouse_x = -1;
 		}
 
-		//Record key inputs
-		let keystate: HashSet<Keycode> = core.event_pump
-		.keyboard_state()
-		.pressed_scancodes()
-		.filter_map(Keycode::from_scancode)
-		.collect();
-
 		//Handle the current team's move
 		match current_player {
 			Team::Player => {
-				if !banner_visible {
-					if keystate.contains(&Keycode::Backspace) {
-						//End turn
-						current_player = Team::Enemy;
-
-						//Start displaying the enemy's banner
-						current_banner_transparency = 250;
-						banner_colors = Color::RGBA(207, 21, 24, current_banner_transparency);
-						banner_key = "p2_banner";
-						banner_visible = true;
-					}
-
-					//Get map matrix indices from mouse position
-					let (i, j) = PixelCoordinates::matrix_indices_from_pixel(
-						mouse_state.x().try_into().unwrap(), 
-						mouse_state.y().try_into().unwrap(), 
-						(-1 * core.cam.x).try_into().unwrap(), 
-						(-1 * core.cam.y).try_into().unwrap()
-					);
-					let (glob_x, glob_y) = PixelCoordinates::global_coordinates(
-						mouse_state.x().try_into().unwrap(), 
-						mouse_state.y().try_into().unwrap(), 
-						(-1 * core.cam.x).try_into().unwrap(), 
-						(-1 * core.cam.y).try_into().unwrap()
-					);
-
-					match current_player_action {
-						PlayerAction::Default => {
-							if left_clicked {
-								//Get the unit that is located at the mouse position, if there is one
-								match p1_units.get_mut(&(j,i)) {
-									Some(active_unit) => {
-										active_unit_i = i as i32;
-										active_unit_j = j as i32;
-		
-										//If the user did click on a unit, allow the player to move the unit
-										unit_interface = Some(UnitInterface::from_unit(active_unit, &unit_interface_texture));
-										current_player_action = PlayerAction::ChoosingUnitAction;
-									},
-									_ => {},
-								}
-							}	
-						},
-						PlayerAction::ChoosingUnitAction => {
-							if left_clicked {
-								// Handle clicking based on unit interface
-								let active_unit = p1_units.get(&(active_unit_j as u32, active_unit_i as u32)).unwrap();
-								current_player_action = unit_interface.as_ref().unwrap().get_click_selection(glob_x, glob_y);
-								match current_player_action {
-									PlayerAction::Default => {
-										// Deselect the active unit
-										active_unit_i = -1;
-										active_unit_j = -1;
-										// Close interface
-										unit_interface.as_mut().unwrap().animate_close();
-									},
-									PlayerAction::ChoosingUnitAction => {},
-									PlayerAction::MovingUnit => {
-										possible_moves = active_unit.get_tiles_in_movement_range(&mut map_tiles);
-										// Close interface
-										unit_interface.as_mut().unwrap().animate_close();
-									},
-									PlayerAction::AttackingUnit => {
-										possible_attacks = active_unit.get_tiles_in_attack_range(&mut map_tiles);
-										actual_attacks = active_unit.get_tiles_can_attack(&mut map_tiles);
-										// Close interface
-										unit_interface.as_mut().unwrap().animate_close();
-									},
-								}
-							}
-						},		
-						PlayerAction::MovingUnit => {
-							if right_clicked {
-								// Deselect the active unit
-								active_unit_i = -1;
-								active_unit_j = -1;
-								current_player_action = PlayerAction::Default;
-							}
-							else if left_clicked {
-								// Ensure valid tile to move to
-								if possible_moves.contains(&(j,i)) {
-									// Move unit
-									let mut active_unit = p1_units.remove(&(active_unit_j as u32, active_unit_i as u32)).unwrap();
-									active_unit.update_pos(j, i);
-									active_unit.has_moved = true;
-									p1_units.insert((j, i), active_unit);
-									// Update map tiles
-									if let Some(old_map_tile) = map_tiles.get_mut(&(active_unit_i as u32, active_unit_j as u32)) {
-										old_map_tile.update_team(None);
-									}
-									if let Some(new_map_tile) = map_tiles.get_mut(&(i, j)) {
-										new_map_tile.update_team(Some(Team::Player));
-									}
-								}
-								
-								//Now that the unit has moved, deselect
-								active_unit_i = -1;
-								active_unit_j = -1;
-								current_player_action = PlayerAction::Default;
-							}
-						},
-						PlayerAction::AttackingUnit => {
-							if right_clicked {
-								// Deselect the active unit
-								active_unit_i = -1;
-								active_unit_j = -1;
-								current_player_action = PlayerAction::Default;
-							} else if left_clicked {
-								// Attack unit clicked on
-								// After attack, deselect
-								active_unit_i = -1;
-								active_unit_j = -1;
-								current_player_action = PlayerAction::Default;
-							}
-						},				
-					}
-				}
+				player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button);
 			},
 			Team::Enemy => {
-				if !banner_visible {
+				if !turn_banner.banner_visible {
 					//End turn
 					current_player = Team::Barbarians;
 
 					//Start displaying the barbarians' banner
-					current_banner_transparency = 250;
-					banner_colors = Color::RGBA(163,96,30, current_banner_transparency);
-					banner_key = "b_banner";
-					banner_visible = true;
+					turn_banner.current_banner_transparency = 250;
+					turn_banner.banner_colors = Color::RGBA(163,96,30, turn_banner.current_banner_transparency);
+					turn_banner.banner_key = "b_banner";
+					turn_banner.banner_visible = true;
 				}
 			},
 			Team::Barbarians => {
-				if !banner_visible {
-					//End turn
-					p1_units = initialize_next_turn(p1_units);
-					current_player = Team::Player;
-
-					//Start displaying Player 1's banner
-					current_banner_transparency = 250;
-					banner_colors = Color::RGBA(0, 89, 178, current_banner_transparency);
-					banner_key = "p1_banner";
-					banner_visible = true;
-				}
+				barbarian_turn::handle_barbarian_turn(&mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player);
+				player_state.p1_units = initialize_next_turn(player_state.p1_units);
 			},
 		}
 
@@ -420,12 +261,15 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, map_tile_size, map_tile_size);
 
 				//Draw map tile at this coordinate
-				if let Some(map_tile) = map_tiles.get(&(i as u32, j as u32)) {
+				if let Some(map_tile) = game_map.map_tiles.get(&(i as u32, j as u32)) {
 					core.wincan.copy(map_tile.texture, None, dest)?
 				}
+
+				//Use default sprite size for all non-map sprites
 				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
+				
 				//Draw player unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let Some(unit) = p1_units.get(&(j as u32, i as u32)) {
+				if let Some(unit) = player_state.p1_units.get(&(j as u32, i as u32)) {
 					core.wincan.copy(unit.texture, None, dest)?
 				}
 
@@ -444,34 +288,34 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		//Draw banner that appears at beginning of turn
 		{
 			//As long as the banner isn't completely transparent, draw it
-			if current_banner_transparency != 0 {
-				banner_colors.a = current_banner_transparency;
-				draw_player_banner(core, &text_textures, banner_key, banner_colors)?;
-			} else if banner_visible {
-				banner_visible = false;
+			if turn_banner.current_banner_transparency != 0 {
+				turn_banner.banner_colors.a = turn_banner.current_banner_transparency;
+				draw_player_banner(core, &text_textures, turn_banner.banner_key, turn_banner.banner_colors)?;
+			} else if turn_banner.banner_visible {
+				turn_banner.banner_visible = false;
 			}
 
 			//The first time we draw the banner we need to keep track of when it first appears
-			if current_banner_transparency == 250 {
-				initial_banner_output = Instant::now();
-				current_banner_transparency -= 25;
+			if turn_banner.current_banner_transparency == 250 {
+				turn_banner.initial_banner_output = Instant::now();
+				turn_banner.current_banner_transparency -= 25;
 			}
 
 			//After a set amount of seconds pass and if the banner is still visible, start to make the banner disappear
-			if initial_banner_output.elapsed() >= Duration::from_millis(BANNER_TIMEOUT) && current_banner_transparency != 0 {
-				current_banner_transparency -= 25;
+			if turn_banner.initial_banner_output.elapsed() >= Duration::from_millis(BANNER_TIMEOUT) && turn_banner.current_banner_transparency != 0 {
+				turn_banner.current_banner_transparency -= 25;
 			}
 		}	
 		
-		match p1_units.get(&(active_unit_j as u32,active_unit_i as u32)) {
+		match player_state.p1_units.get(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)) {
 			Some(_) => {
-				match current_player_action {
+				match player_state.current_player_action {
 					PlayerAction::MovingUnit => {
-						draw_possible_moves(core, &possible_moves, Color::RGBA(0, 89, 178, 50))?;
+						draw_possible_moves(core, &game_map.possible_moves, Color::RGBA(0, 89, 178, 50))?;
 					},
 					PlayerAction::AttackingUnit => {
-						draw_possible_moves(core, &possible_attacks, Color::RGBA(178, 89, 0, 100))?;
-						draw_possible_moves(core, &actual_attacks, Color::RGBA(128, 0, 128, 100))?;
+						draw_possible_moves(core, &game_map.possible_attacks, Color::RGBA(178, 89, 0, 100))?;
+						draw_possible_moves(core, &game_map.actual_attacks, Color::RGBA(128, 0, 128, 100))?;
 					},
 					_ => {},
 				}
@@ -479,16 +323,25 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			_ => ()
 		};
 
-		//Draw the scroll sprite UI
-		unit_interface = match unit_interface {
-			Some(mut ui) => {
-				match ui.draw(core, &texture_creator) {
-					Ok(_) => { Some(ui) },
-					_ => { None },
-				}
-			},
-			_ => { None },
-		};
+		if current_player == Team::Player
+		{
+			//Draw the cursor
+			cursor.draw(core)?;
+
+			//Draw the scroll sprite UI
+			unit_interface = match unit_interface {
+				Some(mut ui) => {
+					match ui.draw(core, &texture_creator) {
+						Ok(_) => { Some(ui) },
+						_ => { None },
+					}
+				},
+				_ => { None },
+			};
+
+			//Draw the button for the player to end their turn, relative to the camera
+			end_turn_button.draw_relative(core)?;
+		}
 		
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
@@ -506,6 +359,7 @@ fn initialize_next_turn(mut team_units: HashMap<(u32, u32), Unit>) -> HashMap<(u
 	team_units
 }
 
+// Draws a banner at the center of the camera to signify whose turn it currently is
 fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_index: &str, rect_color: Color) -> Result< (), String> {
 	let banner_rect = Rect::new(core.cam.x.abs(), core.cam.y.abs() + (360-64), CAM_W, 128);
 	let text_rect = Rect::new(core.cam.x.abs() + (640-107), core.cam.y.abs() + (360-64), CAM_W/6, 128);
@@ -522,8 +376,8 @@ fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>
 	Ok(())
 }
 
+// Draws a rect of a certain color over all tiles contained within the vector 
 fn draw_possible_moves(core: &mut SDLCore, tiles: &Vec<(u32, u32)>, color:Color) -> Result< (), String> {
-	//Draw tiles & sprites
 	for (x,y) in tiles.into_iter() {
 		let pixel_location = PixelCoordinates::from_matrix_indices(*y, *x);
 		let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
@@ -535,8 +389,8 @@ fn draw_possible_moves(core: &mut SDLCore, tiles: &Vec<(u32, u32)>, color:Color)
 	Ok(())
 }
 
-//Method for preparing the HashMap of player units whilst also properly marking them in the map
-//l melee r ranged m mage
+// Method for preparing the HashMap of player units whilst also properly marking them in the map
+// l melee r ranged m mage
 fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>>, player_team: Team, units: Vec<(char, (u32, u32))>, unit_textures: &'a HashMap<&str, Texture<'a>>, map: &'b mut HashMap<(u32, u32), Tile>) {
 	let melee: &str;
 	let range: &str;
@@ -554,9 +408,9 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 			Team::Barbarians => map.get_mut(&(unit.1.1, unit.1.0)).unwrap().update_team(Some(Team::Barbarians)),
 		}
 		match unit.0 {
-			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 4, 1, 90, 5, unit_textures.get(melee).unwrap())),
-			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 2, 4, 70, 7, unit_textures.get(range).unwrap())),
-			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 3, 3, 60, 9, unit_textures.get(mage).unwrap())),
+			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 7, 1, 90, 5, unit_textures.get(melee).unwrap())),
+			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 5, 4, 70, 7, unit_textures.get(range).unwrap())),
+			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 4, 3, 60, 9, unit_textures.get(mage).unwrap())),
 		};
 	}
 }

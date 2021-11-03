@@ -1,6 +1,4 @@
-//Rust complains that it can't find rand crate
-//extern crate rand;
-//use rand::Rng;
+use rand::Rng;
 use std::collections::HashMap;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
@@ -98,13 +96,12 @@ impl Unit <'_>{
     }
 
     pub fn get_attack_damage(&self) -> u32 {
-        // let chance = rand::thread_rng().gen_range(0..100);
-        // if chance < self.accuracy {
-        //     rand::thread_rng().gen_range(1..=self.max_damage);
-        // } else {
-        //     0
-        // }
-        0
+        let chance = rand::thread_rng().gen_range(0..100);
+        if chance < self.accuracy {
+            rand::thread_rng().gen_range(1..=self.max_damage)
+        } else {
+            0
+        }
     }
 
     pub fn update_pos(&mut self, x: u32, y: u32) {
@@ -172,6 +169,7 @@ impl Unit <'_>{
         }
         tiles_in_range
     }
+
     pub fn get_tiles_in_attack_range(&self, map: &mut HashMap<(u32, u32), Tile>,) -> Vec<(u32, u32)> {
         let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
         let mut visited: HashMap<(u32,u32), bool> = HashMap::new();
@@ -226,6 +224,7 @@ impl Unit <'_>{
         }
         tiles_in_range
     }
+
     pub fn get_tiles_can_attack(&self, map: &mut HashMap<(u32, u32), Tile>,) -> Vec<(u32, u32)> {
         let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
         let mut visited: HashMap<(u32,u32), bool> = HashMap::new();
@@ -306,6 +305,7 @@ impl Unit <'_>{
                 }
             }
         }
+        
         tiles_in_range
     }
 }
