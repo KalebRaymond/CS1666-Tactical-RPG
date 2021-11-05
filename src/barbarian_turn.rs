@@ -42,7 +42,19 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
                                     }
                                 }
                             },
-                            _ => {} //This handles the enemy case and also prevents rust from complaining about unchecked cases,
+                            _ => {
+                                if let Some(unit) = p2_units.get_mut(&(actual_attacks[0].0, actual_attacks[0].1)) {
+                                    println!("Enemy unit starting at {} hp.", unit.hp);
+                                    if unit.hp <= damage_done {
+                                        p2_units.remove(&(actual_attacks[0].0, actual_attacks[0].1));
+                                        println!("Enemy unit at {}, {} is dead.", actual_attacks[0].0, actual_attacks[0].1);
+                                        tile_under_attack.update_team(None);
+                                    } else {
+                                        unit.update_health(damage_done);
+                                        println!("Barbarian at {}, {} attacking enemy unit at {}, {} for {} damage. Unit now has {} hp.", barbarian.x, barbarian.y, actual_attacks[0].0, actual_attacks[0].1, damage_done, unit.hp);
+                                    }
+                                }
+                            } //This handles the enemy case and also prevents rust from complaining about unchecked cases,
                         }
                     }
                     
