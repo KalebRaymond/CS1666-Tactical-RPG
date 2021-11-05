@@ -34,7 +34,7 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
                                     println!("Unit starting at {} hp.", unit.hp);
                                     if unit.hp <= damage_done {
                                         p1_units.remove(&(actual_attacks[0].0, actual_attacks[0].1));
-                                        println!("Player unit at {}, {} is dead.", actual_attacks[0].0, actual_attacks[0].1);
+                                        println!("Player unit at {}, {} is dead after taking {} damage.", actual_attacks[0].0, actual_attacks[0].1, damage_done);
                                         tile_under_attack.update_team(None);
                                     } else {
                                         unit.update_health(damage_done);
@@ -47,7 +47,7 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
                                     println!("Enemy unit starting at {} hp.", unit.hp);
                                     if unit.hp <= damage_done {
                                         p2_units.remove(&(actual_attacks[0].0, actual_attacks[0].1));
-                                        println!("Enemy unit at {}, {} is dead.", actual_attacks[0].0, actual_attacks[0].1);
+                                        println!("Enemy unit at {}, {} is dead after taking {} damage.", actual_attacks[0].0, actual_attacks[0].1, damage_done);
                                         tile_under_attack.update_team(None);
                                     } else {
                                         unit.update_health(damage_done);

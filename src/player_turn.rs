@@ -145,7 +145,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, p2
                                         println!("Enemy unit starting at {} hp.", unit.hp);
                                         if unit.hp <= damage_done {
                                             p2_units.remove(&(j, i));
-                                            println!("Enemy unit at {}, {} is dead.", j, i);
+                                            println!("Enemy unit at {}, {} is dead after taking {} damage.", j, i, damage_done);
                                             tile_under_attack.update_team(None);
                                         } else {
                                             unit.update_health(damage_done);
@@ -158,7 +158,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, p2
                                         println!("Barbarian unit starting at {} hp.", unit.hp);
                                         if unit.hp <= damage_done {
                                             barbarian_units.remove(&(j, i));
-                                            println!("Barbarian unit at {}, {} is dead.", j, i);
+                                            println!("Barbarian unit at {}, {} is dead after taking {} damage.", j, i, damage_done);
                                             tile_under_attack.update_team(None);
                                         } else {
                                             unit.update_health(damage_done);
