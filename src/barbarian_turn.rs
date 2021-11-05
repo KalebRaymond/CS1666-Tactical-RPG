@@ -23,17 +23,23 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
                     if let Some(coordinates) = moving_barbs.get(&(barbarian.x, barbarian.y)) {
                         continue;
                     }
-                    //Need to update map outside of this loop otherwise it runs into reference issues
+                    //Need to update map outside of this loop as this will allow for easier updating movement later on if we want
                     moving_barbs.insert((barbarian.x, barbarian.y), (original_x, original_y));
 
                     let damage_done = barbarian.get_attack_damage();
-                    if let Some(tile_under_attack) = game_map.map_tiles.get(&(actual_attacks[0].1, actual_attacks[0].0)) {
+                    if let Some(tile_under_attack) = game_map.map_tiles.get_mut(&(actual_attacks[0].1, actual_attacks[0].0)) {
                         match tile_under_attack.contained_unit_team {
                             Some(Team::Player) => {
                                 if let Some(unit) = p1_units.get_mut(&(actual_attacks[0].0, actual_attacks[0].1)) {
                                     println!("Unit starting at {} hp.", unit.hp);
-                                    unit.update_health(damage_done);
-                                    println!("Barbarian at {}, {} attacking player unit at {}, {} for {} damage. Unit now has {} hp.", barbarian.x, barbarian.y, actual_attacks[0].0, actual_attacks[0].1, damage_done, unit.hp);
+                                    if unit.hp <= damage_done {
+                                        p1_units.remove(&(actual_attacks[0].0, actual_attacks[0].1));
+                                        println!("Player unit at {}, {} is dead.", actual_attacks[0].0, actual_attacks[0].1);
+                                        tile_under_attack.update_team(None);
+                                    } else {
+                                        unit.update_health(damage_done);
+                                        println!("Barbarian at {}, {} attacking player unit at {}, {} for {} damage. Unit now has {} hp.", barbarian.x, barbarian.y, actual_attacks[0].0, actual_attacks[0].1, damage_done, unit.hp);
+                                    }
                                 }
                             },
                             _ => {} //This handles the enemy case and also prevents rust from complaining about unchecked cases,
