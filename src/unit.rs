@@ -109,6 +109,10 @@ impl Unit <'_>{
         self.y = y;
     }
 
+    pub fn update_health(&mut self, damage_taken: u32) {
+        self.hp -= damage_taken;
+    }
+
     pub fn next_turn(&mut self) {
         self.has_attacked = false;
         self.has_moved = false;

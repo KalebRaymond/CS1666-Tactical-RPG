@@ -243,7 +243,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				}
 			},
 			Team::Barbarians => {
-				barbarian_turn::handle_barbarian_turn(&mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player);
+				barbarian_turn::handle_barbarian_turn(&mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player);
 				player_state.p1_units = initialize_next_turn(player_state.p1_units);
 			},
 		}

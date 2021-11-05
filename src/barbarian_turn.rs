@@ -6,7 +6,7 @@ use crate::pixel_coordinates::PixelCoordinates;
 use crate::unit::{Team, Unit};
 use crate::turn_banner::TurnBanner;
 
-pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap, turn_banner: &mut TurnBanner, current_player: &mut Team) {
+pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>, p1_units: &mut HashMap<(u32, u32), Unit<'a>>, p2_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap, turn_banner: &mut TurnBanner, current_player: &mut Team) {
     if !turn_banner.banner_visible {
         //First set of coords is the new coordinates and second set are the old ones
         let mut moving_barbs: HashMap<(u32, u32), (u32, u32)> = HashMap::new();
@@ -23,9 +23,23 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
                     if let Some(coordinates) = moving_barbs.get(&(barbarian.x, barbarian.y)) {
                         continue;
                     }
+                    //Need to update map outside of this loop otherwise it runs into reference issues
                     moving_barbs.insert((barbarian.x, barbarian.y), (original_x, original_y));
-                    //Whenever we actually implement attacking we can just take the arguments from this println to properly update values
-                    println!("Barbarian at {}, {} attacking unit at {}, {} for {} damage", barbarian.x, barbarian.y, actual_attacks[0].0, actual_attacks[0].1, barbarian.get_attack_damage());
+
+                    let damage_done = barbarian.get_attack_damage();
+                    if let Some(tile_under_attack) = game_map.map_tiles.get(&(actual_attacks[0].1, actual_attacks[0].0)) {
+                        match tile_under_attack.contained_unit_team {
+                            Some(Team::Player) => {
+                                if let Some(unit) = p1_units.get_mut(&(actual_attacks[0].0, actual_attacks[0].1)) {
+                                    println!("Unit starting at {} hp.", unit.hp);
+                                    unit.update_health(damage_done);
+                                    println!("Barbarian at {}, {} attacking player unit at {}, {} for {} damage. Unit now has {} hp.", barbarian.x, barbarian.y, actual_attacks[0].0, actual_attacks[0].1, damage_done, unit.hp);
+                                }
+                            },
+                            _ => {} //This handles the enemy case and also prevents rust from complaining about unchecked cases,
+                        }
+                    }
+                    
                     // If we want to implement random movement, we can add a boolean here and then do some probability calculations
                     break;
                 }
