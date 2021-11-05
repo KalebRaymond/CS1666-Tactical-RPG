@@ -71,6 +71,7 @@ pub struct Unit<'a> {
     movement_range: u32,
     attack_range: u32,
     accuracy: u32,
+    min_damage: u32,
     max_damage: u32,
     pub texture: &'a Texture<'a>,
     pub has_attacked: bool,
@@ -78,7 +79,7 @@ pub struct Unit<'a> {
 }
 
 impl Unit <'_>{
-    pub fn new<'a> (x:u32, y:u32, team: Team, hp: u32, movement_range: u32, attack_range: u32, accuracy: u32, max_damage: u32, texture: &'a Texture) -> Unit<'a> {
+    pub fn new<'a> (x:u32, y:u32, team: Team, hp: u32, movement_range: u32, attack_range: u32, accuracy: u32, min_damage:u32, max_damage: u32, texture: &'a Texture) -> Unit<'a> {
         Unit {
             x,
             y,
@@ -87,6 +88,7 @@ impl Unit <'_>{
             movement_range,
             attack_range,
             accuracy,
+            min_damage,
             max_damage,
             texture,
             // Initially both are set to true, when it becomes someone's turn, both will need to be set to false for each unit on team
@@ -98,7 +100,7 @@ impl Unit <'_>{
     pub fn get_attack_damage(&self) -> u32 {
         let chance = rand::thread_rng().gen_range(0..100);
         if chance < self.accuracy {
-            rand::thread_rng().gen_range(1..=self.max_damage)
+            rand::thread_rng().gen_range(self.min_damage..=self.max_damage)
         } else {
             0
         }
