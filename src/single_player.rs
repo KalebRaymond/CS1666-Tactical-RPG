@@ -269,17 +269,17 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
 				
 				//Draw player unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let Some(unit) = player_state.p1_units.get(&(j as u32, i as u32)) {
-					core.wincan.copy(unit.texture, None, dest)?
+				if let Some(mut unit) = player_state.p1_units.get_mut(&(j as u32, i as u32)) {
+					unit.draw(core, &dest);
 				}
 
 				//Draw enemy unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let Some(enemy) = p2_units.get(&(j as u32, i as u32)) {
+				if let Some(mut enemy) = p2_units.get_mut(&(j as u32, i as u32)) {
 					core.wincan.copy(enemy.texture, None, dest)?
 				}
 
 				//Draw barbarian unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let Some(barbarian) = barbarian_units.get(&(j as u32, i as u32)) {
+				if let Some(mut barbarian) = barbarian_units.get_mut(&(j as u32, i as u32)) {
 					core.wincan.copy(barbarian.texture, None, dest)?
 				}
 			}

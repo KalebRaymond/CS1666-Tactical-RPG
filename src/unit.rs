@@ -1,14 +1,19 @@
 use rand::Rng;
-use std::collections::HashMap;
+
+use sdl2::rect::Rect;
+use sdl2::render::Texture;
+
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
-
-use sdl2::render::Texture;
+use std::collections::HashMap;
 use std::fmt;
-use crate::tile::{Tile};
+use std::time::Instant;
 
-const MAP_WIDTH:u32 = 64;
-const MAP_HEIGHT:u32 = 64;
+use crate::SDLCore;
+use crate::tile::Tile;
+
+const MAP_WIDTH: u32 = 64;
+const MAP_HEIGHT: u32 = 64;
 
 pub enum Team {
 	Player,
@@ -75,6 +80,10 @@ pub struct Unit<'a> {
     pub texture: &'a Texture<'a>,
     pub has_attacked: bool,
     pub has_moved: bool,
+
+    is_attacked: bool,
+    last_damaged_drawn: Instant,
+    time_since_damaged: f32,
 }
 
 impl Unit <'_>{
@@ -92,6 +101,10 @@ impl Unit <'_>{
             // Initially both are set to true, when it becomes someone's turn, both will need to be set to false for each unit on team
             has_attacked: true,
             has_moved: true,
+
+            is_attacked: false,
+            last_damaged_drawn: Instant::now(),
+            time_since_damaged: 0.0,
         }
     }
 
@@ -307,6 +320,33 @@ impl Unit <'_>{
         }
         
         tiles_in_range
+    }
+
+    pub fn receive_damage(&mut self) {
+        self.is_attacked = true;
+        self.last_damaged_drawn = Instant::now();
+    }
+
+    pub fn draw(&mut self, core: &mut SDLCore, dest: &Rect) -> Result<(), String> {
+        if self.is_attacked {
+            //Draw the sprite with a red tint
+
+
+            self.time_since_damaged += self.last_damaged_drawn.elapsed().as_secs_f32();
+            self.last_damaged_drawn = Instant::now();
+
+            //Begin drawing the sprite without red tint after .5 seconds
+            if self.time_since_damaged >= 0.5 {
+                self.is_attacked = false;
+                self.time_since_damaged = 0.0;
+            }
+        }
+        else {
+            //Draw the sprite like normal
+            core.wincan.copy(self.texture, None, *dest)?
+        }
+        
+        Ok(())
     }
 }
 
