@@ -12,7 +12,6 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
         let mut moving_barbs: HashMap<(u32, u32), (u32, u32)> = HashMap::new();
         for barbarian in barb_units.values_mut() {
             let (original_x, original_y) = (barbarian.x, barbarian.y);
-            let mut barb_moved = false;
             let possible_moves: Vec<(u32, u32)> = barbarian.get_tiles_in_movement_range(&mut game_map.map_tiles);
             for possible_move in possible_moves {
                 barbarian.x = possible_move.0; 
@@ -26,6 +25,7 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
                     //Need to update map outside of this loop as this will allow for easier updating movement later on if we want
                     moving_barbs.insert((barbarian.x, barbarian.y), (original_x, original_y));
 
+                    //All attack handling is done here
                     let damage_done = barbarian.get_attack_damage();
                     if let Some(tile_under_attack) = game_map.map_tiles.get_mut(&(actual_attacks[0].1, actual_attacks[0].0)) {
                         match tile_under_attack.contained_unit_team {
