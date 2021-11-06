@@ -49,8 +49,6 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, ga
                 //If player hovers over a unit, display cursor above that unit
                 match player_state.p1_units.get_mut(&(j,i)) {
                     Some(active_unit) => {
-                        cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
-
                         //Now check if the player actually clicked on the unit they hovered over
                         if input.left_clicked {
                             player_state.active_unit_i = i as i32;
@@ -61,9 +59,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, ga
                             player_state.current_player_action = PlayerAction::ChoosingUnitAction;
                         }
                     },
-                    _ => {
-                        cursor.hide_cursor();
-                    },
+                    _ => {},
                 }
             },
             PlayerAction::ChoosingUnitAction => {
