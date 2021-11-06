@@ -1,18 +1,20 @@
 use sdl2::pixels::Color;
 use std::collections::HashMap;
 
+use crate::damage_indicator::DamageIndicator;
 use crate::game_map::GameMap;
 use crate::pixel_coordinates::PixelCoordinates;
-use crate::unit::{Team, Unit};
+use crate::SDLCore;
+use crate::TILE_SIZE;
 use crate::turn_banner::TurnBanner;
+use crate::unit::{Team, Unit};
 
-pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap, turn_banner: &mut TurnBanner, current_player: &mut Team) -> Result<(), String> {
+pub fn handle_barbarian_turn<'i, 'r>(core: &SDLCore<'r>, barb_units: &mut HashMap<(u32, u32), Unit<'i>>, p1_units: &mut HashMap<(u32, u32), Unit<'i>>, p2_units: &mut HashMap<(u32, u32), Unit<'i>>, game_map: &mut GameMap<'r>, turn_banner: &mut TurnBanner, current_player: &mut Team) -> Result<(), String> {
     if !turn_banner.banner_visible {
         //First set of coords is the new coordinates and second set are the old ones
         let mut moving_barbs: HashMap<(u32, u32), (u32, u32)> = HashMap::new();
         for barbarian in barb_units.values_mut() {
             let (original_x, original_y) = (barbarian.x, barbarian.y);
-            let mut barb_moved = false;
             let possible_moves: Vec<(u32, u32)> = barbarian.get_tiles_in_movement_range(&mut game_map.map_tiles);
             for possible_move in possible_moves {
                 barbarian.x = possible_move.0; 
@@ -23,9 +25,44 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
                     if let Some(coordinates) = moving_barbs.get(&(barbarian.x, barbarian.y)) {
                         continue;
                     }
+                    //Need to update map outside of this loop as this will allow for easier updating movement later on if we want
                     moving_barbs.insert((barbarian.x, barbarian.y), (original_x, original_y));
-                    //Whenever we actually implement attacking we can just take the arguments from this println to properly update values
-                    println!("Barbarian at {}, {} attacking unit at {}, {} for {} damage", barbarian.x, barbarian.y, actual_attacks[0].0, actual_attacks[0].1, barbarian.get_attack_damage());
+
+                    //All attack handling is done here
+                    let damage_done = barbarian.get_attack_damage();
+                    if let Some(tile_under_attack) = game_map.map_tiles.get_mut(&(actual_attacks[0].1, actual_attacks[0].0)) {
+                        match tile_under_attack.contained_unit_team {
+                            Some(Team::Player) => {
+                                if let Some(unit) = p1_units.get_mut(&(actual_attacks[0].0, actual_attacks[0].1)) {
+                                    println!("Unit starting at {} hp.", unit.hp);
+                                    if unit.hp <= damage_done {
+                                        p1_units.remove(&(actual_attacks[0].0, actual_attacks[0].1));
+                                        println!("Player unit at {}, {} is dead after taking {} damage.", actual_attacks[0].0, actual_attacks[0].1, damage_done);
+                                        tile_under_attack.update_team(None);
+                                    } else {
+                                        unit.receive_damage(damage_done);
+                                        game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates{ x: unit.x, y: unit.y - TILE_SIZE })?);
+                                        println!("Barbarian at {}, {} attacking player unit at {}, {} for {} damage. Unit now has {} hp.", barbarian.x, barbarian.y, actual_attacks[0].0, actual_attacks[0].1, damage_done, unit.hp);
+                                    }
+                                }
+                            },
+                            _ => {
+                                if let Some(unit) = p2_units.get_mut(&(actual_attacks[0].0, actual_attacks[0].1)) {
+                                    println!("Enemy unit starting at {} hp.", unit.hp);
+                                    if unit.hp <= damage_done {
+                                        p2_units.remove(&(actual_attacks[0].0, actual_attacks[0].1));
+                                        println!("Enemy unit at {}, {} is dead after taking {} damage.", actual_attacks[0].0, actual_attacks[0].1, damage_done);
+                                        tile_under_attack.update_team(None);
+                                    } else {
+                                        unit.receive_damage(damage_done);
+                                        game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates{ x: unit.x, y: unit.y - TILE_SIZE })?);
+                                        println!("Barbarian at {}, {} attacking enemy unit at {}, {} for {} damage. Unit now has {} hp.", barbarian.x, barbarian.y, actual_attacks[0].0, actual_attacks[0].1, damage_done, unit.hp);
+                                    }
+                                }
+                            } //This handles the enemy case and also prevents rust from complaining about unchecked cases,
+                        }
+                    }
+                    
                     // If we want to implement random movement, we can add a boolean here and then do some probability calculations
                     break;
                 }

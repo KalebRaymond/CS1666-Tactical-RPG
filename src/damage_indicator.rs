@@ -9,7 +9,7 @@ use crate::pixel_coordinates::PixelCoordinates;
 use crate::SDLCore;
 
 pub struct DamageIndicator<'r> {
-    pub value: i32,
+    pub damage: u32,
     pub x: u32,
     pub y: u32,
     width: u32,
@@ -24,19 +24,17 @@ pub struct DamageIndicator<'r> {
 }
 
 impl DamageIndicator<'_> {
-    pub fn new<'r>(core: &SDLCore<'r>, val: i32, position: PixelCoordinates) -> Result<DamageIndicator<'r>, String> {
-        println!("DamageIndicator created at ({}, {})", position.x, position.y);
-
+    pub fn new<'r>(core: &SDLCore<'r>, damage: u32, position: PixelCoordinates) -> Result<DamageIndicator<'r>, String> {
         //Create texture to display the damage as a string
-        let text = &val.to_string();
+        let text = "-".to_string() + &damage.to_string();
         let texture = core.texture_creator.create_texture_from_surface(
-			&core.bold_font.render(text)
+			&core.bold_font.render(&text)
                 .blended_wrapped(Color::RGBA(255, 0, 0, 255), 320)
                 .map_err(|e| e.to_string())?
 		).map_err(|e| e.to_string())?;
 
         Ok(DamageIndicator {
-            value: val,
+            damage: damage,
             x: position.x,
             y: position.y,
             width: 64,
@@ -47,7 +45,7 @@ impl DamageIndicator<'_> {
             elapsed_time: 0.0,
 
             texture: texture,
-            text_size: core.bold_font.size_of(text).map_err(|e| "Could not determine text size")?,
+            text_size: core.bold_font.size_of(&text).map_err(|e| "Could not determine text size")?,
         })  
     }
 
@@ -57,9 +55,6 @@ impl DamageIndicator<'_> {
 
         self.elapsed_time += self.last_drawn.elapsed().as_secs_f32();
         self.last_drawn = Instant::now();
-
-        //Float upwards
-        self.y -= 1;
 
         //Set is_visible to false after 1 second. This object should now be destroyed
         if self.elapsed_time >= 1.0 {
