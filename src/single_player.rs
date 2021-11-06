@@ -14,6 +14,7 @@ use std::time::{Instant, Duration};
 
 use crate::button::Button;
 use crate::cursor::Cursor;
+use crate::damage_indicator::DamageIndicator;
 use crate::game_map::GameMap;
 use crate::GameState;
 use crate::{CAM_H, CAM_W, TILE_SIZE};
@@ -192,7 +193,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	//Button for player to end their turn
     let mut end_turn_button = Button::new(core, Rect::new((CAM_W - 240).try_into().unwrap(), (CAM_H - 90).try_into().unwrap(), 200, 50), "End Turn")?;
-	
+
 	'gameloop: loop {
 		core.wincan.clear();
 
@@ -275,12 +276,12 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 				//Draw enemy unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
 				if let Some(mut enemy) = p2_units.get_mut(&(j as u32, i as u32)) {
-					core.wincan.copy(enemy.texture, None, dest)?
+					enemy.draw(core, &dest);
 				}
 
 				//Draw barbarian unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
 				if let Some(mut barbarian) = barbarian_units.get_mut(&(j as u32, i as u32)) {
-					core.wincan.copy(barbarian.texture, None, dest)?
+					barbarian.draw(core, &dest);
 				}
 			}
 		}
@@ -322,6 +323,19 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 			_ => ()
 		};
+
+		//Draw the damage indicators that appear above the units that have received damage
+		for damage_indicator in game_map.damage_indicators.iter_mut() {
+			damage_indicator.draw(core);
+		}
+		//Remove the damage indicators that have expired
+		game_map.damage_indicators.retain(|damage_indicator| {
+			if !damage_indicator.is_visible {
+				println!("Removed damage_indicator at ({}, {})", damage_indicator.pos_x, damage_indicator.pos_y);
+			}
+
+			damage_indicator.is_visible
+		});
 
 		if current_player == Team::Player
 		{

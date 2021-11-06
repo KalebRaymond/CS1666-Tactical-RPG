@@ -6,6 +6,7 @@ use std::convert::TryInto;
 
 use crate::button::Button;
 use crate::cursor::Cursor;
+use crate::damage_indicator::DamageIndicator;
 use crate::game_map::GameMap;
 use crate::input::Input;
 use crate::pixel_coordinates::PixelCoordinates;
@@ -59,7 +60,13 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, ga
                             //If the user did click on a unit, allow the player to move the unit
                             *unit_interface = Some(UnitInterface::from_unit(active_unit, unit_interface_texture));
                             player_state.current_player_action = PlayerAction::ChoosingUnitAction;
-                        }	
+                        }
+
+                        ///testing
+                        if input.right_clicked {
+                            active_unit.receive_damage();
+                            game_map.damage_indicators.push(DamageIndicator::new(-5, active_unit.x, active_unit.y));
+                        }
                     },
                     _ => {
                         cursor.hide_cursor();

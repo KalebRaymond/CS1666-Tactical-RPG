@@ -323,29 +323,30 @@ impl Unit <'_>{
     }
 
     pub fn receive_damage(&mut self) {
+        println!("Turning unit red");
         self.is_attacked = true;
         self.last_damaged_drawn = Instant::now();
     }
 
     pub fn draw(&mut self, core: &mut SDLCore, dest: &Rect) -> Result<(), String> {
         if self.is_attacked {
-            //Draw the sprite with a red tint
-
+            //Apply red tint to texture
+            //self.texture.set_color_mod(128, 0, 0);
+            //Draw red sprite instead lol
 
             self.time_since_damaged += self.last_damaged_drawn.elapsed().as_secs_f32();
             self.last_damaged_drawn = Instant::now();
 
-            //Begin drawing the sprite without red tint after .5 seconds
+            //Remove red tint after .5 seconds
             if self.time_since_damaged >= 0.5 {
                 self.is_attacked = false;
                 self.time_since_damaged = 0.0;
             }
         }
-        else {
-            //Draw the sprite like normal
-            core.wincan.copy(self.texture, None, *dest)?
-        }
         
+        //Draw the sprite
+        core.wincan.copy(self.texture, None, *dest)?;
+
         Ok(())
     }
 }
