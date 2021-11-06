@@ -256,7 +256,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		//Handle the current team's move
 		match current_player {
 			Team::Player => {
-				player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
+				player_turn::handle_player_turn(&core, &mut player_state, &mut p2_units, &mut barbarian_units, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
 			},
 			Team::Enemy => {
 				if !turn_banner.banner_visible {
@@ -271,7 +271,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				}
 			},
 			Team::Barbarians => {
-				barbarian_turn::handle_barbarian_turn(&mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player);
+				barbarian_turn::handle_barbarian_turn(&mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player);
 				player_state.p1_units = initialize_next_turn(player_state.p1_units);
 			},
 		}
@@ -436,9 +436,9 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 			Team::Barbarians => map.get_mut(&(unit.1.1, unit.1.0)).unwrap().update_team(Some(Team::Barbarians)),
 		}
 		match unit.0 {
-			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 7, 1, 90, 5, unit_textures.get(melee).unwrap())),
-			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 5, 4, 70, 7, unit_textures.get(range).unwrap())),
-			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 4, 3, 60, 9, unit_textures.get(mage).unwrap())),
+			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 6, 1, 95, 1, 5, unit_textures.get(melee).unwrap())),
+			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 5, 4, 85, 3, 7, unit_textures.get(range).unwrap())),
+			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 7, 3, 75,  5, 9, unit_textures.get(mage).unwrap())),
 		};
 	}
 }
