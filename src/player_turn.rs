@@ -17,18 +17,18 @@ use crate::unit_interface::UnitInterface;
 use crate::unit::Team;
 use crate::turn_banner::TurnBanner;
 
-pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, game_map: &mut GameMap, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) {
+pub fn handle_player_turn<'i, 'r>(core: &SDLCore<'r>, player_state: &mut PlayerState, game_map: &mut GameMap<'r>, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'i>>, unit_interface_texture: &'i Texture<'i>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
     if !turn_banner.banner_visible {
         //Check if player ended turn by pressing backspace
         if input.keystate.contains(&Keycode::Backspace) {
             end_player_turn(player_state, turn_banner, unit_interface, current_player, cursor);
-            return;
+            return Ok(());
         }
 
         //Check if user clicked the end turn button
 		if input.left_clicked && end_turn_button.is_mouse(core) {
 			end_player_turn(player_state, turn_banner, unit_interface, current_player, cursor);
-            return;
+            return Ok(());
 		}
 
         //Get map matrix indices from mouse position
@@ -65,7 +65,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, ga
                         ///testing
                         if input.right_clicked {
                             active_unit.receive_damage();
-                            game_map.damage_indicators.push(DamageIndicator::new(-5, active_unit.x, active_unit.y));
+                            game_map.damage_indicators.push(DamageIndicator::new(core, -5, PixelCoordinates::from_matrix_indices(i - 1, j))?);
                         }
                     },
                     _ => {
@@ -153,6 +153,8 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, ga
             },				
         }
     }
+
+    Ok(())
 }
 
 pub fn end_player_turn<'a>(player_state: &mut PlayerState, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, current_player: &mut Team, cursor: &mut Cursor) {

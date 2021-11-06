@@ -11,7 +11,7 @@ pub struct GameMap<'a> {
 	pub actual_attacks: Vec<(u32, u32)>,
 
     //Holds all damage indicators (the numbers that appear above a unit when attacked) that are visible
-	pub damage_indicators: Vec<DamageIndicator>,
+	pub damage_indicators: Vec<DamageIndicator<'a>>,
 }
 
 impl GameMap<'_> {
