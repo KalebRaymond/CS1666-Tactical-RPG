@@ -13,21 +13,21 @@ use crate::player_action::PlayerAction;
 use crate::player_state::PlayerState;
 use crate::SDLCore;
 use crate::unit_interface::UnitInterface;
-use crate::unit::Team;
 use crate::turn_banner::TurnBanner;
+use crate::unit::Team;
 
-pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, game_map: &mut GameMap, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) {
+pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, game_map: &mut GameMap, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
     if !turn_banner.banner_visible {
         //Check if player ended turn by pressing backspace
         if input.keystate.contains(&Keycode::Backspace) {
             end_player_turn(player_state, turn_banner, unit_interface, current_player, cursor);
-            return;
+            return Ok(());
         }
 
         //Check if user clicked the end turn button
 		if input.left_clicked && end_turn_button.is_mouse(core) {
 			end_player_turn(player_state, turn_banner, unit_interface, current_player, cursor);
-            return;
+            return Ok(());
 		}
 
         //Get map matrix indices from mouse position
@@ -49,7 +49,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, ga
                 //If player hovers over a unit, display cursor above that unit
                 match player_state.p1_units.get_mut(&(j,i)) {
                     Some(active_unit) => {
-                        cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j));
+                        cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
 
                         //Now check if the player actually clicked on the unit they hovered over
                         if input.left_clicked {
@@ -59,7 +59,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, ga
                             //If the user did click on a unit, allow the player to move the unit
                             *unit_interface = Some(UnitInterface::from_unit(active_unit, unit_interface_texture));
                             player_state.current_player_action = PlayerAction::ChoosingUnitAction;
-                        }	
+                        }
                     },
                     _ => {
                         cursor.hide_cursor();
@@ -146,6 +146,8 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, ga
             },				
         }
     }
+
+    Ok(())
 }
 
 pub fn end_player_turn<'a>(player_state: &mut PlayerState, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, current_player: &mut Team, cursor: &mut Cursor) {
