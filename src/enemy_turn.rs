@@ -6,15 +6,19 @@ use crate::pixel_coordinates::PixelCoordinates;
 use crate::unit::{Team, Unit};
 use crate::turn_banner::TurnBanner;
 
+//Utility Function Constants
 const MIN_DISTANCE: i32 = 5; // Defines the minimum distance a unit can be from an objective to be considered near it
 const DEFENDING_WEIGHT: f64 = -0.5;
 const SIEGING_WEIGHT: f64 = -0.75;
 const CAMP_WEIGHT: f64 = -0.25;
 const ATTACK_VALUE: f64 = 10.0;
+const MIN_DEFENSE: u32 = 5; //Since one of our AI goals says that some units should stay behind and defend, we need metrics to enforce this
+const DEFENSE_PENALTY: f64 = -500.0;
 
 pub fn handle_enemy_turn<'a>(p2_units: &mut HashMap<(u32, u32), Unit<'a>>, p1_units: &mut HashMap<(u32, u32), Unit<'a>>, barbarian_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap, turn_banner: &mut TurnBanner, current_player: &mut Team, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) {
     if !turn_banner.banner_visible {
         evaluate_current_position(p2_units, game_map, p2_castle, p1_castle, camp_coords);
+
         //End turn
         *current_player = Team::Barbarians;
 
@@ -33,7 +37,7 @@ pub fn evaluate_current_position<'a> (p2_units: &HashMap<(u32, u32), Unit<'a>>, 
     let mut units_near_camp: u32 = 0;
     let mut units_able_to_attack: u32 = 0;
 
-    println!("Current Constants:\nMinimum Distance from Objectives: {}, Defending Weight: {}, Sieging Weight: {}, Camp Weight: {}, Value from Attack: {}\n", MIN_DISTANCE, DEFENDING_WEIGHT, SIEGING_WEIGHT, CAMP_WEIGHT, ATTACK_VALUE);
+    println!("Utility Function Constants:\nMinimum Distance from Objectives: {}, Defending Weight: {}, Sieging Weight: {}, Camp Weight: {}, Value from Attack: {}, Minimum Defending Units: {}, Defense Penalty: {}\n", MIN_DISTANCE, DEFENDING_WEIGHT, SIEGING_WEIGHT, CAMP_WEIGHT, ATTACK_VALUE, MIN_DEFENSE, DEFENSE_PENALTY);
 
     for unit in p2_units.values() {
         let result = current_unit_value(unit, game_map, p2_castle, p1_castle, camp_coords);
@@ -43,6 +47,13 @@ pub fn evaluate_current_position<'a> (p2_units: &HashMap<(u32, u32), Unit<'a>>, 
         units_near_camp += result.3;
         units_able_to_attack += result.4;
     }
+
+    // Calculations for state as a whole (not individual units) 
+    if units_defending < MIN_DEFENSE {
+        total_value += DEFENSE_PENALTY;
+    }
+    //Will eventually want to add on values for units sieging, near camps, attacking, etc (ie prefer sieging a castle with x units over y)
+
     println!("Total value: {}\nUnits near p2 castle: {}\nUnits near p1 castle: {}\nUnits near camps: {}\nUnits able to attack: {}\n", total_value, units_defending, units_sieging, units_near_camp, units_able_to_attack);
 
     total_value
@@ -105,7 +116,7 @@ pub fn current_unit_value<'b> (unit: &Unit<'b>, game_map: &mut GameMap, p2_castl
         value += distance_from_nearest_camp as f64 * CAMP_WEIGHT;
     }
     if able_to_attack == 1 {
-        value + ATTACK_VALUE;
+        value += ATTACK_VALUE;
     }
 
     println!("Unit at {}, {}\nValue: {}, D(own_castle): {}, D(enemy_castle): {}, D(camp): {}, can_attack: {}\n", unit.x, unit.y, value, distance_from_own_castle, distance_from_enemy_castle, distance_from_nearest_camp, able_to_attack);
