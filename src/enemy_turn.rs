@@ -35,6 +35,8 @@ pub fn evaluate_current_position<'a> (p2_units: &HashMap<(u32, u32), Unit<'a>>, 
         units_near_camp += result.3;
         units_able_to_attack += result.4;
     }
+    
+    println!("Total value: {}\nUnits near p2 castle: {}\nUnits near p1 castle: {}\nUnits near camps: {}\nUnits able to attack: {}\n", total_value, units_defending, units_sieging, units_near_camp, units_able_to_attack);
 
     total_value
 }
@@ -45,12 +47,41 @@ pub fn evaluate_current_position<'a> (p2_units: &HashMap<(u32, u32), Unit<'a>>, 
 // 2: near_enemy_castle
 // 3: near_camp
 // 4: able_to_attack
+// Minus "being able to attack" all other values will be calculated using heuristics (relative manhattan distance)
 pub fn current_unit_value<'b> (unit: &Unit<'b>, game_map: &GameMap, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> (u32, u32, u32, u32, u32) {
     let mut value: u32 = 0;
-    let mut defending: u32 = 0; //Units near own castle 
-    let mut sieging: u32 = 0; //Units near enemy castle
-    let mut near_camp: u32 = 0;
     let mut able_to_attack: u32 = 0;
+
+    let distance_from_own_castle = (unit.x as i32 - p2_castle.0 as i32).abs() + (unit.y as i32 - p2_castle.1 as i32).abs();
+    
+    let defending: u32 = if distance_from_own_castle < 6 {
+                        1
+                    } else {
+                        0
+                    };
+
+    let distance_from_enemy_castle = (unit.x as i32 - p1_castle.0 as i32).abs() + (unit.y as i32 - p1_castle.1 as i32).abs();
+
+    let sieging: u32 =   if distance_from_enemy_castle < 6 {
+                        1
+                    } else {
+                        0
+                    };
+
+    let distance_from_nearest_camp = {
+        let mut distances_from_camps: Vec<i32> = Vec::new();
+
+        for camp in camp_coords {
+            distances_from_camps.push((unit.x as i32 - camp.0 as i32).abs() + (unit.y as i32 - camp.1 as i32).abs())
+        }
+        *distances_from_camps.iter().min().unwrap()
+    };
+
+    let near_camp: u32 = if distance_from_nearest_camp < 6 {
+                        1
+                    } else {
+                        0
+                    };
 
     (value, defending, sieging, near_camp, able_to_attack)
 }
