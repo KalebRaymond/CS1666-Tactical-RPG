@@ -22,6 +22,7 @@ use crate::pixel_coordinates::PixelCoordinates;
 use crate::player_action::PlayerAction;
 use crate::player_state::PlayerState;
 use crate::player_turn;
+use crate::enemy_turn;
 use crate::barbarian_turn;
 use crate::SDLCore;
 use crate::tile::{Tile, Structure};
@@ -234,16 +235,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				player_turn::handle_player_turn(&core, &mut player_state, &mut p2_units, &mut barbarian_units, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button);
 			},
 			Team::Enemy => {
-				if !turn_banner.banner_visible {
-					//End turn
-					current_player = Team::Barbarians;
-
-					//Start displaying the barbarians' banner
-					turn_banner.current_banner_transparency = 250;
-					turn_banner.banner_colors = Color::RGBA(163,96,30, turn_banner.current_banner_transparency);
-					turn_banner.banner_key = "b_banner";
-					turn_banner.banner_visible = true;
-				}
+				enemy_turn::handle_enemy_turn(&mut p2_units, &mut player_state.p1_units, &mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player);
 			},
 			Team::Barbarians => {
 				barbarian_turn::handle_barbarian_turn(&mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player);
