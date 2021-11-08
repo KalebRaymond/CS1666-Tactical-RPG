@@ -226,6 +226,34 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			old_mouse_x = -1;
 		}
 
+		let (i, j) = PixelCoordinates::matrix_indices_from_pixel(
+            input.mouse_state.x().try_into().unwrap(), 
+            input.mouse_state.y().try_into().unwrap(), 
+            (-1 * core.cam.x).try_into().unwrap(), 
+            (-1 * core.cam.y).try_into().unwrap()
+        );
+
+		match player_state.p1_units.get_mut(&(j,i)) {
+			Some(active_unit) => {
+				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
+			},
+			_ => {
+				cursor.hide_cursor();
+			},
+		}
+		match p2_units.get_mut(&(j,i)) {
+			Some(active_unit) => {
+				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
+			},
+			_ => {},
+		}
+		match barbarian_units.get_mut(&(j,i)) {
+			Some(active_unit) => {
+				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
+			},
+			_ => {},
+		}
+
 		//Handle the current team's move
 		match current_player {
 			Team::Player => {
