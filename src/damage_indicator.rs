@@ -58,6 +58,9 @@ impl DamageIndicator<'_> {
         self.elapsed_time += self.last_drawn.elapsed().as_secs_f32();
         self.last_drawn = Instant::now();
 
+        //Make numbers float upwards
+        self.y -= 1;
+
         //Set is_visible to false after 1 second. This object should now be destroyed
         if self.elapsed_time >= 1.0 {
             self.is_visible = false;
