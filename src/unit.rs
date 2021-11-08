@@ -341,7 +341,11 @@ impl Unit <'_>{
     }
 
     pub fn draw(&mut self, core: &mut SDLCore, dest: &Rect) -> Result<(), String> {
-        let src = if self.is_attacked {
+        let src = if self.has_attacked && self.has_moved {
+            //Draw the darkened sprite
+            self.gray_sprite_src
+        } 
+        else if self.is_attacked {
             self.time_since_damaged += self.last_damaged_drawn.elapsed().as_secs_f32();
             self.last_damaged_drawn = Instant::now();
 

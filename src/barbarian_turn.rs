@@ -94,6 +94,9 @@ pub fn handle_barbarian_turn<'i, 'r>(core: &SDLCore<'r>, barb_units: &mut HashMa
         turn_banner.banner_colors = Color::RGBA(0, 89, 178, turn_banner.current_banner_transparency);
         turn_banner.banner_key = "p1_banner";
         turn_banner.banner_visible = true;
+
+        //Reactivate any grayed out barbarian units
+        crate::single_player::initialize_next_turn(barb_units);
     }
 
     Ok(())
