@@ -6,6 +6,11 @@ use crate::pixel_coordinates::PixelCoordinates;
 use crate::unit::{Team, Unit};
 use crate::turn_banner::TurnBanner;
 
+const MIN_DISTANCE: i32 = 5; // Defines the minimum distance a unit can be from an objective to be considered near it
+const DEFENDING_WEIGHT: f32 = 0.5;
+const SIEGING_WEIGHT: f32 = 0.5;
+const CAMP_WEIGHT: f32 = 0.5;
+
 pub fn handle_enemy_turn<'a>(p2_units: &mut HashMap<(u32, u32), Unit<'a>>, p1_units: &mut HashMap<(u32, u32), Unit<'a>>, barbarian_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap, turn_banner: &mut TurnBanner, current_player: &mut Team, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) {
     if !turn_banner.banner_visible {
         evaluate_current_position(p2_units, game_map, p2_castle, p1_castle, camp_coords);
@@ -20,7 +25,7 @@ pub fn handle_enemy_turn<'a>(p2_units: &mut HashMap<(u32, u32), Unit<'a>>, p1_un
     }
 }
 
-pub fn evaluate_current_position<'a> (p2_units: &HashMap<(u32, u32), Unit<'a>>, game_map: &GameMap, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> u32 {
+pub fn evaluate_current_position<'a> (p2_units: &HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> u32 {
     let mut total_value: u32 = 0;
     let mut units_defending: u32 = 0; //Units near own castle 
     let mut units_sieging: u32 = 0; //Units near enemy castle
@@ -48,13 +53,13 @@ pub fn evaluate_current_position<'a> (p2_units: &HashMap<(u32, u32), Unit<'a>>, 
 // 3: near_camp
 // 4: able_to_attack
 // Minus "being able to attack" all other values will be calculated using heuristics (relative manhattan distance)
-pub fn current_unit_value<'b> (unit: &Unit<'b>, game_map: &GameMap, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> (u32, u32, u32, u32, u32) {
+// Additionally not calculating closest unit to save time since based on the distance from objectives and the ability to attack this distance should be implied
+pub fn current_unit_value<'b> (unit: &Unit<'b>, game_map: &mut GameMap, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> (u32, u32, u32, u32, u32) {    
     let mut value: u32 = 0;
-    let mut able_to_attack: u32 = 0;
 
     let distance_from_own_castle = (unit.x as i32 - p2_castle.0 as i32).abs() + (unit.y as i32 - p2_castle.1 as i32).abs();
     
-    let defending: u32 = if distance_from_own_castle < 6 {
+    let defending: u32 = if distance_from_own_castle <= MIN_DISTANCE {
                         1
                     } else {
                         0
@@ -62,7 +67,7 @@ pub fn current_unit_value<'b> (unit: &Unit<'b>, game_map: &GameMap, p2_castle: &
 
     let distance_from_enemy_castle = (unit.x as i32 - p1_castle.0 as i32).abs() + (unit.y as i32 - p1_castle.1 as i32).abs();
 
-    let sieging: u32 =   if distance_from_enemy_castle < 6 {
+    let sieging: u32 =   if distance_from_enemy_castle <= MIN_DISTANCE {
                         1
                     } else {
                         0
@@ -77,11 +82,17 @@ pub fn current_unit_value<'b> (unit: &Unit<'b>, game_map: &GameMap, p2_castle: &
         *distances_from_camps.iter().min().unwrap()
     };
 
-    let near_camp: u32 = if distance_from_nearest_camp < 6 {
+    let near_camp: u32 = if distance_from_nearest_camp <= MIN_DISTANCE {
                         1
                     } else {
                         0
                     };
+
+    let able_to_attack: u32 =   if unit.get_tiles_can_attack(&mut game_map.map_tiles).is_empty() {
+                                    0
+                                } else {
+                                    1
+                                };
 
     (value, defending, sieging, near_camp, able_to_attack)
 }
