@@ -4,15 +4,15 @@ use crate::unit::{Team};
 
 pub enum Structure {
 	Camp,
-	P-Castle,
-	E-Castle,
+	PCastle,
+	ECastle,
 }
 impl PartialEq for Structure {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Structure::Camp, Structure::Camp) => true,
-            (Structure::P-Castle, Structure::P-Castle) => true,
-            (Structure::E-Castle, Structure::E-Castle) => true,
+            (Structure::PCastle, Structure::PCastle) => true,
+            (Structure::ECastle, Structure::ECastle) => true,
             _ => false,
         }
     }
@@ -29,13 +29,14 @@ pub struct Tile<'a> {
 }
 
 impl Tile <'_>{
-    pub fn new<'a> (x:u32, y:u32, is_traversable: bool, can_attack_through: bool, contained_unit_team: Option<Team>, texture: &'a Texture) -> Tile<'a> {
+    pub fn new<'a> (x:u32, y:u32, is_traversable: bool, can_attack_through: bool, contained_unit_team: Option<Team>, contained_structure: Option<Structure>, texture: &'a Texture) -> Tile<'a> {
         Tile {
             x,
             y,
             is_traversable,
             can_attack_through,
             contained_unit_team,
+            contained_structure,
             texture,
         }
     }
