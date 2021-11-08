@@ -62,14 +62,7 @@ pub fn handle_player_turn<'i, 'r>(core: &SDLCore<'r>, player_state: &mut PlayerS
                             //If the user did click on a unit, allow the player to move the unit
                             *unit_interface = Some(UnitInterface::from_unit(active_unit, unit_interface_texture));
                             player_state.current_player_action = PlayerAction::ChoosingUnitAction;
-                        }
-
-                        //testing ///
-                        if input.right_clicked {
-                            active_unit.receive_damage(5);
-                            game_map.damage_indicators.push(DamageIndicator::new(core, 5, PixelCoordinates::from_matrix_indices(i - 1, j))?);
-                        }
-                        
+                        }                        
                     },
                     _ => {
                         cursor.hide_cursor();
@@ -158,7 +151,7 @@ pub fn handle_player_turn<'i, 'r>(core: &SDLCore<'r>, player_state: &mut PlayerS
                                             tile_under_attack.update_team(None);
                                         } else {
                                             unit.receive_damage(damage_done);
-                                            game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates{ x: unit.x, y: unit.y - TILE_SIZE })?);
+                                            game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
                                             println!("Unit at {}, {} attacking enemy unit at {}, {} for {} damage. Unit now has {} hp.", active_unit.x, active_unit.y, j, i, damage_done, unit.hp);
                                         }
                                     }
@@ -172,7 +165,7 @@ pub fn handle_player_turn<'i, 'r>(core: &SDLCore<'r>, player_state: &mut PlayerS
                                             tile_under_attack.update_team(None);
                                         } else {
                                             unit.receive_damage(damage_done);
-                                            game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates{ x: unit.x, y: unit.y - TILE_SIZE })?);
+                                            game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
                                             println!("Unit at {}, {} attacking barbarian unit at {}, {} for {} damage. Unit now has {} hp.", active_unit.x, active_unit.y, j, i, damage_done, unit.hp);
                                         }
                                     }

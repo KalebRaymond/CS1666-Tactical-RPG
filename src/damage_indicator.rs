@@ -25,6 +25,8 @@ pub struct DamageIndicator<'r> {
 
 impl DamageIndicator<'_> {
     pub fn new<'r>(core: &SDLCore<'r>, damage: u32, position: PixelCoordinates) -> Result<DamageIndicator<'r>, String> {
+        println!("Damage Indicator created: {} damage, ({}, {})", damage, position.x, position.y);
+        
         //Create texture to display the damage as a string
         let text = "-".to_string() + &damage.to_string();
         let texture = core.texture_creator.create_texture_from_surface(

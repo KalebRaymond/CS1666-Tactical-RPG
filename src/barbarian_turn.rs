@@ -41,7 +41,7 @@ pub fn handle_barbarian_turn<'i, 'r>(core: &SDLCore<'r>, barb_units: &mut HashMa
                                         tile_under_attack.update_team(None);
                                     } else {
                                         unit.receive_damage(damage_done);
-                                        game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates{ x: unit.x, y: unit.y - TILE_SIZE })?);
+                                        game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
                                         println!("Barbarian at {}, {} attacking player unit at {}, {} for {} damage. Unit now has {} hp.", barbarian.x, barbarian.y, actual_attacks[0].0, actual_attacks[0].1, damage_done, unit.hp);
                                     }
                                 }
@@ -55,7 +55,7 @@ pub fn handle_barbarian_turn<'i, 'r>(core: &SDLCore<'r>, barb_units: &mut HashMa
                                         tile_under_attack.update_team(None);
                                     } else {
                                         unit.receive_damage(damage_done);
-                                        game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates{ x: unit.x, y: unit.y - TILE_SIZE })?);
+                                        game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
                                         println!("Barbarian at {}, {} attacking enemy unit at {}, {} for {} damage. Unit now has {} hp.", barbarian.x, barbarian.y, actual_attacks[0].0, actual_attacks[0].1, damage_done, unit.hp);
                                     }
                                 }

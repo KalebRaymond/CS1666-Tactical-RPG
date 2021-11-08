@@ -82,6 +82,10 @@ pub struct Unit<'a> {
     pub has_attacked: bool,
     pub has_moved: bool,
 
+    default_sprite_src: Rect,
+    red_sprite_src: Rect,
+    gray_sprite_src: Rect,
+
     is_attacked: bool,
     last_damaged_drawn: Instant,
     time_since_damaged: f32,
@@ -103,6 +107,10 @@ impl Unit <'_>{
             // Initially both are set to true, when it becomes someone's turn, both will need to be set to false for each unit on team
             has_attacked: true,
             has_moved: true,
+
+            default_sprite_src: Rect::new(0, 0, 32, 32),
+            red_sprite_src: Rect::new(32, 0, 32, 32),
+            gray_sprite_src: Rect::new(64, 0, 32, 32),
 
             is_attacked: false,
             last_damaged_drawn: Instant::now(),
@@ -333,23 +341,26 @@ impl Unit <'_>{
     }
 
     pub fn draw(&mut self, core: &mut SDLCore, dest: &Rect) -> Result<(), String> {
-        if self.is_attacked {
-            //Apply red tint to texture
-            //self.texture.set_color_mod(128, 0, 0);
-            //Draw red sprite instead lol
-
+        let src = if self.is_attacked {
             self.time_since_damaged += self.last_damaged_drawn.elapsed().as_secs_f32();
             self.last_damaged_drawn = Instant::now();
 
-            //Remove red tint after .5 seconds
-            if self.time_since_damaged >= 0.5 {
+            //Remove red tint after 1 second
+            if self.time_since_damaged >= 1.0 {
                 self.is_attacked = false;
                 self.time_since_damaged = 0.0;
             }
+
+            //Draw the sprite that's tinted red
+            self.red_sprite_src
         }
+        else {
+            //Draw the default sprite
+            self.default_sprite_src
+        };
         
         //Draw the sprite
-        core.wincan.copy(self.texture, None, *dest)?;
+        core.wincan.copy(self.texture, src, *dest)?;
 
         Ok(())
     }
