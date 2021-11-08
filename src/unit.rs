@@ -104,9 +104,9 @@ impl Unit <'_>{
             min_damage,
             max_damage,
             texture,
-            // Initially both are set to true, when it becomes someone's turn, both will need to be set to false for each unit on team
-            has_attacked: true,
-            has_moved: true,
+            
+            has_attacked: false,
+            has_moved: false,
 
             default_sprite_src: Rect::new(0, 0, 32, 32),
             red_sprite_src: Rect::new(32, 0, 32, 32),

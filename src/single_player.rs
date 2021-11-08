@@ -188,8 +188,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	// Do this right before the game starts so that player 1 starts
 	initialize_next_turn(&mut player_state.p1_units);
-	initialize_next_turn(&mut p2_units);
-	initialize_next_turn(&mut barbarian_units);
 
 	let mut current_player = Team::Player;
 
