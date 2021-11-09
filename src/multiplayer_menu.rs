@@ -24,7 +24,7 @@ impl MultiplayerMenu<'_, '_> {
         let bg_texture = core.texture_creator.load_texture("images/main_menu_animation/24.png")?;
         let bg_interface = core.texture_creator.load_texture("images/interface/unit_interface.png")?;
 
-        let room_text = format!("Room {}", room_code);
+        let room_text = format!("Room {:04}", room_code);
         let text_surface = core.bold_font.render(&room_text[..])
             .blended_wrapped(Color::RGBA(0,0,0,0), 320) //Black font
             .map_err(|e| e.to_string())?;
