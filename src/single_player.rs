@@ -14,6 +14,7 @@ use std::time::{Instant, Duration};
 
 use crate::button::Button;
 use crate::cursor::Cursor;
+use crate::damage_indicator::DamageIndicator;
 use crate::game_map::GameMap;
 use crate::GameState;
 use crate::{CAM_H, CAM_W, TILE_SIZE};
@@ -192,7 +193,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	//Button for player to end their turn
     let mut end_turn_button = Button::new(core, Rect::new((CAM_W - 240).try_into().unwrap(), (CAM_H - 90).try_into().unwrap(), 200, 50), "End Turn")?;
-	
+
 	'gameloop: loop {
 		core.wincan.clear();
 
@@ -271,7 +272,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				}
 			},
 			Team::Barbarians => {
-				barbarian_turn::handle_barbarian_turn(&mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player);
+				barbarian_turn::handle_barbarian_turn(&core, &mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player)?;
 				player_state.p1_units = initialize_next_turn(player_state.p1_units);
 			},
 		}
@@ -297,20 +298,68 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
 				
 				//Draw player unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let Some(unit) = player_state.p1_units.get(&(j as u32, i as u32)) {
-					core.wincan.copy(unit.texture, None, dest)?
+				if let Some(mut unit) = player_state.p1_units.get_mut(&(j as u32, i as u32)) {
+					unit.draw(core, &dest)?;
 				}
 
 				//Draw enemy unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let Some(enemy) = p2_units.get(&(j as u32, i as u32)) {
-					core.wincan.copy(enemy.texture, None, dest)?
+				if let Some(mut enemy) = p2_units.get_mut(&(j as u32, i as u32)) {
+					enemy.draw(core, &dest)?;
 				}
 
 				//Draw barbarian unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let Some(barbarian) = barbarian_units.get(&(j as u32, i as u32)) {
-					core.wincan.copy(barbarian.texture, None, dest)?
+				if let Some(mut barbarian) = barbarian_units.get_mut(&(j as u32, i as u32)) {
+					barbarian.draw(core, &dest)?;
 				}
 			}
+		}
+
+		match player_state.p1_units.get(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)) {
+			Some(_) => {
+				match player_state.current_player_action {
+					PlayerAction::MovingUnit => {
+						draw_possible_moves(core, &game_map.possible_moves, Color::RGBA(0, 89, 178, 50))?;
+					},
+					PlayerAction::AttackingUnit => {
+						draw_possible_moves(core, &game_map.possible_attacks, Color::RGBA(178, 89, 0, 100))?;
+						draw_possible_moves(core, &game_map.actual_attacks, Color::RGBA(128, 0, 128, 100))?;
+					},
+					_ => {},
+				}
+			}
+			_ => ()
+		};
+
+		//Draw the damage indicators that appear above the units that have received damage
+		for damage_indicator in game_map.damage_indicators.iter_mut() {
+			damage_indicator.draw(core)?;
+		}
+		//Remove the damage indicators that have expired
+		game_map.damage_indicators.retain(|damage_indicator| {
+			if !damage_indicator.is_visible {
+				println!("Damage Indicator destroyed: {} damage, ({}, {})", damage_indicator.damage, damage_indicator.x, damage_indicator.y);
+			}
+			damage_indicator.is_visible
+		});
+
+		if current_player == Team::Player
+		{
+			//Draw the cursor
+			cursor.draw(core)?;
+
+			//Draw the scroll sprite UI
+			unit_interface = match unit_interface {
+				Some(mut ui) => {
+					match ui.draw(core, &texture_creator) {
+						Ok(_) => { Some(ui) },
+						_ => { None },
+					}
+				},
+				_ => { None },
+			};
+
+			//Draw the button for the player to end their turn, relative to the camera
+			end_turn_button.draw_relative(core)?;
 		}
 
 		//Draw banner that appears at beginning of turn
@@ -334,42 +383,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				turn_banner.current_banner_transparency -= 25;
 			}
 		}	
-		
-		match player_state.p1_units.get(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)) {
-			Some(_) => {
-				match player_state.current_player_action {
-					PlayerAction::MovingUnit => {
-						draw_possible_moves(core, &game_map.possible_moves, Color::RGBA(0, 89, 178, 50))?;
-					},
-					PlayerAction::AttackingUnit => {
-						draw_possible_moves(core, &game_map.possible_attacks, Color::RGBA(178, 89, 0, 100))?;
-						draw_possible_moves(core, &game_map.actual_attacks, Color::RGBA(128, 0, 128, 100))?;
-					},
-					_ => {},
-				}
-			}
-			_ => ()
-		};
-
-		if current_player == Team::Player
-		{
-			//Draw the cursor
-			cursor.draw(core)?;
-
-			//Draw the scroll sprite UI
-			unit_interface = match unit_interface {
-				Some(mut ui) => {
-					match ui.draw(core, &texture_creator) {
-						Ok(_) => { Some(ui) },
-						_ => { None },
-					}
-				},
-				_ => { None },
-			};
-
-			//Draw the button for the player to end their turn, relative to the camera
-			end_turn_button.draw_relative(core)?;
-		}
 		
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();

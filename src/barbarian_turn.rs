@@ -1,12 +1,15 @@
 use sdl2::pixels::Color;
 use std::collections::HashMap;
 
+use crate::damage_indicator::DamageIndicator;
 use crate::game_map::GameMap;
 use crate::pixel_coordinates::PixelCoordinates;
-use crate::unit::{Team, Unit};
+use crate::SDLCore;
+use crate::TILE_SIZE;
 use crate::turn_banner::TurnBanner;
+use crate::unit::{Team, Unit};
 
-pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>, p1_units: &mut HashMap<(u32, u32), Unit<'a>>, p2_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap, turn_banner: &mut TurnBanner, current_player: &mut Team) {
+pub fn handle_barbarian_turn<'a, 'b>(core: &SDLCore<'b>, barb_units: &mut HashMap<(u32, u32), Unit<'a>>, p1_units: &mut HashMap<(u32, u32), Unit<'a>>, p2_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap<'b>, turn_banner: &mut TurnBanner, current_player: &mut Team) -> Result<(), String> {
     if !turn_banner.banner_visible {
         //First set of coords is the new coordinates and second set are the old ones
         let mut moving_barbs: HashMap<(u32, u32), (u32, u32)> = HashMap::new();
@@ -37,7 +40,8 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
                                         println!("Player unit at {}, {} is dead after taking {} damage.", actual_attacks[0].0, actual_attacks[0].1, damage_done);
                                         tile_under_attack.update_team(None);
                                     } else {
-                                        unit.update_health(damage_done);
+                                        unit.receive_damage(damage_done);
+                                        game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
                                         println!("Barbarian at {}, {} attacking player unit at {}, {} for {} damage. Unit now has {} hp.", barbarian.x, barbarian.y, actual_attacks[0].0, actual_attacks[0].1, damage_done, unit.hp);
                                     }
                                 }
@@ -50,7 +54,8 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
                                         println!("Enemy unit at {}, {} is dead after taking {} damage.", actual_attacks[0].0, actual_attacks[0].1, damage_done);
                                         tile_under_attack.update_team(None);
                                     } else {
-                                        unit.update_health(damage_done);
+                                        unit.receive_damage(damage_done);
+                                        game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
                                         println!("Barbarian at {}, {} attacking enemy unit at {}, {} for {} damage. Unit now has {} hp.", barbarian.x, barbarian.y, actual_attacks[0].0, actual_attacks[0].1, damage_done, unit.hp);
                                     }
                                 }
@@ -90,4 +95,6 @@ pub fn handle_barbarian_turn<'a>(barb_units: &mut HashMap<(u32, u32), Unit<'a>>,
         turn_banner.banner_key = "p1_banner";
         turn_banner.banner_visible = true;
     }
+
+    Ok(())
 }

@@ -13,8 +13,10 @@ use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
 
 #[macro_use] mod sdl_macros;
 
+mod barbarian_turn;
 mod credits;
 mod cursor;
+mod damage_indicator;
 mod game_map;
 mod input;
 mod main_menu;
@@ -23,7 +25,6 @@ mod pixel_coordinates;
 mod player_action;
 mod player_state;
 mod player_turn;
-mod barbarian_turn;
 mod single_player;
 mod turn_banner;
 mod unit_interface;
