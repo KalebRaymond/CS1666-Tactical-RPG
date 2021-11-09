@@ -1,16 +1,5 @@
 extern crate sdl2;
 
-const TITLE: &str = "Castle Quest";
-const CAM_W: u32 = 1280;
-const CAM_H: u32 = 720;
-pub const TILE_SIZE: u32 = 32;
-
-use sdl2::rect::Rect;
-use sdl2::render::TextureCreator;
-use std::path::Path;
-use std::env;
-use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
-
 #[macro_use] mod sdl_macros;
 
 mod barbarian_turn;
@@ -20,6 +9,7 @@ mod damage_indicator;
 mod game_map;
 mod input;
 mod main_menu;
+mod multiplayer_menu;
 mod net;
 mod pixel_coordinates;
 mod player_action;
@@ -32,8 +22,22 @@ pub mod button;
 pub mod tile;
 pub mod unit;
 
+use std::env;
+use std::path::Path;
+use std::time::Instant;
+
+use sdl2::rect::Rect;
+use sdl2::render::TextureCreator;
+use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
+
 use crate::net::client::Client;
 use crate::main_menu::MainMenu;
+use crate::multiplayer_menu::MultiplayerMenu;
+
+const TITLE: &str = "Castle Quest";
+const CAM_W: u32 = 1280;
+const CAM_H: u32 = 720;
+pub const TILE_SIZE: u32 = 32;
 
 pub enum GameState {
 	MainMenu,
@@ -142,6 +146,25 @@ fn run_game_state<'i, 'r>(core: &'i mut SDLCore<'r>, game_state: &GameState) -> 
 		GameState::SinglePlayer => single_player::single_player(core)?,
 		GameState::MultiPlayer => {
 			let client = Client::new()?;
+			
+			// PSEUDOCODE:
+			// 1. Poll for join event, then can enter game
+			// 2. Enter game
+
+			{ // Menu screen waiting for join
+				let mut scene_menu = MultiplayerMenu::new(core, client.code)?;
+				let mut last_poll_instant = Instant::now();
+				loop {
+					// Poll events
+
+					// Draw scene
+					let state = scene_menu.draw()?;
+					match state {
+						GameState::MultiPlayer => continue,
+						_ => return Ok(state),
+					}
+				}
+			}
 
 			// poll every 1000ms for second player join event
 			// TODO: should be integrated with map rendering to poll every 1s between frame draws
