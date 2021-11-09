@@ -24,7 +24,7 @@ pub mod unit;
 
 use std::env;
 use std::path::Path;
-use std::time::Instant;
+use std::time::{Duration,Instant};
 
 use sdl2::rect::Rect;
 use sdl2::render::TextureCreator;
@@ -156,7 +156,19 @@ fn run_game_state<'i, 'r>(core: &'i mut SDLCore<'r>, game_state: &GameState) -> 
 				let mut last_poll_instant = Instant::now();
 				loop {
 					// Poll events
-
+					if(Instant::now().duration_since(last_poll_instant).as_secs() >= 1) {
+						if let Some(event) = client.poll()? { // Poll one event
+							match event.action {
+								net::util::EVENT_JOIN => {
+									println!("The other player has joined the room.");
+									return Ok(GameState::SinglePlayer);
+								},
+								_ => {},
+							}
+						} else { // If no event, stop polling for 1 second
+							last_poll_instant = Instant::now();
+						}
+					}
 					// Draw scene
 					let state = scene_menu.draw()?;
 					match state {
