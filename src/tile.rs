@@ -2,23 +2,41 @@ use sdl2::render::Texture;
 use std::fmt;
 use crate::unit::{Team};
 
+pub enum Structure {
+	Camp,
+	PCastle,
+	ECastle,
+}
+impl PartialEq for Structure {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Structure::Camp, Structure::Camp) => true,
+            (Structure::PCastle, Structure::PCastle) => true,
+            (Structure::ECastle, Structure::ECastle) => true,
+            _ => false,
+        }
+    }
+}
+
 pub struct Tile<'a> {
     pub x: u32,
     pub y: u32,
     pub is_traversable: bool,
     pub can_attack_through: bool, // e.x. archers and mages can attack over rivers and through trees
     pub contained_unit_team: Option<Team>, // Storing a unit causes some pains with lifetimes and references, so store an enum that is better than a boolean
+    pub contained_structure: Option<Structure>,
     pub texture: &'a Texture<'a>,
 }
 
 impl Tile <'_>{
-    pub fn new<'a> (x:u32, y:u32, is_traversable: bool, can_attack_through: bool, contained_unit_team: Option<Team>, texture: &'a Texture) -> Tile<'a> {
+    pub fn new<'a> (x:u32, y:u32, is_traversable: bool, can_attack_through: bool, contained_unit_team: Option<Team>, contained_structure: Option<Structure>, texture: &'a Texture) -> Tile<'a> {
         Tile {
             x,
             y,
             is_traversable,
             can_attack_through,
             contained_unit_team,
+            contained_structure,
             texture,
         }
     }

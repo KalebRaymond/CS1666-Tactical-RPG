@@ -14,6 +14,7 @@ use std::time::{Instant, Duration};
 
 use crate::button::Button;
 use crate::cursor::Cursor;
+use crate::damage_indicator::DamageIndicator;
 use crate::game_map::GameMap;
 use crate::GameState;
 use crate::{CAM_H, CAM_W, TILE_SIZE};
@@ -24,7 +25,7 @@ use crate::player_state::PlayerState;
 use crate::player_turn;
 use crate::barbarian_turn;
 use crate::SDLCore;
-use crate::tile::Tile;
+use crate::tile::{Tile, Structure};
 use crate::turn_banner::TurnBanner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
@@ -152,9 +153,12 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				let letter = &col[..];
 				match letter {
 					//I wanted to do something that wasn't just hardcoding all the textures, but it seems that tile_textures.get() refuses anything that isn't a hard-coded string
-					"║" | "^" | "v" | "<" | "=" | ">" | "t" => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get(&letter).unwrap())),
-					"b" | "1" | "2" | " " | "_" => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get(&letter).unwrap())),
-					_ => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get(&letter).unwrap())),
+					"║" | "^" | "v" | "<" | "=" | ">" | "t" => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, None, tile_textures.get(&letter).unwrap())),
+					" " => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, None, tile_textures.get(&letter).unwrap())),
+					"b" | "_" => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), tile_textures.get(&letter).unwrap())),
+					"1" => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::PCastle), tile_textures.get(&letter).unwrap())),
+					"2" => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::ECastle), tile_textures.get(&letter).unwrap())),
+					  _ => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, false, None, None, tile_textures.get(&letter).unwrap())),
 				};
 				y += 1;
 			}
@@ -192,7 +196,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	//Button for player to end their turn
     let mut end_turn_button = Button::new(core, Rect::new((CAM_W - 240).try_into().unwrap(), (CAM_H - 90).try_into().unwrap(), 200, 50), "End Turn")?;
-	
+
 	'gameloop: loop {
 		core.wincan.clear();
 
@@ -225,10 +229,38 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			old_mouse_x = -1;
 		}
 
+		let (i, j) = PixelCoordinates::matrix_indices_from_pixel(
+            input.mouse_state.x().try_into().unwrap(), 
+            input.mouse_state.y().try_into().unwrap(), 
+            (-1 * core.cam.x).try_into().unwrap(), 
+            (-1 * core.cam.y).try_into().unwrap()
+        );
+
+		match player_state.p1_units.get_mut(&(j,i)) {
+			Some(active_unit) => {
+				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
+			},
+			_ => {
+				cursor.hide_cursor();
+			},
+		}
+		match p2_units.get_mut(&(j,i)) {
+			Some(active_unit) => {
+				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
+			},
+			_ => {},
+		}
+		match barbarian_units.get_mut(&(j,i)) {
+			Some(active_unit) => {
+				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
+			},
+			_ => {},
+		}
+
 		//Handle the current team's move
 		match current_player {
 			Team::Player => {
-				player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button);
+				player_turn::handle_player_turn(&core, &mut player_state, &mut p2_units, &mut barbarian_units, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
 			},
 			Team::Enemy => {
 				if !turn_banner.banner_visible {
@@ -243,7 +275,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				}
 			},
 			Team::Barbarians => {
-				barbarian_turn::handle_barbarian_turn(&mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player);
+				barbarian_turn::handle_barbarian_turn(&core, &mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player)?;
 				player_state.p1_units = initialize_next_turn(player_state.p1_units);
 			},
 		}
@@ -269,20 +301,68 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
 				
 				//Draw player unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let Some(unit) = player_state.p1_units.get(&(j as u32, i as u32)) {
-					core.wincan.copy(unit.texture, None, dest)?
+				if let Some(mut unit) = player_state.p1_units.get_mut(&(j as u32, i as u32)) {
+					unit.draw(core, &dest)?;
 				}
 
 				//Draw enemy unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let Some(enemy) = p2_units.get(&(j as u32, i as u32)) {
-					core.wincan.copy(enemy.texture, None, dest)?
+				if let Some(mut enemy) = p2_units.get_mut(&(j as u32, i as u32)) {
+					enemy.draw(core, &dest)?;
 				}
 
 				//Draw barbarian unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let Some(barbarian) = barbarian_units.get(&(j as u32, i as u32)) {
-					core.wincan.copy(barbarian.texture, None, dest)?
+				if let Some(mut barbarian) = barbarian_units.get_mut(&(j as u32, i as u32)) {
+					barbarian.draw(core, &dest)?;
 				}
 			}
+		}
+
+		match player_state.p1_units.get(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)) {
+			Some(_) => {
+				match player_state.current_player_action {
+					PlayerAction::MovingUnit => {
+						draw_possible_moves(core, &game_map.possible_moves, Color::RGBA(0, 89, 178, 50))?;
+					},
+					PlayerAction::AttackingUnit => {
+						draw_possible_moves(core, &game_map.possible_attacks, Color::RGBA(178, 89, 0, 100))?;
+						draw_possible_moves(core, &game_map.actual_attacks, Color::RGBA(128, 0, 128, 100))?;
+					},
+					_ => {},
+				}
+			}
+			_ => ()
+		};
+
+		//Draw the damage indicators that appear above the units that have received damage
+		for damage_indicator in game_map.damage_indicators.iter_mut() {
+			damage_indicator.draw(core)?;
+		}
+		//Remove the damage indicators that have expired
+		game_map.damage_indicators.retain(|damage_indicator| {
+			if !damage_indicator.is_visible {
+				println!("Damage Indicator destroyed: {} damage, ({}, {})", damage_indicator.damage, damage_indicator.x, damage_indicator.y);
+			}
+			damage_indicator.is_visible
+		});
+
+		if current_player == Team::Player
+		{
+			//Draw the cursor
+			cursor.draw(core)?;
+
+			//Draw the scroll sprite UI
+			unit_interface = match unit_interface {
+				Some(mut ui) => {
+					match ui.draw(core, &texture_creator) {
+						Ok(_) => { Some(ui) },
+						_ => { None },
+					}
+				},
+				_ => { None },
+			};
+
+			//Draw the button for the player to end their turn, relative to the camera
+			end_turn_button.draw_relative(core)?;
 		}
 
 		//Draw banner that appears at beginning of turn
@@ -306,42 +386,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				turn_banner.current_banner_transparency -= 25;
 			}
 		}	
-		
-		match player_state.p1_units.get(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)) {
-			Some(_) => {
-				match player_state.current_player_action {
-					PlayerAction::MovingUnit => {
-						draw_possible_moves(core, &game_map.possible_moves, Color::RGBA(0, 89, 178, 50))?;
-					},
-					PlayerAction::AttackingUnit => {
-						draw_possible_moves(core, &game_map.possible_attacks, Color::RGBA(178, 89, 0, 100))?;
-						draw_possible_moves(core, &game_map.actual_attacks, Color::RGBA(128, 0, 128, 100))?;
-					},
-					_ => {},
-				}
-			}
-			_ => ()
-		};
-
-		if current_player == Team::Player
-		{
-			//Draw the cursor
-			cursor.draw(core)?;
-
-			//Draw the scroll sprite UI
-			unit_interface = match unit_interface {
-				Some(mut ui) => {
-					match ui.draw(core, &texture_creator) {
-						Ok(_) => { Some(ui) },
-						_ => { None },
-					}
-				},
-				_ => { None },
-			};
-
-			//Draw the button for the player to end their turn, relative to the camera
-			end_turn_button.draw_relative(core)?;
-		}
 		
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
@@ -408,9 +452,9 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 			Team::Barbarians => map.get_mut(&(unit.1.1, unit.1.0)).unwrap().update_team(Some(Team::Barbarians)),
 		}
 		match unit.0 {
-			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 7, 1, 90, 5, unit_textures.get(melee).unwrap())),
-			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 5, 4, 70, 7, unit_textures.get(range).unwrap())),
-			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 4, 3, 60, 9, unit_textures.get(mage).unwrap())),
+			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 6, 1, 95, 1, 5, unit_textures.get(melee).unwrap())),
+			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 5, 4, 85, 3, 7, unit_textures.get(range).unwrap())),
+			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 7, 3, 75,  5, 9, unit_textures.get(mage).unwrap())),
 		};
 	}
 }

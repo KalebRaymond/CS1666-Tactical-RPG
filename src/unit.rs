@@ -1,14 +1,19 @@
 use rand::Rng;
-use std::collections::HashMap;
+
+use sdl2::rect::Rect;
+use sdl2::render::Texture;
+
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
-
-use sdl2::render::Texture;
+use std::collections::HashMap;
 use std::fmt;
-use crate::tile::{Tile};
+use std::time::Instant;
 
-const MAP_WIDTH:u32 = 64;
-const MAP_HEIGHT:u32 = 64;
+use crate::SDLCore;
+use crate::tile::Tile;
+
+const MAP_WIDTH: u32 = 64;
+const MAP_HEIGHT: u32 = 64;
 
 pub enum Team {
 	Player,
@@ -68,37 +73,57 @@ pub struct Unit<'a> {
     pub y: u32,
     pub team: Team, 
     pub hp: u32,
+    pub max_hp: u32,
     movement_range: u32,
     attack_range: u32,
     accuracy: u32,
+    min_damage: u32,
     max_damage: u32,
     pub texture: &'a Texture<'a>,
     pub has_attacked: bool,
     pub has_moved: bool,
+
+    default_sprite_src: Rect,
+    red_sprite_src: Rect,
+    gray_sprite_src: Rect,
+
+    is_attacked: bool,
+    last_damaged_drawn: Instant,
+    time_since_damaged: f32,
 }
 
 impl Unit <'_>{
-    pub fn new<'a> (x:u32, y:u32, team: Team, hp: u32, movement_range: u32, attack_range: u32, accuracy: u32, max_damage: u32, texture: &'a Texture) -> Unit<'a> {
+    pub fn new<'a> (x:u32, y:u32, team: Team, hp: u32, movement_range: u32, attack_range: u32, accuracy: u32, min_damage:u32, max_damage: u32, texture: &'a Texture) -> Unit<'a> {
         Unit {
             x,
             y,
             team,
             hp,
+            max_hp: hp,
             movement_range,
             attack_range,
             accuracy,
+            min_damage,
             max_damage,
             texture,
             // Initially both are set to true, when it becomes someone's turn, both will need to be set to false for each unit on team
             has_attacked: true,
             has_moved: true,
+
+            default_sprite_src: Rect::new(0, 0, 32, 32),
+            red_sprite_src: Rect::new(32, 0, 32, 32),
+            gray_sprite_src: Rect::new(64, 0, 32, 32),
+
+            is_attacked: false,
+            last_damaged_drawn: Instant::now(),
+            time_since_damaged: 0.0,
         }
     }
 
     pub fn get_attack_damage(&self) -> u32 {
         let chance = rand::thread_rng().gen_range(0..100);
         if chance < self.accuracy {
-            rand::thread_rng().gen_range(1..=self.max_damage)
+            rand::thread_rng().gen_range(self.min_damage..=self.max_damage)
         } else {
             0
         }
@@ -307,6 +332,39 @@ impl Unit <'_>{
         }
         
         tiles_in_range
+    }
+
+    pub fn receive_damage(&mut self, damage: u32) {
+        self.hp -= damage;
+
+        //Make the unit turn red after taking damage
+        self.is_attacked = true;
+        self.last_damaged_drawn = Instant::now();
+    }
+
+    pub fn draw(&mut self, core: &mut SDLCore, dest: &Rect) -> Result<(), String> {
+        let src = if self.is_attacked {
+            self.time_since_damaged += self.last_damaged_drawn.elapsed().as_secs_f32();
+            self.last_damaged_drawn = Instant::now();
+
+            //Remove red tint after 1 second
+            if self.time_since_damaged >= 1.0 {
+                self.is_attacked = false;
+                self.time_since_damaged = 0.0;
+            }
+
+            //Draw the sprite that's tinted red
+            self.red_sprite_src
+        }
+        else {
+            //Draw the default sprite
+            self.default_sprite_src
+        };
+        
+        //Draw the sprite
+        core.wincan.copy(self.texture, src, *dest)?;
+
+        Ok(())
     }
 }
 
