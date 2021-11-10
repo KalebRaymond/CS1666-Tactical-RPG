@@ -15,6 +15,8 @@ mod pixel_coordinates;
 mod player_action;
 mod player_state;
 mod player_turn;
+mod enemy_turn;
+mod barbarian_turn;
 mod single_player;
 mod turn_banner;
 mod unit_interface;
