@@ -2,7 +2,7 @@ extern crate sdl2;
 
 #[macro_use] mod sdl_macros;
 
-mod barbarian_turn;
+
 mod credits;
 mod cursor;
 mod damage_indicator;
