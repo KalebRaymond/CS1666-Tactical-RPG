@@ -19,7 +19,7 @@ use crate::turn_banner::TurnBanner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
 
-pub fn handle_player_turn<'i, 'r>(core: &SDLCore<'r>, player_state: &mut PlayerState, p2_units: &mut HashMap<(u32, u32), Unit<'i>>, barbarian_units: &mut HashMap<(u32, u32), Unit<'i>>, game_map: &mut GameMap<'r>, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'i>>, unit_interface_texture: &'i Texture<'i>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
+pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerState, p2_units: &mut HashMap<(u32, u32), Unit<'a>>, barbarian_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap<'b>, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
     if !turn_banner.banner_visible {
         //Check if player ended turn by pressing backspace
         if input.keystate.contains(&Keycode::Backspace) {
@@ -52,8 +52,6 @@ pub fn handle_player_turn<'i, 'r>(core: &SDLCore<'r>, player_state: &mut PlayerS
                 //If player hovers over a unit, display cursor above that unit
                 match player_state.p1_units.get_mut(&(j,i)) {
                     Some(active_unit) => {
-                        cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j));
-
                         //Now check if the player actually clicked on the unit they hovered over
                         if input.left_clicked {
                             player_state.active_unit_i = i as i32;
@@ -62,11 +60,9 @@ pub fn handle_player_turn<'i, 'r>(core: &SDLCore<'r>, player_state: &mut PlayerS
                             //If the user did click on a unit, allow the player to move the unit
                             *unit_interface = Some(UnitInterface::from_unit(active_unit, unit_interface_texture));
                             player_state.current_player_action = PlayerAction::ChoosingUnitAction;
-                        }                        
+                        }
                     },
-                    _ => {
-                        cursor.hide_cursor();
-                    },
+                    _ => {},
                 }
             },
             PlayerAction::ChoosingUnitAction => {

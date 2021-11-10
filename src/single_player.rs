@@ -23,9 +23,10 @@ use crate::pixel_coordinates::PixelCoordinates;
 use crate::player_action::PlayerAction;
 use crate::player_state::PlayerState;
 use crate::player_turn;
+use crate::enemy_turn;
 use crate::barbarian_turn;
 use crate::SDLCore;
-use crate::tile::Tile;
+use crate::tile::{Tile, Structure};
 use crate::turn_banner::TurnBanner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
@@ -37,6 +38,11 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	
 	//Stuff for banner that appears at beginning of each turn
 	let mut turn_banner = TurnBanner::new();
+
+	//Stuff for enemy AI calculations
+	let mut camp_coords: Vec<(u32, u32)> = Vec::new();
+	let mut player_castle: (u32, u32) = (0, 0);
+	let mut enemy_castle: (u32, u32) = (0, 0);
 
 	//Load map from file
 	let map_data = File::open("maps/map.txt").expect("Unable to open map file");
@@ -153,9 +159,22 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				let letter = &col[..];
 				match letter {
 					//I wanted to do something that wasn't just hardcoding all the textures, but it seems that tile_textures.get() refuses anything that isn't a hard-coded string
-					"║" | "^" | "v" | "<" | "=" | ">" | "t" => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get(&letter).unwrap())),
-					"b" | "1" | "2" | " " | "_" => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get(&letter).unwrap())),
-					_ => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get(&letter).unwrap())),
+					"║" | "^" | "v" | "<" | "=" | ">" | "t" => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, None, tile_textures.get(&letter).unwrap())),
+					" " => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, None, tile_textures.get(&letter).unwrap())),
+					"b" =>  { 
+								camp_coords.push((y,x));
+								game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), tile_textures.get(&letter).unwrap()))
+							},
+					"_" => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), tile_textures.get(&letter).unwrap())),
+					"1" =>  {
+								player_castle = (y, x);
+								game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::PCastle), tile_textures.get(&letter).unwrap()))
+							},
+					"2" =>  {
+								enemy_castle = (y, x);
+								game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::ECastle), tile_textures.get(&letter).unwrap()))
+							},
+					  _ => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, false, None, None, tile_textures.get(&letter).unwrap())),
 				};
 				y += 1;
 			}
@@ -226,25 +245,41 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			old_mouse_x = -1;
 		}
 
+		let (i, j) = PixelCoordinates::matrix_indices_from_pixel(
+            input.mouse_state.x().try_into().unwrap(), 
+            input.mouse_state.y().try_into().unwrap(), 
+            (-1 * core.cam.x).try_into().unwrap(), 
+            (-1 * core.cam.y).try_into().unwrap()
+        );
+
+		match player_state.p1_units.get_mut(&(j,i)) {
+			Some(active_unit) => {
+				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
+			},
+			_ => {
+				cursor.hide_cursor();
+			},
+		}
+		match p2_units.get_mut(&(j,i)) {
+			Some(active_unit) => {
+				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
+			},
+			_ => {},
+		}
+		match barbarian_units.get_mut(&(j,i)) {
+			Some(active_unit) => {
+				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
+			},
+			_ => {},
+		}
+
 		//Handle the current team's move
 		match current_player {
 			Team::Player => {
 				player_turn::handle_player_turn(&core, &mut player_state, &mut p2_units, &mut barbarian_units, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
 			},
 			Team::Enemy => {
-				if !turn_banner.banner_visible {
-					//End turn
-					current_player = Team::Barbarians;
-
-					//Start displaying the barbarians' banner
-					turn_banner.current_banner_transparency = 250;
-					turn_banner.banner_colors = Color::RGBA(163,96,30, turn_banner.current_banner_transparency);
-					turn_banner.banner_key = "b_banner";
-					turn_banner.banner_visible = true;
-
-					//Reactivate any grayed out enemy units
-					initialize_next_turn(&mut p2_units);
-				}
+				enemy_turn::handle_enemy_turn(&mut p2_units, &mut player_state.p1_units, &mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player, &enemy_castle, &player_castle, &camp_coords);
 			},
 			Team::Barbarians => {
 				barbarian_turn::handle_barbarian_turn(&core, &mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player)?;

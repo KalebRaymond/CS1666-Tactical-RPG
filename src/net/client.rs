@@ -1,5 +1,6 @@
 use std::io::prelude::*;
 use std::net::TcpStream;
+use std::time::Instant;
 
 use crate::net::SERVER_ADDR;
 use crate::net::util::*;
@@ -16,10 +17,12 @@ pub fn set_code(code: Option<u32>) {
 }
 
 pub struct Client {
-	code: u32,
+	pub code: u32,
 	token: u32,
-	is_host: bool,
-	addr: String
+	pub is_host: bool,
+	pub is_joined: bool,
+	addr: String,
+	last_poll: Instant,
 }
 
 impl Client {
@@ -34,7 +37,7 @@ impl Client {
 		};
 
 		// construct the client and either create/join the room
-		let mut client = Client { code, token: 0, is_host: code == 0, addr };
+		let mut client = Client { code, token: 0, is_host: code == 0, is_joined: false, addr, last_poll: Instant::now() };
 		let mut stream = client.connect(if code == 0 { MSG_CREATE } else { MSG_JOIN })?;
 
 		let mut buffer = [0; 8];
@@ -88,7 +91,13 @@ impl Client {
 		}
 	}
 
-	pub fn poll(&self) -> Result<Option<Event>, String> {
+	pub fn poll(&mut self) -> Result<Option<Event>, String> {
+		// don't send polls if <1s since last call
+		if Instant::now().duration_since(self.last_poll).as_secs() < 1 {
+			return Ok(None);
+		}
+
+		self.last_poll = Instant::now();
 		let mut stream = self.connect(MSG_POLL)?;
 
 		let mut buffer = [0; 18];
@@ -96,6 +105,10 @@ impl Client {
 
 		match Event::from_bytes(&buffer) {
 			Event{action: EVENT_NONE, ..} => Ok(None),
+			Event{action: EVENT_JOIN, ..} => {
+				self.is_joined = true;
+				Ok(None)
+			},
 			e => Ok(Some(e))
 		}
 	}
