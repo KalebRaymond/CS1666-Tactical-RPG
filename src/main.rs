@@ -2,20 +2,22 @@ extern crate sdl2;
 
 #[macro_use] mod sdl_macros;
 
-mod barbarian_turn;
+
 mod credits;
 mod cursor;
 mod damage_indicator;
 mod game_map;
 mod input;
 mod main_menu;
-mod multiplayer_menu;
 mod net;
 mod pixel_coordinates;
 mod player_action;
 mod player_state;
 mod player_turn;
+mod enemy_turn;
+mod barbarian_turn;
 mod single_player;
+mod multi_player;
 mod turn_banner;
 mod unit_interface;
 pub mod button;
@@ -32,19 +34,24 @@ use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
 
 use crate::net::client::Client;
 use crate::main_menu::MainMenu;
-use crate::multiplayer_menu::MultiplayerMenu;
+use crate::multi_player::MultiPlayer;
 
 const TITLE: &str = "Castle Quest";
 const CAM_W: u32 = 1280;
 const CAM_H: u32 = 720;
 pub const TILE_SIZE: u32 = 32;
 
+#[derive(PartialEq)]
 pub enum GameState {
 	MainMenu,
 	SinglePlayer,
 	MultiPlayer,
 	Credits,
 	Quit,
+}
+
+pub trait Drawable {
+	fn draw(&mut self) -> Result<GameState, String>;
 }
 
 pub struct SDLCore<'t> {
@@ -119,13 +126,8 @@ fn runner(vsync:bool) -> Result<(), String> {
 }
 
 fn run_game_state<'i, 'r>(core: &'i mut SDLCore<'r>, game_state: &GameState) -> Result<GameState, String> {
-	let state = match game_state {
-		// This is a specific loop implementation for the MainMenu struct, as it is the only scene with this structure
-		// - this function could be abstracted as the other files are refactored; ideally, `GameState` is a Option<Fn(SDLCore) -> Scene>, where Scene is a trait impemented for every scene struct
-		// - this way, `main_menu` can choose to `return Ok(SinglePlayer::init);`, which this function will use to initialize the singleplayer scene and move its iteration to that function's return value
+	let mut scene: Box<dyn Drawable> = match game_state {
 		GameState::MainMenu => {
-			let mut scene_menu = MainMenu::new(core)?;
-
 			// background music for main menu
 			// - This had to be moved into a scope that exists outside of both the `main_menu.rs` functions as it needs a persistent lifetime (otherwise it segfaults)
 			// - in the future, this should be abstracted; we could create a `sound_queue: Vec<Path>` in SDLCore that any function can push to in order to play sounds
@@ -135,70 +137,24 @@ fn run_game_state<'i, 'r>(core: &'i mut SDLCore<'r>, game_state: &GameState) -> 
 
 			bg_music.play(-1)?;
 
-			loop {
-				let state = scene_menu.draw()?;
-				match state {
-					GameState::MainMenu => continue,
-					_ => return Ok(state),
-				}
-			}
+			Box::new(MainMenu::new(core)?)
 		},
-		GameState::SinglePlayer => single_player::single_player(core)?,
-		GameState::MultiPlayer => {
-			let client = Client::new()?;
-			
-			// PSEUDOCODE:
-			// 1. Poll for join event, then can enter game
-			// 2. Enter game
-
-			{ // Menu screen waiting for join
-				let mut scene_menu = MultiplayerMenu::new(core, client.code)?;
-				let mut last_poll_instant = Instant::now();
-				loop {
-					// Poll events
-					if(Instant::now().duration_since(last_poll_instant).as_secs() >= 1) {
-						if let Some(event) = client.poll()? { // Poll one event
-							match event.action {
-								net::util::EVENT_JOIN => {
-									println!("The other player has joined the room.");
-									return Ok(GameState::SinglePlayer);
-								},
-								_ => {},
-							}
-						} else { // If no event, stop polling for 1 second
-							last_poll_instant = Instant::now();
-						}
-					}
-					// Draw scene
-					let state = scene_menu.draw()?;
-					match state {
-						GameState::MultiPlayer => continue,
-						_ => return Ok(state),
-					}
-				}
-			}
-
-			// poll every 1000ms for second player join event
-			// TODO: should be integrated with map rendering to poll every 1s between frame draws
-			// (e.g. store a let mut last_poll = Instant::now(); in this scope, compare on each frame & update on each poll)
-			loop {
-				sleep_poll!(core, 1000);
-
-				if let Some(event) = client.poll()? {
-					// listen for the join event, indicating that the other player has connected
-					if event.action == net::util::EVENT_JOIN {
-						println!("The other player has joined the room.");
-					}
-				}
-			}
-
-			return Ok(GameState::MainMenu);
+		GameState::SinglePlayer => {
+			return Ok(single_player::single_player(core)?);
 		},
-		GameState::Credits => credits::credits(core)?,
+		GameState::MultiPlayer => Box::new(MultiPlayer::new(core)?),
+		GameState::Credits => {
+			return Ok(credits::credits(core)?);
+		},
 		_ => return Err("Exit game state".to_string())
 	};
 
-	Ok(state)
+	loop {
+		let state = scene.draw()?;
+		if state != *game_state {
+			return Ok(state);
+		}
+	}
 }
 
 static mut ARGS: Vec<String> = Vec::new();
