@@ -5,7 +5,7 @@ use sdl2::image::LoadTexture;
 use sdl2::render::Texture;
 use std::time::Instant;
 
-use crate::GameState;
+use crate::{Drawable, GameState};
 use crate::SDLCore;
 use crate::button::Button;
 use crate::net::client;
@@ -78,8 +78,11 @@ impl MainMenu<'_, '_> {
 		})
 	}
 
+}
 
-	pub fn draw(&mut self) -> Result<GameState, String> {
+impl Drawable for MainMenu<'_, '_> {
+
+	fn draw(&mut self) -> Result<GameState, String> {
 		let mouse_state: MouseState = self.core.event_pump.mouse_state();
 		let mouse_pos = (mouse_state.x(), mouse_state.y());
 
