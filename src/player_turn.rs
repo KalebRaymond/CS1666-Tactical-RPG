@@ -7,28 +7,30 @@ use std::collections::HashMap;
 
 use crate::button::Button;
 use crate::cursor::Cursor;
+use crate::damage_indicator::DamageIndicator;
 use crate::game_map::GameMap;
 use crate::input::Input;
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::player_action::PlayerAction;
 use crate::player_state::PlayerState;
 use crate::SDLCore;
+use crate::TILE_SIZE;
+use crate::turn_banner::TurnBanner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
-use crate::turn_banner::TurnBanner;
 
-pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, p2_units: &mut HashMap<(u32, u32), Unit<'a>>, barbarian_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) {
+pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerState, p2_units: &mut HashMap<(u32, u32), Unit<'a>>, barbarian_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap<'b>, input: &Input, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
     if !turn_banner.banner_visible {
         //Check if player ended turn by pressing backspace
         if input.keystate.contains(&Keycode::Backspace) {
             end_player_turn(player_state, turn_banner, unit_interface, current_player, cursor);
-            return;
+            return Ok(());
         }
 
         //Check if user clicked the end turn button
 		if input.left_clicked && end_turn_button.is_mouse(core) {
 			end_player_turn(player_state, turn_banner, unit_interface, current_player, cursor);
-            return;
+            return Ok(());
 		}
 
         //Get map matrix indices from mouse position
@@ -50,8 +52,6 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, p2
                 //If player hovers over a unit, display cursor above that unit
                 match player_state.p1_units.get_mut(&(j,i)) {
                     Some(active_unit) => {
-                        cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j));
-
                         //Now check if the player actually clicked on the unit they hovered over
                         if input.left_clicked {
                             player_state.active_unit_i = i as i32;
@@ -60,11 +60,9 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, p2
                             //If the user did click on a unit, allow the player to move the unit
                             *unit_interface = Some(UnitInterface::from_unit(active_unit, unit_interface_texture));
                             player_state.current_player_action = PlayerAction::ChoosingUnitAction;
-                        }	
+                        }
                     },
-                    _ => {
-                        cursor.hide_cursor();
-                    },
+                    _ => {},
                 }
             },
             PlayerAction::ChoosingUnitAction => {
@@ -148,7 +146,8 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, p2
                                             println!("Enemy unit at {}, {} is dead after taking {} damage.", j, i, damage_done);
                                             tile_under_attack.update_team(None);
                                         } else {
-                                            unit.update_health(damage_done);
+                                            unit.receive_damage(damage_done);
+                                            game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
                                             println!("Unit at {}, {} attacking enemy unit at {}, {} for {} damage. Unit now has {} hp.", active_unit.x, active_unit.y, j, i, damage_done, unit.hp);
                                         }
                                     }
@@ -161,7 +160,8 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, p2
                                             println!("Barbarian unit at {}, {} is dead after taking {} damage.", j, i, damage_done);
                                             tile_under_attack.update_team(None);
                                         } else {
-                                            unit.update_health(damage_done);
+                                            unit.receive_damage(damage_done);
+                                            game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
                                             println!("Unit at {}, {} attacking barbarian unit at {}, {} for {} damage. Unit now has {} hp.", active_unit.x, active_unit.y, j, i, damage_done, unit.hp);
                                         }
                                     }
@@ -178,6 +178,8 @@ pub fn handle_player_turn<'a>(core: &SDLCore, player_state: &mut PlayerState, p2
             }
         }		
     }
+
+    Ok(())
 }
 
 pub fn end_player_turn<'a>(player_state: &mut PlayerState, turn_banner: &mut TurnBanner, unit_interface: &mut Option<UnitInterface<'a>>, current_player: &mut Team, cursor: &mut Cursor) {

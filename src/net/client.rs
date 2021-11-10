@@ -16,7 +16,7 @@ pub fn set_code(code: Option<u32>) {
 }
 
 pub struct Client {
-	code: u32,
+	pub code: u32,
 	token: u32,
 	is_host: bool,
 	addr: String
