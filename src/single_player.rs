@@ -25,7 +25,7 @@ use crate::player_state::PlayerState;
 use crate::player_turn;
 use crate::barbarian_turn;
 use crate::SDLCore;
-use crate::tile::Tile;
+use crate::tile::{Tile, Structure};
 use crate::turn_banner::TurnBanner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
@@ -153,9 +153,12 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				let letter = &col[..];
 				match letter {
 					//I wanted to do something that wasn't just hardcoding all the textures, but it seems that tile_textures.get() refuses anything that isn't a hard-coded string
-					"║" | "^" | "v" | "<" | "=" | ">" | "t" => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, tile_textures.get(&letter).unwrap())),
-					"b" | "1" | "2" | " " | "_" => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, tile_textures.get(&letter).unwrap())),
-					_ => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, false, None, tile_textures.get(&letter).unwrap())),
+					"║" | "^" | "v" | "<" | "=" | ">" | "t" => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, None, tile_textures.get(&letter).unwrap())),
+					" " => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, None, tile_textures.get(&letter).unwrap())),
+					"b" | "_" => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), tile_textures.get(&letter).unwrap())),
+					"1" => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::PCastle), tile_textures.get(&letter).unwrap())),
+					"2" => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::ECastle), tile_textures.get(&letter).unwrap())),
+					  _ => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, false, None, None, tile_textures.get(&letter).unwrap())),
 				};
 				y += 1;
 			}
