@@ -6,10 +6,10 @@ use crate::game_map::GameMap;
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::SDLCore;
 use crate::TILE_SIZE;
-use crate::turn_banner::TurnBanner;
+use crate::banner::Banner;
 use crate::unit::{Team, Unit};
 
-pub fn handle_barbarian_turn<'a, 'b>(core: &SDLCore<'b>, barb_units: &mut HashMap<(u32, u32), Unit<'a>>, p1_units: &mut HashMap<(u32, u32), Unit<'a>>, p2_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap<'b>, turn_banner: &mut TurnBanner, current_player: &mut Team) -> Result<(), String> {
+pub fn handle_barbarian_turn<'a, 'b>(core: &SDLCore<'b>, barb_units: &mut HashMap<(u32, u32), Unit<'a>>, p1_units: &mut HashMap<(u32, u32), Unit<'a>>, p2_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap<'b>, turn_banner: &mut Banner, current_player: &mut Team) -> Result<(), String> {
     if !turn_banner.banner_visible {
         //First set of coords is the new coordinates and second set are the old ones
         let mut moving_barbs: HashMap<(u32, u32), (u32, u32)> = HashMap::new();

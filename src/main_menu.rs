@@ -1,14 +1,15 @@
+use sdl2::image::LoadTexture;
+use sdl2::mouse::MouseState;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
-use sdl2::mouse::MouseState;
-use sdl2::image::LoadTexture;
 use sdl2::render::Texture;
+
 use std::time::Instant;
 
 use crate::{Drawable, GameState};
-use crate::SDLCore;
 use crate::button::Button;
 use crate::net::client;
+use crate::SDLCore;
 
 pub struct MainMenu<'i, 'r> {
 	core: &'i mut SDLCore<'r>,
