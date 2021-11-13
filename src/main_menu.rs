@@ -1,14 +1,16 @@
+use sdl2::image::LoadTexture;
+use sdl2::mouse::MouseState;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
-use sdl2::mouse::MouseState;
-use sdl2::image::LoadTexture;
 use sdl2::render::Texture;
+
+use std::convert::TryInto;
 use std::time::Instant;
 
-use crate::{Drawable, GameState};
-use crate::SDLCore;
+use crate::{CAM_H, CAM_W, Drawable, GameState};
 use crate::button::Button;
 use crate::net::client;
+use crate::SDLCore;
 
 pub struct MainMenu<'i, 'r> {
 	core: &'i mut SDLCore<'r>,
@@ -38,6 +40,13 @@ pub struct MainMenu<'i, 'r> {
 impl MainMenu<'_, '_> {
 
 	pub fn new<'i, 'r>(core: &'i mut SDLCore<'r>) -> Result<MainMenu<'i, 'r>, String> {
+		//Set camera size equal to screen size
+		core.cam.w = CAM_W.try_into().unwrap();
+		core.cam.h = CAM_H.try_into().unwrap();
+		core.cam.x = 0;
+		core.cam.y = 0;
+		core.wincan.set_viewport(core.cam);
+		
 		// bg animation textures
 		let bg_textures: Vec<Texture> = (1..25).map(|i| {
 			core.texture_creator.load_texture(format!("images/main_menu_animation/{}.png", i)).unwrap()
