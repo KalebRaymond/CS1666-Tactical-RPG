@@ -54,7 +54,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	//Set camera size based on map size
 	core.cam.w = (map_width as u32 * TILE_SIZE) as i32;
 	core.cam.h = (map_height as u32 * TILE_SIZE) as i32;
-
 	//Start camera in lower left corner, to start with the player castle in view
 	core.cam.x = 0;
 	core.cam.y = -core.cam.h + core.wincan.window().size().1 as i32;
