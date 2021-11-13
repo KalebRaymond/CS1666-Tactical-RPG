@@ -28,6 +28,15 @@ pub struct SuccinctUnit {
     attack_range: u32,
 }
 
+impl SuccinctUnit {
+    pub fn new(possible_moves: Vec<(u32, u32)>, attack_range: u32) -> SuccinctUnit {
+        SuccinctUnit{
+            possible_moves,
+            attack_range,
+        }
+    }
+}
+
 //Since we won't be passing around units, we need to create a generalized way to get units that can be attacked
 pub fn generalized_tiles_can_attack(map: &mut HashMap<(u32, u32), Tile>, coordinates: (u32, u32), range: u32) -> Vec<(u32, u32)> {
     let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
