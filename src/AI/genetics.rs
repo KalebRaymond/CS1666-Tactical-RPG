@@ -35,7 +35,7 @@ fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut Has
         let mut movement_values: Vec<(f64, u32, u32, u32, u32)> = Vec::new();
         for unit in succinct_units.iter() {
             let selected_move: (u32, u32) = *unit.possible_moves.iter().choose(&mut rng_thread).unwrap();
-            let move_value = current_unit_value(&unit, selected_move, map, p2_castle, p1_castle, camp_coords);
+            let move_value = current_unit_value(unit.attack_range, selected_move, map, p2_castle, p1_castle, camp_coords);
             movement_values.push(move_value); //Need to keep track of all values to calculate the value 
             unit_movements.push((selected_move, move_value.0));
         }
@@ -99,7 +99,7 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
     for unit in units.values() {  
         let current_unit = SuccinctUnit::new(unit.get_tiles_in_movement_range(&mut game_map.map_tiles), unit.attack_range);
         
-        let move_value = current_unit_value(&current_unit, (unit.x, unit.y), &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords);
+        let move_value = current_unit_value(current_unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords);
         original_unit_movements.push(((unit.x, unit.y), move_value.0));
         original_movement_values.push(move_value);
         
@@ -182,7 +182,7 @@ fn assign_value_to_state (current_state: &mut PopulationState, current_state_val
 // 4: able_to_attack
 // Minus "being able to attack" all other values will be calculated using heuristics (relative manhattan distance)
 // Additionally not calculating closest unit to save time since based on the distance from objectives and the ability to attack this distance should be implied
-fn current_unit_value (unit: &SuccinctUnit, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> (f64, u32, u32, u32, u32) {    
+fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> (f64, u32, u32, u32, u32) {    
     let mut value: f64 = 0.0;
 
     let distance_from_own_castle = (unit_pos.0 as i32 - p2_castle.0 as i32).abs() + (unit_pos.1 as i32 - p2_castle.1 as i32).abs();
@@ -216,7 +216,7 @@ fn current_unit_value (unit: &SuccinctUnit, unit_pos: (u32, u32), map: &mut Hash
                         0
                     };
 
-    let able_to_attack: u32 =   if generalized_tiles_can_attack(map, unit_pos, unit.attack_range).is_empty() {
+    let able_to_attack: u32 =   if generalized_tiles_can_attack(map, unit_pos, unit_attack_range).is_empty() {
                                     0
                                 } else {
                                     1
