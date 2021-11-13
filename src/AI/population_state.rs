@@ -24,8 +24,8 @@ impl PopulationState {
 
 //A succinct way to represent units since we will only be concerned with possible_moves and attack_range
 pub struct SuccinctUnit {
-    possible_moves: Vec<(u32, u32)>,
-    attack_range: u32,
+    pub possible_moves: Vec<(u32, u32)>,
+    pub attack_range: u32,
 }
 
 impl SuccinctUnit {

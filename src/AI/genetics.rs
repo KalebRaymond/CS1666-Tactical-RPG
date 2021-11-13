@@ -6,8 +6,14 @@ use crate::AI::population_state::*;
 use crate::unit::Unit;
 use crate::tile::Tile;
 
-//Will likely need a struct to keep track of individuals in a population (all units current position and the value of that state)
-//Will also need to determine the best way to keep track of each units possible moves as this will be important for mutations
+//Utility Function Constants
+const MIN_DISTANCE: i32 = 5; // Defines the minimum distance a unit can be from an objective to be considered near it
+const DEFENDING_WEIGHT: f64 = -0.5;
+const SIEGING_WEIGHT: f64 = -0.75;
+const CAMP_WEIGHT: f64 = -0.25;
+const ATTACK_VALUE: f64 = 10.0;
+const MIN_DEFENSE: u32 = 5; //Since one of our AI goals says that some units should stay behind and defend, we need metrics to enforce this
+const DEFENSE_PENALTY: f64 = -500.0;
 
 pub fn generate_initial_population(params: &GeneticParams, succinct_units: &Vec<SuccinctUnit>) -> Vec<PopulationState> {
     let mut population: Vec<PopulationState> = Vec::new();
@@ -108,4 +114,98 @@ pub fn genetic_algorithm(params: &GeneticParams, units: &HashMap<(u32, u32), Uni
 
     //init_population now generally represents the best possible states that have been found and we can use these to form the considered moves of our minimax and we can repeat this for the enemy to get their "best" move and make the decision from there   
     initial_population
+}
+
+//Evaluation/Utility function related
+pub fn assign_value_to_state (current_state: &mut PopulationState, current_state_values: Vec<(f64, u32, u32, u32, u32)>) {
+    let mut total_value: f64 = 0.0;
+    let mut units_defending: u32 = 0; //Units near own castle 
+    let mut units_sieging: u32 = 0; //Units near enemy castle
+    let mut units_near_camp: u32 = 0;
+    let mut units_able_to_attack: u32 = 0;
+
+    //println!("Utility Function Constants:\nMinimum Distance from Objectives: {}, Defending Weight: {}, Sieging Weight: {}, Camp Weight: {}, Value from Attack: {}, Minimum Defending Units: {}, Defense Penalty: {}\n", MIN_DISTANCE, DEFENDING_WEIGHT, SIEGING_WEIGHT, CAMP_WEIGHT, ATTACK_VALUE, MIN_DEFENSE, DEFENSE_PENALTY);
+
+    for value in current_state_values {
+        total_value += value.0;
+        units_defending += value.1;
+        units_sieging += value.2;
+        units_near_camp += value.3;
+        units_able_to_attack += value.4;
+    }
+
+    // Calculations for state as a whole (not individual units) 
+    if units_defending < MIN_DEFENSE {
+        total_value += DEFENSE_PENALTY;
+    }
+    //Will eventually want to add on values for units sieging, near camps, attacking, etc (ie prefer sieging a castle with x units over y)
+
+    //println!("Total value: {}\nUnits near p2 castle: {}\nUnits near p1 castle: {}\nUnits near camps: {}\nUnits able to attack: {}\n", total_value, units_defending, units_sieging, units_near_camp, units_able_to_attack);
+
+    current_state.overall_utility = total_value;
+}
+
+// Order of values in return 
+// 0: value of state
+// 1: near_own_castle
+// 2: near_enemy_castle
+// 3: near_camp
+// 4: able_to_attack
+// Minus "being able to attack" all other values will be calculated using heuristics (relative manhattan distance)
+// Additionally not calculating closest unit to save time since based on the distance from objectives and the ability to attack this distance should be implied
+pub fn current_unit_value (unit: SuccinctUnit, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> (f64, u32, u32, u32, u32) {    
+    let mut value: f64 = 0.0;
+
+    let distance_from_own_castle = (unit_pos.0 as i32 - p2_castle.0 as i32).abs() + (unit_pos.1 as i32 - p2_castle.1 as i32).abs();
+    
+    let defending: u32 = if distance_from_own_castle <= MIN_DISTANCE {
+                        1
+                    } else {
+                        0
+                    };
+
+    let distance_from_enemy_castle = (unit_pos.0 as i32 - p1_castle.0 as i32).abs() + (unit_pos.1 as i32 - p1_castle.1 as i32).abs();
+
+    let sieging: u32 =   if distance_from_enemy_castle <= MIN_DISTANCE {
+                        1
+                    } else {
+                        0
+                    };
+
+    let distance_from_nearest_camp = {
+        let mut distances_from_camps: Vec<i32> = Vec::new();
+
+        for camp in camp_coords {
+            distances_from_camps.push((unit_pos.0 as i32 - camp.0 as i32).abs() + (unit_pos.1 as i32 - camp.1 as i32).abs())
+        }
+        *distances_from_camps.iter().min().unwrap()
+    };
+
+    let near_camp: u32 = if distance_from_nearest_camp <= MIN_DISTANCE {
+                        1
+                    } else {
+                        0
+                    };
+
+    let able_to_attack: u32 =   if generalized_tiles_can_attack(map, unit_pos, unit.attack_range).is_empty() {
+                                    0
+                                } else {
+                                    1
+                                };
+    if defending == 0 {
+        value += distance_from_own_castle as f64 * DEFENDING_WEIGHT;
+    } 
+    if sieging == 0 {
+        value += distance_from_enemy_castle as f64 * SIEGING_WEIGHT;
+    }
+    if near_camp == 0 {
+        value += distance_from_nearest_camp as f64 * CAMP_WEIGHT;
+    }
+    if able_to_attack == 1 {
+        value += ATTACK_VALUE;
+    }
+
+    println!("Unit at {}, {}\nValue: {}, D(own_castle): {}, D(enemy_castle): {}, D(camp): {}, can_attack: {}\n", unit_pos.0, unit_pos.1, value, distance_from_own_castle, distance_from_enemy_castle, distance_from_nearest_camp, able_to_attack);
+
+    (value, defending, sieging, near_camp, able_to_attack)
 }
