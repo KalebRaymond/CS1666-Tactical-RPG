@@ -190,10 +190,13 @@ pub fn end_player_turn<'a>(player_state: &mut PlayerState, turn_banner: &mut Tur
     *unit_interface = None;
     cursor.hide_cursor();
 
-    // Deselect the active unit
+    //Deselect the active unit
     player_state.active_unit_i = -1;
     player_state.active_unit_j = -1;
     player_state.current_player_action = PlayerAction::Default;
+
+    //Reactivate any grayed out player units
+    crate::single_player::initialize_next_turn(&mut player_state.p1_units);
 
     //Start displaying the enemy's banner
     turn_banner.current_banner_transparency = 250;

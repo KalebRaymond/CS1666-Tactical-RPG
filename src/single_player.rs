@@ -206,8 +206,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut unit_interface: Option<UnitInterface> = None;
 
 	// Do this right before the game starts so that player 1 starts
-	player_state.p1_units = initialize_next_turn(player_state.p1_units);
-	
+	initialize_next_turn(&mut player_state.p1_units);
+
 	let mut current_player = Team::Player;
 
 	//Button for player to end their turn
@@ -283,7 +283,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			},
 			Team::Barbarians => {
 				barbarian_turn::handle_barbarian_turn(&core, &mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player)?;
-				player_state.p1_units = initialize_next_turn(player_state.p1_units);
 			},
 		}
 
@@ -402,12 +401,12 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	Ok(GameState::Quit)
 }
 
+
 // Function that takes a HashMap of units and sets all has_attacked and has_moved to false so that they can move again
-fn initialize_next_turn(mut team_units: HashMap<(u32, u32), Unit>) -> HashMap<(u32, u32), Unit>{
+pub fn initialize_next_turn(team_units: &mut HashMap<(u32, u32), Unit>) {
 	for unit in &mut team_units.values_mut() {
 		unit.next_turn();
 	}
-	team_units
 }
 
 // Draws a banner at the center of the camera to signify whose turn it currently is
