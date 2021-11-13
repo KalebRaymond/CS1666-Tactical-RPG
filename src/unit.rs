@@ -40,9 +40,9 @@ impl Clone for Team {
         }
     }
 }
-struct QueueObject {
-    coords: (u32, u32),
-    cost: u32, //Moves remaining if the unit goes to that tile
+pub struct QueueObject {
+    pub coords: (u32, u32),
+    pub cost: u32, //Moves remaining if the unit goes to that tile
 }
 
 //Need to implement this and Eq for comparison to work
@@ -75,7 +75,7 @@ pub struct Unit<'a> {
     pub hp: u32,
     pub max_hp: u32,
     movement_range: u32,
-    attack_range: u32,
+    pub attack_range: u32,
     accuracy: u32,
     min_damage: u32,
     max_damage: u32,
