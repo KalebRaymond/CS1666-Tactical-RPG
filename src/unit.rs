@@ -106,9 +106,9 @@ impl Unit <'_>{
             min_damage,
             max_damage,
             texture,
-            // Initially both are set to true, when it becomes someone's turn, both will need to be set to false for each unit on team
-            has_attacked: true,
-            has_moved: true,
+            
+            has_attacked: false,
+            has_moved: false,
 
             default_sprite_src: Rect::new(0, 0, 32, 32),
             red_sprite_src: Rect::new(32, 0, 32, 32),
@@ -343,7 +343,11 @@ impl Unit <'_>{
     }
 
     pub fn draw(&mut self, core: &mut SDLCore, dest: &Rect) -> Result<(), String> {
-        let src = if self.is_attacked {
+        let src = if self.has_attacked && self.has_moved {
+            //Draw the darkened sprite
+            self.gray_sprite_src
+        } 
+        else if self.is_attacked {
             self.time_since_damaged += self.last_damaged_drawn.elapsed().as_secs_f32();
             self.last_damaged_drawn = Instant::now();
 
