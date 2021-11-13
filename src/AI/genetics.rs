@@ -91,12 +91,25 @@ fn culling(current_population: &mut Vec<PopulationState>) -> Vec<PopulationState
 pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameMap, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> Vec<PopulationState>{
     //Keep track of all the possible unit movements
     let mut succinct_units: Vec<SuccinctUnit> = Vec::new();
-    //let mut original_population: PopulationState = 
-    for unit in units.values() {
-        succinct_units.push(SuccinctUnit::new(unit.get_tiles_in_movement_range(&mut game_map.map_tiles), unit.attack_range));
+    //Also want to include the unmodified initial state among possible candidate states
+    let mut original_unit_movements: Vec<((u32,u32), f64)> = Vec::new();
+    let mut original_movement_values: Vec<(f64, u32, u32, u32, u32)> = Vec::new(); 
+    
+    for unit in units.values() {  
+        let current_unit = SuccinctUnit::new(unit.get_tiles_in_movement_range(&mut game_map.map_tiles), unit.attack_range);
+        
+        let move_value = current_unit_value(&current_unit, (unit.x, unit.y), &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords);
+        original_unit_movements.push(((unit.x, unit.y), move_value.0));
+        original_movement_values.push(move_value);
+        
+        succinct_units.push(current_unit);
     }
 
     let mut initial_population = generate_initial_population(&succinct_units, &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords);
+    let mut original_state = PopulationState::new(original_unit_movements, 0.0);
+    assign_value_to_state(&mut original_state, original_movement_values);
+    initial_population.push(original_state);
+    
     let mut new_generation: Vec<PopulationState> = Vec::new();
     let mut remaining_population: Vec<PopulationState> = Vec::new();
 
@@ -155,7 +168,7 @@ fn assign_value_to_state (current_state: &mut PopulationState, current_state_val
     }
     //Will eventually want to add on values for units sieging, near camps, attacking, etc (ie prefer sieging a castle with x units over y)
 
-    //println!("Total value: {}\nUnits near p2 castle: {}\nUnits near p1 castle: {}\nUnits near camps: {}\nUnits able to attack: {}\n", total_value, units_defending, units_sieging, units_near_camp, units_able_to_attack);
+    println!("Total value: {}\nUnits near p2 castle: {}\nUnits near p1 castle: {}\nUnits near camps: {}\nUnits able to attack: {}\n", total_value, units_defending, units_sieging, units_near_camp, units_able_to_attack);
 
     current_state.overall_utility = total_value;
 }
@@ -207,9 +220,10 @@ fn current_unit_value (unit: &SuccinctUnit, unit_pos: (u32, u32), map: &mut Hash
                                 } else {
                                     1
                                 };
-    if defending == 0 {
-        value += distance_from_own_castle as f64 * DEFENDING_WEIGHT;
-    } 
+    //Currently commenting this out for now, I don't know if we don't want to punish units for not defending or just if there isn't enough defending
+    // if defending == 0 {
+    //     value += distance_from_own_castle as f64 * DEFENDING_WEIGHT;
+    // } 
     if sieging == 0 {
         value += distance_from_enemy_castle as f64 * SIEGING_WEIGHT;
     }
@@ -220,7 +234,7 @@ fn current_unit_value (unit: &SuccinctUnit, unit_pos: (u32, u32), map: &mut Hash
         value += ATTACK_VALUE;
     }
 
-    println!("Unit at {}, {}\nValue: {}, D(own_castle): {}, D(enemy_castle): {}, D(camp): {}, can_attack: {}\n", unit_pos.0, unit_pos.1, value, distance_from_own_castle, distance_from_enemy_castle, distance_from_nearest_camp, able_to_attack);
+    //println!("Unit at {}, {}\nValue: {}, D(own_castle): {}, D(enemy_castle): {}, D(camp): {}, can_attack: {}\n", unit_pos.0, unit_pos.1, value, distance_from_own_castle, distance_from_enemy_castle, distance_from_nearest_camp, able_to_attack);
 
     (value, defending, sieging, near_camp, able_to_attack)
 }
