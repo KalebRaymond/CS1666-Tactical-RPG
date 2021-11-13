@@ -1,8 +1,10 @@
+use rand::{seq::IteratorRandom, thread_rng};
 use std::collections::HashMap;
 use std::convert::TryInto;
 
 use crate::AI::genetic_params::GeneticParams;
 use crate::AI::population_state::*;
+use crate::game_map::GameMap;
 use crate::unit::Unit;
 use crate::tile::Tile;
 
@@ -15,18 +17,23 @@ const ATTACK_VALUE: f64 = 10.0;
 const MIN_DEFENSE: u32 = 5; //Since one of our AI goals says that some units should stay behind and defend, we need metrics to enforce this
 const DEFENSE_PENALTY: f64 = -500.0;
 
-pub fn generate_initial_population(params: &GeneticParams, succinct_units: &Vec<SuccinctUnit>) -> Vec<PopulationState> {
+pub fn generate_initial_population(params: &GeneticParams, succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> Vec<PopulationState> {
+    let mut rng_thread = thread_rng();
     let mut population: Vec<PopulationState> = Vec::new();
     
     //Generate 1 less state so we can add the initial population
     for i in 1..params.pop_num {
-        //let mut state = PopulationState::new();
-
-		for unit in succinct_units {
-			//state.push(random selection of one of the units possible moves)
-		}
-
-		//population.push(state);
+        let mut unit_movements: Vec<((u32,u32), f64)> = Vec::new();
+        let mut movement_values: Vec<(f64, u32, u32, u32, u32)> = Vec::new();
+        for unit in succinct_units.iter() {
+            let selected_move: (u32, u32) = *unit.possible_moves.iter().choose(&mut rng_thread).unwrap();
+            let move_value = current_unit_value(&unit, selected_move, map, p2_castle, p1_castle, camp_coords);
+            movement_values.push(move_value); //Need to keep track of all values to calculate the value 
+            unit_movements.push((selected_move, move_value.0));
+        }
+        let mut state = PopulationState::new(unit_movements, 0.0);
+        assign_value_to_state(&mut state, movement_values);
+		population.push(state);
     }
 
     population
@@ -73,20 +80,20 @@ pub fn culling(params: &GeneticParams, current_population: &mut Vec<PopulationSt
 	return current_population[0..(current_population.len() - num_to_drop)].to_vec();
 }
 
-pub fn genetic_algorithm(params: &GeneticParams, units: &HashMap<(u32, u32), Unit>, map: &mut HashMap<(u32, u32), Tile>, current_population: &mut Vec<PopulationState>) -> Vec<PopulationState>{
+pub fn genetic_algorithm(params: &GeneticParams, units: &HashMap<(u32, u32), Unit>, game_map: &mut GameMap, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> Vec<PopulationState>{
     //Keep track of all the possible unit movements
     let mut succinct_units: Vec<SuccinctUnit> = Vec::new();
     //let mut original_population: PopulationState = 
     for unit in units.values() {
-        succinct_units.push(SuccinctUnit::new(unit.get_tiles_in_movement_range(map), unit.attack_range));
+        succinct_units.push(SuccinctUnit::new(unit.get_tiles_in_movement_range(&mut game_map.map_tiles), unit.attack_range));
     }
 
-    let mut initial_population = generate_initial_population(params, &succinct_units);
+    let mut initial_population = generate_initial_population(params, &succinct_units, &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords);
     let mut new_generation: Vec<PopulationState> = Vec::new();
     let mut remaining_population: Vec<PopulationState> = Vec::new();
 
     for i in 0..params.gen_num {
-        new_generation.append(&mut elite_selection(params, current_population));
+        //new_generation.append(&mut elite_selection(params, current_population));
         remaining_population = culling(params, &mut initial_population);
 
         //generate probabilities of each individual in the remaining population to be selected (will want to weight this based on score - favor better scored states) - Boltzman distribution is commonly used, but someone more familiar with statistics feel free to suggest a different distribution
@@ -153,7 +160,7 @@ pub fn assign_value_to_state (current_state: &mut PopulationState, current_state
 // 4: able_to_attack
 // Minus "being able to attack" all other values will be calculated using heuristics (relative manhattan distance)
 // Additionally not calculating closest unit to save time since based on the distance from objectives and the ability to attack this distance should be implied
-pub fn current_unit_value (unit: SuccinctUnit, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> (f64, u32, u32, u32, u32) {    
+pub fn current_unit_value (unit: &SuccinctUnit, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> (f64, u32, u32, u32, u32) {    
     let mut value: f64 = 0.0;
 
     let distance_from_own_castle = (unit_pos.0 as i32 - p2_castle.0 as i32).abs() + (unit_pos.1 as i32 - p2_castle.1 as i32).abs();
