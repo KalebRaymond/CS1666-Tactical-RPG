@@ -89,8 +89,9 @@ fn culling(current_population: &mut Vec<PopulationState>) -> Vec<PopulationState
 }
 
 pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameMap, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> Vec<PopulationState>{
-    //Keep track of all the possible unit movements
+    //Keeps track of all the possible unit movements
     let mut succinct_units: Vec<SuccinctUnit> = Vec::new();
+
     //Also want to include the unmodified initial state among possible candidate states
     let mut original_unit_movements: Vec<((u32,u32), f64)> = Vec::new();
     let mut original_movement_values: Vec<(f64, u32, u32, u32, u32)> = Vec::new(); 
@@ -109,7 +110,7 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
     let mut original_state = PopulationState::new(original_unit_movements, 0.0);
     assign_value_to_state(&mut original_state, original_movement_values);
     initial_population.push(original_state);
-    
+
     let mut new_generation: Vec<PopulationState> = Vec::new();
     let mut remaining_population: Vec<PopulationState> = Vec::new();
 
@@ -168,7 +169,7 @@ fn assign_value_to_state (current_state: &mut PopulationState, current_state_val
     }
     //Will eventually want to add on values for units sieging, near camps, attacking, etc (ie prefer sieging a castle with x units over y)
 
-    println!("Total value: {}\nUnits near p2 castle: {}\nUnits near p1 castle: {}\nUnits near camps: {}\nUnits able to attack: {}\n", total_value, units_defending, units_sieging, units_near_camp, units_able_to_attack);
+    //println!("Total value: {}\nUnits near p2 castle: {}\nUnits near p1 castle: {}\nUnits near camps: {}\nUnits able to attack: {}\n", total_value, units_defending, units_sieging, units_near_camp, units_able_to_attack);
 
     current_state.overall_utility = total_value;
 }
