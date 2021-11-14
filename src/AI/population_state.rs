@@ -9,15 +9,23 @@ const MAP_HEIGHT: u32 = 64;
 #[derive(Clone)]
 pub struct PopulationState {
     //Will likely need a struct to keep track of individuals in a population (all units current position and the value of that state)
-    pub units_and_utility: Vec<((u32, u32), f64)>,
+    pub units_and_utility: Vec<((u32, u32), f64, bool, bool, bool, bool)>,
     pub overall_utility: f64,
+    pub units_defending: u32, //Units near own castle 
+    pub units_sieging: u32, //Units near enemy castle
+    pub units_near_camp: u32,
+    pub units_able_to_attack: u32,
 }
 
 impl PopulationState {
-    pub fn new(units_and_utility: Vec<((u32, u32), f64)>, overall_utility: f64) -> PopulationState {
+    pub fn new(units_and_utility: Vec<((u32, u32), f64)>, overall_utility: f64, units_defending: u32, units_sieging: u32, units_near_camp: u32, units_able_to_attack: u32) -> PopulationState {
         PopulationState{
             units_and_utility,
             overall_utility,
+            units_defending,
+            units_sieging,
+            units_near_camp,
+            units_able_to_attack,
         }
     }
 }

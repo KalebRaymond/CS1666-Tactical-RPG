@@ -68,23 +68,23 @@ pub fn evaluate_current_position<'a> (p2_units: &HashMap<(u32, u32), Unit<'a>>, 
 // 4: able_to_attack
 // Minus "being able to attack" all other values will be calculated using heuristics (relative manhattan distance)
 // Additionally not calculating closest unit to save time since based on the distance from objectives and the ability to attack this distance should be implied
-pub fn current_unit_value<'b> (unit: &Unit<'b>, game_map: &mut GameMap, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> (f64, u32, u32, u32, u32) {    
+pub fn current_unit_value<'b> (unit: &Unit<'b>, game_map: &mut GameMap, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> (f64, bool, bool, bool, bool) {    
     let mut value: f64 = 0.0;
 
     let distance_from_own_castle = (unit.x as i32 - p2_castle.0 as i32).abs() + (unit.y as i32 - p2_castle.1 as i32).abs();
     
-    let defending: u32 = if distance_from_own_castle <= MIN_DISTANCE {
-                        1
+    let defending = if distance_from_own_castle <= MIN_DISTANCE {
+                        true
                     } else {
-                        0
+                        false
                     };
 
     let distance_from_enemy_castle = (unit.x as i32 - p1_castle.0 as i32).abs() + (unit.y as i32 - p1_castle.1 as i32).abs();
 
-    let sieging: u32 =   if distance_from_enemy_castle <= MIN_DISTANCE {
-                        1
+    let sieging: bool =   if distance_from_enemy_castle <= MIN_DISTANCE {
+                        true
                     } else {
-                        0
+                        false
                     };
 
     let distance_from_nearest_camp = {
@@ -96,16 +96,16 @@ pub fn current_unit_value<'b> (unit: &Unit<'b>, game_map: &mut GameMap, p2_castl
         *distances_from_camps.iter().min().unwrap()
     };
 
-    let near_camp: u32 = if distance_from_nearest_camp <= MIN_DISTANCE {
-                        1
+    let near_camp: bool = if distance_from_nearest_camp <= MIN_DISTANCE {
+                        true
                     } else {
-                        0
+                        false
                     };
 
-    let able_to_attack: u32 =   if unit.get_tiles_can_attack(&mut game_map.map_tiles).is_empty() {
-                                    0
+    let able_to_attack: bool =   if unit.get_tiles_can_attack(&mut game_map.map_tiles).is_empty() {
+                                    false
                                 } else {
-                                    1
+                                    true
                                 };
     if defending == 0 {
         value += distance_from_own_castle as f64 * DEFENDING_WEIGHT;
