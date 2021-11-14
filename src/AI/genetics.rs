@@ -67,7 +67,7 @@ fn crossover(state_1: PopulationState, state_2: PopulationState) -> (PopulationS
     let mut rng_thread = thread_rng();
     let endpoints = (0..state_1.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, 2); 
     let upper_endpoint = *endpoints.iter().max().unwrap();
-    let lower_endpoint = *endpoints.iter().max().unwrap();
+    let lower_endpoint = *endpoints.iter().min().unwrap();
     let mut state_1_copy = state_1.clone();
     let mut state_2_copy = state_2.clone();
     
