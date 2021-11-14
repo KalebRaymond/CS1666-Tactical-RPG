@@ -32,22 +32,21 @@ fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut Has
     //Generate 1 less state so we can add the initial population
     for i in 1..POP_NUM {
         let mut unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
-        let mut movement_values: Vec<(f64, bool, bool, bool, bool)> = Vec::new();
 
         for unit in succinct_units.iter() {
             let selected_move: (u32, u32) = *unit.possible_moves.iter().choose(&mut rng_thread).unwrap();
             let move_value = current_unit_value(unit.attack_range, selected_move, map, p2_castle, p1_castle, camp_coords);
-            movement_values.push(move_value); //Need to keep track of all values to calculate the value 
             unit_movements.push((selected_move, move_value));
         }
         let mut state = PopulationState::new(unit_movements, 0.0);
-        assign_value_to_state(&mut state, movement_values);
+        assign_value_to_state(&mut state);
 		population.push(state);
     }
 
     population
 }
 
+//Randomly selects unit within a state and reassigns them a new position
 //After we mutate a state we also need to be able to update its value
 fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) {
     let mut rng_thread = thread_rng();
@@ -57,10 +56,11 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
         while new_move == state.units_and_utility[index].0 {
             new_move = *succinct_units[index].possible_moves.iter().choose(&mut rng_thread).unwrap();   
         }
-        state.units_and_utility[index].0 = new_move;
-        let move_value = current_unit_value(succinct_units[index].attack_range, new_move, map, p2_castle, p1_castle, camp_coords).0;
-        //let move_difference = 
+        let move_value = current_unit_value(succinct_units[index].attack_range, new_move, map, p2_castle, p1_castle, camp_coords);
+        state.units_and_utility[index] = (new_move, move_value);
 	}
+    //Don't forget to update the overall value of the state (can't just substract the difference in values from the state as we are also checking overall conditions)
+    assign_value_to_state(state); 
 }
 
 // fn crossover(state_1: PopulationState, state_2: PopulationState) -> (PopulationState, PopulationState) {
@@ -99,21 +99,19 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
 
     //Also want to include the unmodified initial state among possible candidate states
     let mut original_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
-    let mut original_movement_values: Vec<(f64, bool, bool, bool, bool)> = Vec::new(); 
     
     for unit in units.values() {  
         let current_unit = SuccinctUnit::new(unit.get_tiles_in_movement_range(&mut game_map.map_tiles), unit.attack_range);
         
         let move_value = current_unit_value(current_unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords);
         original_unit_movements.push(((unit.x, unit.y), move_value));
-        original_movement_values.push(move_value);
         
         succinct_units.push(current_unit);
     }
 
     let mut initial_population = generate_initial_population(&succinct_units, &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords);
     let mut original_state = PopulationState::new(original_unit_movements, 0.0);
-    assign_value_to_state(&mut original_state, original_movement_values);
+    assign_value_to_state(&mut original_state);
     initial_population.push(original_state);
 
     let mut new_generation: Vec<PopulationState> = Vec::new();
@@ -157,7 +155,7 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
 }
 
 //Evaluation/Utility function related
-fn assign_value_to_state (current_state: &mut PopulationState, current_state_values: Vec<(f64, bool, bool, bool, bool)>) {
+fn assign_value_to_state (current_state: &mut PopulationState) {
     let mut total_value: f64 = 0.0;
     let mut units_defending: u32 = 0; //Units near own castle 
     let mut units_sieging: u32 = 0; //Units near enemy castle
@@ -166,12 +164,12 @@ fn assign_value_to_state (current_state: &mut PopulationState, current_state_val
 
     //println!("Utility Function Constants:\nMinimum Distance from Objectives: {}, Defending Weight: {}, Sieging Weight: {}, Camp Weight: {}, Value from Attack: {}, Minimum Defending Units: {}, Defense Penalty: {}\n", MIN_DISTANCE, DEFENDING_WEIGHT, SIEGING_WEIGHT, CAMP_WEIGHT, ATTACK_VALUE, MIN_DEFENSE, DEFENSE_PENALTY);
 
-    for value in current_state_values {
-        total_value += value.0;
-        units_defending += value.1 as u32;
-        units_sieging += value.2 as u32;
-        units_near_camp += value.3 as u32;
-        units_able_to_attack += value.4 as u32;
+    for value in current_state.units_and_utility.iter() {
+        total_value += value.1.0;
+        units_defending += value.1.1 as u32;
+        units_sieging += value.1.2 as u32;
+        units_near_camp += value.1.3 as u32;
+        units_able_to_attack += value.1.4 as u32;
     }
 
     // Calculations for state as a whole (not individual units) 
