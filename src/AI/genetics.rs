@@ -64,7 +64,7 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
 }
 
 //Produces 2 new states by randomly selecting 2 endpoints within the units and joining the two states at these end points
-fn crossover(state_1: PopulationState, state_2: PopulationState) -> (PopulationState, PopulationState) {
+fn crossover(state_1: &PopulationState, state_2: &PopulationState) -> (PopulationState, PopulationState) {
     let mut rng_thread = thread_rng();
     let endpoints = (0..state_1.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, 2); 
     let upper_endpoint = *endpoints.iter().max().unwrap();
@@ -142,24 +142,23 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
         let utilities: Vec<f64> = remaining_population.iter().map(|pop| pop.overall_utility).collect();
         let probabilities: Vec<f64> = convert_utilities_to_probabilities(utilities); 
 
-        // //generate probabilities of each individual in the remaining population to be selected (will want to weight this based on score - favor better scored states) - Boltzman distribution is commonly used, but someone more familiar with statistics feel free to suggest a different distribution
-        // while new_generation.len() < POP_NUM {
-        //     /*
-        //     state_1 = randomly sample this distribution to get first individual
-		// 	state_2 = randomly sample again to get second individual (ensure individuals are not the same)
-        //     */
-        //     //let state_1 = PopulationState::new();
-        //     //let state_2 = PopulationState::new();
+        //While we still need to fill our generation, generate new individuals using cross over
+        while new_generation.len() < POP_NUM {
+            let index_of_state_1 = choose_index_from_distribution(&probabilities);
+            let mut index_of_state_2 = choose_index_from_distribution(&probabilities);
+            //Need to make sure that we do not select the same index as crossing a state with itself produces nothing new
+            while index_of_state_2 == index_of_state_1 {
+                index_of_state_2 = choose_index_from_distribution(&probabilities);
+            }
+            let new_individuals = crossover(&remaining_population[index_of_state_1], &remaining_population[index_of_state_2]);
 
-        //     // let new_individuals = crossover(state_1, state_2);
-
-        //     // if new_generation.len() + 2 > POP_NUM {
-		// 	// 	new_generation.push(new_individuals.0);
-		// 	// } else {
-		// 	// 	new_generation.push(new_individuals.0);
-        //     //     new_generation.push(new_individuals.1);
-		// 	// }
-        // }
+            if new_generation.len() + 2 > POP_NUM {
+				new_generation.push(new_individuals.0);
+			} else {
+				new_generation.push(new_individuals.0);
+                new_generation.push(new_individuals.1);
+			}
+        }
         //In order to mutate the states we need to calculate how many to mutate and then randomly select them as mutable
         let num_to_mutate: usize = ((MUT_PROB * (new_generation.len() as f32)).round() as i32).try_into().unwrap();
         let mut states_to_mutate = new_generation.iter_mut().choose_multiple(&mut rng_thread, num_to_mutate); 
