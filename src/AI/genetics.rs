@@ -31,13 +31,14 @@ fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut Has
     
     //Generate 1 less state so we can add the initial population
     for i in 1..POP_NUM {
-        let mut unit_movements: Vec<((u32,u32), f64)> = Vec::new();
-        let mut movement_values: Vec<(f64, u32, u32, u32, u32)> = Vec::new();
+        let mut unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
+        let mut movement_values: Vec<(f64, bool, bool, bool, bool)> = Vec::new();
+
         for unit in succinct_units.iter() {
             let selected_move: (u32, u32) = *unit.possible_moves.iter().choose(&mut rng_thread).unwrap();
             let move_value = current_unit_value(unit.attack_range, selected_move, map, p2_castle, p1_castle, camp_coords);
             movement_values.push(move_value); //Need to keep track of all values to calculate the value 
-            unit_movements.push((selected_move, move_value.0));
+            unit_movements.push((selected_move, move_value));
         }
         let mut state = PopulationState::new(unit_movements, 0.0);
         assign_value_to_state(&mut state, movement_values);
@@ -58,7 +59,7 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
         }
         state.units_and_utility[index].0 = new_move;
         let move_value = current_unit_value(succinct_units[index].attack_range, new_move, map, p2_castle, p1_castle, camp_coords).0;
-        let move_difference = 
+        //let move_difference = 
 	}
 }
 
@@ -97,14 +98,14 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
     let mut succinct_units: Vec<SuccinctUnit> = Vec::new();
 
     //Also want to include the unmodified initial state among possible candidate states
-    let mut original_unit_movements: Vec<((u32,u32), f64)> = Vec::new();
-    let mut original_movement_values: Vec<(f64, u32, u32, u32, u32)> = Vec::new(); 
+    let mut original_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
+    let mut original_movement_values: Vec<(f64, bool, bool, bool, bool)> = Vec::new(); 
     
     for unit in units.values() {  
         let current_unit = SuccinctUnit::new(unit.get_tiles_in_movement_range(&mut game_map.map_tiles), unit.attack_range);
         
         let move_value = current_unit_value(current_unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords);
-        original_unit_movements.push(((unit.x, unit.y), move_value.0));
+        original_unit_movements.push(((unit.x, unit.y), move_value));
         original_movement_values.push(move_value);
         
         succinct_units.push(current_unit);
@@ -156,7 +157,7 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
 }
 
 //Evaluation/Utility function related
-fn assign_value_to_state (current_state: &mut PopulationState, current_state_values: Vec<(f64, u32, u32, u32, u32)>) {
+fn assign_value_to_state (current_state: &mut PopulationState, current_state_values: Vec<(f64, bool, bool, bool, bool)>) {
     let mut total_value: f64 = 0.0;
     let mut units_defending: u32 = 0; //Units near own castle 
     let mut units_sieging: u32 = 0; //Units near enemy castle
@@ -167,10 +168,10 @@ fn assign_value_to_state (current_state: &mut PopulationState, current_state_val
 
     for value in current_state_values {
         total_value += value.0;
-        units_defending += value.1;
-        units_sieging += value.2;
-        units_near_camp += value.3;
-        units_able_to_attack += value.4;
+        units_defending += value.1 as u32;
+        units_sieging += value.2 as u32;
+        units_near_camp += value.3 as u32;
+        units_able_to_attack += value.4 as u32;
     }
 
     // Calculations for state as a whole (not individual units) 
@@ -192,23 +193,23 @@ fn assign_value_to_state (current_state: &mut PopulationState, current_state_val
 // 4: able_to_attack
 // Minus "being able to attack" all other values will be calculated using heuristics (relative manhattan distance)
 // Additionally not calculating closest unit to save time since based on the distance from objectives and the ability to attack this distance should be implied
-fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> (f64, u32, u32, u32, u32) {    
+fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> (f64, bool, bool, bool, bool) {    
     let mut value: f64 = 0.0;
 
     let distance_from_own_castle = (unit_pos.0 as i32 - p2_castle.0 as i32).abs() + (unit_pos.1 as i32 - p2_castle.1 as i32).abs();
     
-    let defending: u32 = if distance_from_own_castle <= MIN_DISTANCE {
-                        1
+    let defending: bool = if distance_from_own_castle <= MIN_DISTANCE {
+                        true
                     } else {
-                        0
+                        false
                     };
 
     let distance_from_enemy_castle = (unit_pos.0 as i32 - p1_castle.0 as i32).abs() + (unit_pos.1 as i32 - p1_castle.1 as i32).abs();
 
-    let sieging: u32 =   if distance_from_enemy_castle <= MIN_DISTANCE {
-                        1
+    let sieging: bool =   if distance_from_enemy_castle <= MIN_DISTANCE {
+                        true
                     } else {
-                        0
+                        false
                     };
 
     let distance_from_nearest_camp = {
@@ -220,28 +221,28 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
         *distances_from_camps.iter().min().unwrap()
     };
 
-    let near_camp: u32 = if distance_from_nearest_camp <= MIN_DISTANCE {
-                        1
+    let near_camp: bool = if distance_from_nearest_camp <= MIN_DISTANCE {
+                        true
                     } else {
-                        0
+                        false
                     };
 
-    let able_to_attack: u32 =   if generalized_tiles_can_attack(map, unit_pos, unit_attack_range).is_empty() {
-                                    0
+    let able_to_attack: bool =  if generalized_tiles_can_attack(map, unit_pos, unit_attack_range).is_empty() {
+                                    false
                                 } else {
-                                    1
+                                    true
                                 };
     //Currently commenting this out for now, I don't know if we don't want to punish units for not defending or just if there isn't enough defending
-    // if defending == 0 {
+    // if defending == false {
     //     value += distance_from_own_castle as f64 * DEFENDING_WEIGHT;
     // } 
-    if sieging == 0 {
+    if sieging == false {
         value += distance_from_enemy_castle as f64 * SIEGING_WEIGHT;
     }
-    if near_camp == 0 {
+    if near_camp == false {
         value += distance_from_nearest_camp as f64 * CAMP_WEIGHT;
     }
-    if able_to_attack == 1 {
+    if able_to_attack == true {
         value += ATTACK_VALUE;
     }
 
