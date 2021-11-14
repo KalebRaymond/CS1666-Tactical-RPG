@@ -10,7 +10,7 @@ use crate::tile::Tile;
 
 //Genetic Algorithm Constants (instead of a struct to make things easier to modify and less things to pass around)
 const POP_NUM: usize = 30; //Population size
-const GEN_NUM: u32 = 0; //Number of generations to run
+const GEN_NUM: u32 = 1; //Number of generations to run
 const MUT_PROB: f32 = 0.1; //Probability of an individual being mutated
 const MUT_NUM: usize = 5; //How many units should be changed on mutation
 const C_PERC: f32 = 0.2; //Percentage of the least fit individuals to be removed
@@ -93,14 +93,14 @@ fn crossover(state_1: PopulationState, state_2: PopulationState) -> (PopulationS
     (new_state_1, new_state_2)
 }
 
-fn elite_selection(current_population: &mut Vec<PopulationState>) -> Vec<PopulationState> {
+fn elite_selection(current_population: &Vec<PopulationState>) -> Vec<PopulationState> {
 	let num_to_keep: usize = ((E_PERC * (current_population.len() as f32)).round() as i32).try_into().unwrap();
 	
     //Assuming current_population is in descending order 
 	return current_population[0..num_to_keep].to_vec();
 }
 
-fn culling(current_population: &mut Vec<PopulationState>) -> Vec<PopulationState> {
+fn culling(current_population: &Vec<PopulationState>) -> Vec<PopulationState> {
 	let num_to_drop: usize = ((C_PERC * (current_population.len() as f32)).round() as i32).try_into().unwrap();
 	
     //Assuming current_population is in descending order 
@@ -133,27 +133,33 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
     let mut remaining_population: Vec<PopulationState> = Vec::new();
 
     for i in 0..GEN_NUM {
-        //new_generation.append(&mut elite_selection(params, current_population));
-        remaining_population = culling(&mut initial_population);
+        initial_population.sort_unstable();
+        initial_population.reverse();
+        
+        new_generation.append(&mut elite_selection(&initial_population));
+        remaining_population = culling(&initial_population);
+        
+        let utilities: Vec<f64> = remaining_population.iter().map(|pop| pop.overall_utility).collect();
+        let probabilities: Vec<f64> = convert_utilities_to_probabilities(utilities); 
 
-        //generate probabilities of each individual in the remaining population to be selected (will want to weight this based on score - favor better scored states) - Boltzman distribution is commonly used, but someone more familiar with statistics feel free to suggest a different distribution
-        while new_generation.len() < POP_NUM {
-            /*
-            state_1 = randomly sample this distribution to get first individual
-			state_2 = randomly sample again to get second individual (ensure individuals are not the same)
-            */
-            //let state_1 = PopulationState::new();
-            //let state_2 = PopulationState::new();
+        // //generate probabilities of each individual in the remaining population to be selected (will want to weight this based on score - favor better scored states) - Boltzman distribution is commonly used, but someone more familiar with statistics feel free to suggest a different distribution
+        // while new_generation.len() < POP_NUM {
+        //     /*
+        //     state_1 = randomly sample this distribution to get first individual
+		// 	state_2 = randomly sample again to get second individual (ensure individuals are not the same)
+        //     */
+        //     //let state_1 = PopulationState::new();
+        //     //let state_2 = PopulationState::new();
 
-            // let new_individuals = crossover(state_1, state_2);
+        //     // let new_individuals = crossover(state_1, state_2);
 
-            // if new_generation.len() + 2 > POP_NUM {
-			// 	new_generation.push(new_individuals.0);
-			// } else {
-			// 	new_generation.push(new_individuals.0);
-            //     new_generation.push(new_individuals.1);
-			// }
-        }
+        //     // if new_generation.len() + 2 > POP_NUM {
+		// 	// 	new_generation.push(new_individuals.0);
+		// 	// } else {
+		// 	// 	new_generation.push(new_individuals.0);
+        //     //     new_generation.push(new_individuals.1);
+		// 	// }
+        // }
         //In order to mutate the states we need to calculate how many to mutate and then randomly select them as mutable
         let num_to_mutate: usize = ((MUT_PROB * (new_generation.len() as f32)).round() as i32).try_into().unwrap();
         let mut states_to_mutate = new_generation.iter_mut().choose_multiple(&mut rng_thread, num_to_mutate); 
@@ -196,7 +202,7 @@ fn assign_value_to_state (current_state: &mut PopulationState) {
     }
     //Will eventually want to add on values for units sieging, near camps, attacking, etc (ie prefer sieging a castle with x units over y)
 
-    println!("Total value: {}\nUnits near p2 castle: {}\nUnits near p1 castle: {}\nUnits near camps: {}\nUnits able to attack: {}\n", total_value, units_defending, units_sieging, units_near_camp, units_able_to_attack);
+    //println!("Total value: {}\nUnits near p2 castle: {}\nUnits near p1 castle: {}\nUnits near camps: {}\nUnits able to attack: {}\n", total_value, units_defending, units_sieging, units_near_camp, units_able_to_attack);
 
     current_state.overall_utility = total_value;
 }
@@ -269,4 +275,14 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
     //println!("Unit at {}, {}\nValue: {}, D(own_castle): {}, D(enemy_castle): {}, D(camp): {}, can_attack: {}\n", unit_pos.0, unit_pos.1, value, distance_from_own_castle, distance_from_enemy_castle, distance_from_nearest_camp, able_to_attack);
 
     (value, defending, sieging, near_camp, able_to_attack)
+}
+
+//In order to convert utilities into probabilities, we are using the Boltzman distribution (slightly flipped since we are aiming for max instead of min)
+fn convert_utilities_to_probabilities(utilities: Vec<f64>) -> Vec<f64>{
+    let min_utility = *utilities.iter().min_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
+    let max_utility = *utilities.iter().max_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
+    let temperature = max_utility - min_utility;
+    let utilities_to_p_accept: Vec<f64> = utilities.iter().map(|current_utility| (-(max_utility - current_utility)/temperature).exp()).collect();
+    let p_accept_sum:f64 = utilities_to_p_accept.iter().sum();
+    utilities_to_p_accept.iter().map(|p_accept| p_accept/p_accept_sum).collect()
 }
