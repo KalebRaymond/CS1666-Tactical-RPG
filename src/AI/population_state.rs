@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 
@@ -21,6 +22,27 @@ impl PopulationState {
         }
     }
 }
+
+impl Ord for PopulationState {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.overall_utility.partial_cmp(&other.overall_utility).unwrap()
+    }
+} 
+
+impl PartialOrd for PopulationState {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+} 
+
+impl PartialEq for PopulationState {
+    fn eq(&self, other: &Self) -> bool {
+        self.overall_utility == other.overall_utility
+    }
+} 
+
+impl Eq for PopulationState {
+} 
 
 //A succinct way to represent units since we will only be concerned with possible_moves and attack_range
 pub struct SuccinctUnit {

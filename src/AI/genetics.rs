@@ -137,7 +137,7 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
         remaining_population = culling(&mut initial_population);
 
         //generate probabilities of each individual in the remaining population to be selected (will want to weight this based on score - favor better scored states) - Boltzman distribution is commonly used, but someone more familiar with statistics feel free to suggest a different distribution
-        while new_generation.len() < POP_NUM.try_into().unwrap() {
+        while new_generation.len() < POP_NUM {
             /*
             state_1 = randomly sample this distribution to get first individual
 			state_2 = randomly sample again to get second individual (ensure individuals are not the same)
