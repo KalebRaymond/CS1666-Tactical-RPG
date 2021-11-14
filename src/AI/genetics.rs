@@ -63,20 +63,34 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
     assign_value_to_state(state); 
 }
 
-// fn crossover(state_1: PopulationState, state_2: PopulationState) -> (PopulationState, PopulationState) {
-//     //let new_state_1 = PopulationState::new();
-//     //let new_state_2 = PopulationState::new();
+fn crossover(state_1: PopulationState, state_2: PopulationState) -> (PopulationState, PopulationState) {
+    let mut rng_thread = thread_rng();
+    let endpoints = (0..state_1.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, 2); 
+    let upper_endpoint = *endpoints.iter().max().unwrap();
+    let lower_endpoint = *endpoints.iter().max().unwrap();
+    let mut state_1_copy = state_1.clone();
+    let mut state_2_copy = state_2.clone();
+    
+    let mut new_state_1_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
+    let mut new_state_2_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
 
-//     /*
-//     randomly select bounds for state1
-// 	new_state.push(the units within these bounds from state1)
-// 	new_state.push(the remaining units from state2)
-// 	new_state2.push(the units outside the bounds of state1)
-// 	new_state2.push(the remaining units from state 2)
-//     */
+    new_state_1_unit_movements.append(&mut state_2_copy.units_and_utility[0..lower_endpoint].to_vec());
+    new_state_1_unit_movements.append(&mut state_1_copy.units_and_utility[lower_endpoint..upper_endpoint].to_vec());
+    new_state_1_unit_movements.append(&mut state_2_copy.units_and_utility[upper_endpoint..state_1.units_and_utility.len() as usize].to_vec());
 
-//     //(new_state_1, new_state_2)
-// }
+
+    new_state_2_unit_movements.append(&mut state_1_copy.units_and_utility[0..lower_endpoint].to_vec());
+    new_state_2_unit_movements.append(&mut state_2_copy.units_and_utility[lower_endpoint..upper_endpoint].to_vec());
+    new_state_2_unit_movements.append(&mut state_1_copy.units_and_utility[upper_endpoint..state_1.units_and_utility.len() as usize].to_vec());
+    
+    let mut new_state_1 = PopulationState::new(new_state_1_unit_movements, 0.0);
+    let mut new_state_2 = PopulationState::new(new_state_2_unit_movements, 0.0);
+
+    assign_value_to_state(&mut new_state_1);
+    assign_value_to_state(&mut new_state_2);
+
+    (new_state_1, new_state_2)
+}
 
 fn elite_selection(current_population: &mut Vec<PopulationState>) -> Vec<PopulationState> {
 	let num_to_keep: usize = ((E_PERC * (current_population.len() as f32)).round() as i32).try_into().unwrap();
