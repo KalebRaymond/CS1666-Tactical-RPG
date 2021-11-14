@@ -1,4 +1,4 @@
-use rand::{seq::IteratorRandom, thread_rng};
+use rand::{seq::IteratorRandom, Rng, thread_rng};
 use std::collections::HashMap;
 use std::convert::TryInto;
 
@@ -285,4 +285,19 @@ fn convert_utilities_to_probabilities(utilities: Vec<f64>) -> Vec<f64>{
     let utilities_to_p_accept: Vec<f64> = utilities.iter().map(|current_utility| (-(max_utility - current_utility)/temperature).exp()).collect();
     let p_accept_sum:f64 = utilities_to_p_accept.iter().sum();
     utilities_to_p_accept.iter().map(|p_accept| p_accept/p_accept_sum).collect()
+}
+
+//Randomly select an index by summing values of distribution until we exceed a random value
+//since our higher valued utilities are first they have a higher likelihood of being selected
+fn choose_index_from_distribution(probabilities: &Vec<f64>) -> usize {
+    let mut rng_thread = thread_rng();
+    let rand_num: f64 = rng_thread.gen();
+    let mut sum:f64 = 0.0;
+    for index in 0..probabilities.len() {
+        sum += probabilities[index];
+        if rand_num <= sum {
+            return index;
+        } 
+    }
+    return probabilities.len();
 }
