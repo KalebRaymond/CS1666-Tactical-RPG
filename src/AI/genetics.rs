@@ -9,7 +9,7 @@ use crate::unit::Unit;
 use crate::tile::Tile;
 
 //Genetic Algorithm Constants (instead of a struct to make things easier to modify and less things to pass around)
-const POP_NUM: u32 = 30; //Population size
+const POP_NUM: usize = 30; //Population size
 const GEN_NUM: u32 = 0; //Number of generations to run
 const MUT_PROB: f32 = 0.1; //Probability of an individual being mutated
 const MUT_NUM: usize = 5; //How many units should be changed on mutation
@@ -18,12 +18,12 @@ const E_PERC: f32 = 0.1; //Proportion of best individuals to carry over from one
 
 //Utility Function Constants
 const MIN_DISTANCE: i32 = 5; // Defines the minimum distance a unit can be from an objective to be considered near it
-const DEFENDING_WEIGHT: f64 = -0.5;
-const SIEGING_WEIGHT: f64 = -0.75;
-const CAMP_WEIGHT: f64 = -0.25;
-const ATTACK_VALUE: f64 = 10.0;
+const DEFENDING_WEIGHT: f64 = 5.0;
+const SIEGING_WEIGHT: f64 = 7.5;
+const CAMP_WEIGHT: f64 = 2.5;
+const ATTACK_VALUE: f64 = 1.0;
 const MIN_DEFENSE: u32 = 5; //Since one of our AI goals says that some units should stay behind and defend, we need metrics to enforce this
-const DEFENSE_PENALTY: f64 = -500.0;
+const DEFENSE_PENALTY: f64 = 5.0;
 
 fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> Vec<PopulationState> {
     let mut rng_thread = thread_rng();
@@ -63,6 +63,7 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
     assign_value_to_state(state); 
 }
 
+//Produces 2 new states by randomly selecting 2 endpoints within the units and joining the two states at these end points
 fn crossover(state_1: PopulationState, state_2: PopulationState) -> (PopulationState, PopulationState) {
     let mut rng_thread = thread_rng();
     let endpoints = (0..state_1.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, 2); 
@@ -144,15 +145,14 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
             //let state_1 = PopulationState::new();
             //let state_2 = PopulationState::new();
 
-            //let new_individuals = crossover(state_1, state_2);
+            // let new_individuals = crossover(state_1, state_2);
 
-            /*
-            if size of new_generation + size of new_individuals > POP_NUM {
-				add only one of the new_individuals to new_generation
-			} else {
-				add both of the new_individuals to new_generation
-			}
-            */
+            // if new_generation.len() + 2 > POP_NUM {
+			// 	new_generation.push(new_individuals.0);
+			// } else {
+			// 	new_generation.push(new_individuals.0);
+            //     new_generation.push(new_individuals.1);
+			// }
         }
         //In order to mutate the states we need to calculate how many to mutate and then randomly select them as mutable
         let num_to_mutate: usize = ((MUT_PROB * (new_generation.len() as f32)).round() as i32).try_into().unwrap();
@@ -162,6 +162,10 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
         }
 
         initial_population = new_generation.clone();
+
+        //Also need to remember to reset the corresponding vectors for the next generation
+        new_generation = Vec::new();
+        remaining_population = Vec::new();
     }
 
     //init_population now generally represents the best possible states that have been found and we can use these to form the considered moves of our minimax and we can repeat this for the enemy to get their "best" move and make the decision from there   
@@ -188,11 +192,11 @@ fn assign_value_to_state (current_state: &mut PopulationState) {
 
     // Calculations for state as a whole (not individual units) 
     if units_defending < MIN_DEFENSE {
-        total_value += DEFENSE_PENALTY;
+        total_value = total_value/DEFENSE_PENALTY;
     }
     //Will eventually want to add on values for units sieging, near camps, attacking, etc (ie prefer sieging a castle with x units over y)
 
-    //println!("Total value: {}\nUnits near p2 castle: {}\nUnits near p1 castle: {}\nUnits near camps: {}\nUnits able to attack: {}\n", total_value, units_defending, units_sieging, units_near_camp, units_able_to_attack);
+    println!("Total value: {}\nUnits near p2 castle: {}\nUnits near p1 castle: {}\nUnits near camps: {}\nUnits able to attack: {}\n", total_value, units_defending, units_sieging, units_near_camp, units_able_to_attack);
 
     current_state.overall_utility = total_value;
 }
@@ -248,11 +252,15 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
     // if defending == false {
     //     value += distance_from_own_castle as f64 * DEFENDING_WEIGHT;
     // } 
-    if sieging == false {
-        value += distance_from_enemy_castle as f64 * SIEGING_WEIGHT;
+    if distance_from_enemy_castle != 0 {
+        value += SIEGING_WEIGHT/(distance_from_enemy_castle as f64);
+    } else {
+        value += SIEGING_WEIGHT*2.0;
     }
-    if near_camp == false {
-        value += distance_from_nearest_camp as f64 * CAMP_WEIGHT;
+    if distance_from_nearest_camp != 0 {
+        value += CAMP_WEIGHT/(distance_from_nearest_camp as f64);
+    } else {
+        value += CAMP_WEIGHT*2.0;
     }
     if able_to_attack == true {
         value += ATTACK_VALUE;
