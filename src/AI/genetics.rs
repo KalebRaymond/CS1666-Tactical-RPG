@@ -12,7 +12,7 @@ use crate::tile::Tile;
 const POP_NUM: u32 = 30; //Population size
 const GEN_NUM: u32 = 0; //Number of generations to run
 const MUT_PROB: f32 = 0.1; //Probability of an individual being mutated
-const MUT_NUM: u32 = 5; //How many units should be changed on mutation
+const MUT_NUM: usize = 5; //How many units should be changed on mutation
 const C_PERC: f32 = 0.2; //Percentage of the least fit individuals to be removed
 const E_PERC: f32 = 0.1; //Proportion of best individuals to carry over from one generation to the next
 
@@ -47,16 +47,19 @@ fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut Has
     population
 }
 
-fn mutate(state: &mut PopulationState) {
-	//This function depends on how we implement PopulationState
-    /*
-    for unit in random_sample of size MUT_NUM of state {
-		while new_position = current_position {
-			new_position = random selection of one of the unit's possible moves
-		}
-		state.update(unit, new_position)
+//After we mutate a state we also need to be able to update its value
+fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) {
+    let mut rng_thread = thread_rng();
+    let index_of_units_to_mutate = (0..state.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, MUT_NUM); 
+    for index in index_of_units_to_mutate {
+		let mut new_move: (u32, u32) = *succinct_units[index].possible_moves.iter().choose(&mut rng_thread).unwrap();
+        while new_move == state.units_and_utility[index].0 {
+            new_move = *succinct_units[index].possible_moves.iter().choose(&mut rng_thread).unwrap();   
+        }
+        state.units_and_utility[index].0 = new_move;
+        let move_value = current_unit_value(succinct_units[index].attack_range, new_move, map, p2_castle, p1_castle, camp_coords).0;
+        let move_difference = 
 	}
-    */
 }
 
 // fn crossover(state_1: PopulationState, state_2: PopulationState) -> (PopulationState, PopulationState) {
@@ -89,6 +92,7 @@ fn culling(current_population: &mut Vec<PopulationState>) -> Vec<PopulationState
 }
 
 pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameMap, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> Vec<PopulationState>{
+    let mut rng_thread = thread_rng();
     //Keeps track of all the possible unit movements
     let mut succinct_units: Vec<SuccinctUnit> = Vec::new();
 
@@ -136,6 +140,12 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
 				add both of the new_individuals to new_generation
 			}
             */
+        }
+        //In order to mutate the states we need to calculate how many to mutate and then randomly select them as mutable
+        let num_to_mutate: usize = ((MUT_PROB * (new_generation.len() as f32)).round() as i32).try_into().unwrap();
+        let mut states_to_mutate = new_generation.iter_mut().choose_multiple(&mut rng_thread, num_to_mutate); 
+        for state in states_to_mutate.iter_mut() {
+            mutate(state, &succinct_units, &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords);
         }
 
         initial_population = new_generation.clone();
