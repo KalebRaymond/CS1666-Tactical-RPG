@@ -9,8 +9,8 @@ use crate::unit::Unit;
 use crate::tile::Tile;
 
 //Genetic Algorithm Constants (instead of a struct to make things easier to modify and less things to pass around)
-const POP_NUM: usize = 30; //Population size
-const GEN_NUM: u32 = 1; //Number of generations to run
+const POP_NUM: usize = 50; //Population size
+const GEN_NUM: u32 = 25; //Number of generations to run
 const MUT_PROB: f32 = 0.1; //Probability of an individual being mutated
 const MUT_NUM: usize = 5; //How many units should be changed on mutation
 const C_PERC: f32 = 0.2; //Percentage of the least fit individuals to be removed
@@ -54,6 +54,7 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
     for index in index_of_units_to_mutate {
 		let mut new_move: (u32, u32) = *succinct_units[index].possible_moves.iter().choose(&mut rng_thread).unwrap();
         while new_move == state.units_and_utility[index].0 {
+            //println!("Generating new mutation...");
             new_move = *succinct_units[index].possible_moves.iter().choose(&mut rng_thread).unwrap();   
         }
         let move_value = current_unit_value(succinct_units[index].attack_range, new_move, map, p2_castle, p1_castle, camp_coords);
@@ -144,12 +145,36 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
 
         //While we still need to fill our generation, generate new individuals using cross over
         while new_generation.len() < POP_NUM {
-            let index_of_state_1 = choose_index_from_distribution(&probabilities);
+            let mut num_attempts = 0; //Although it should be unlikely, there is a chance that we reselct the same index multiple times, so we need to ensure otherwise
+
+            let mut index_of_state_1 = choose_index_from_distribution(&probabilities);
+            //Need to ensure that the index we selected is actually in bounds
+            while index_of_state_1 == probabilities.len() {
+                //println!("Selecting new index to cross; out of bounds...");
+                index_of_state_1 = choose_index_from_distribution(&probabilities);
+                num_attempts += 1;
+                if num_attempts == 10 {
+                    index_of_state_1 = probabilities.len()-1;
+                }
+            }
+
+            num_attempts = 0;
+            
             let mut index_of_state_2 = choose_index_from_distribution(&probabilities);
             //Need to make sure that we do not select the same index as crossing a state with itself produces nothing new
-            while index_of_state_2 == index_of_state_1 {
+            while index_of_state_2 == index_of_state_1 || index_of_state_2 == probabilities.len(){
+                //println!("Selecting new index to cross; either out of bounds or duplicate...");
                 index_of_state_2 = choose_index_from_distribution(&probabilities);
+                num_attempts += 1;
+                if num_attempts == 10 {
+                    if index_of_state_1 == 0 {
+                        index_of_state_2 = index_of_state_1+1;
+                    } else {
+                        index_of_state_2 = index_of_state_1-1;
+                    }
+                }
             }
+            
             let new_individuals = crossover(&remaining_population[index_of_state_1], &remaining_population[index_of_state_2]);
 
             if new_generation.len() + 2 > POP_NUM {
@@ -167,7 +192,11 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
         }
 
         initial_population = new_generation.clone();
-
+        let best_individual = initial_population.iter().max().unwrap();
+        println!("Best score in generation {}:{}", i+1, best_individual.overall_utility);
+        let moves: Vec<(u32, u32)> = best_individual.units_and_utility.iter().map(|tup| tup.0).collect();
+        println!("Moves:{:?}", moves);
+        //println!("Num units: {}", best_individual.units_and_utility.len());
         //Also need to remember to reset the corresponding vectors for the next generation
         new_generation = Vec::new();
         remaining_population = Vec::new();
