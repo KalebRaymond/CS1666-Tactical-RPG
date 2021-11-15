@@ -32,6 +32,7 @@ use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
 
 const BANNER_TIMEOUT: u64 = 1500;
+const TURNS_ON_BASE: u32 = 3;
 
 pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let texture_creator = core.wincan.texture_creator();
@@ -179,7 +180,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			for col in row.iter() { 
 				let letter = &col[..];
 				match letter {
-					//I wanted to do something that wasn't just hardcoding all the textures, but it seems that tile_textures.get() refuses anything that isn't a hard-coded string
 					"║" | "^" | "v" | "<" | "=" | ">" | "t" => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, None, tile_textures.get(&letter).unwrap())),
 					" " => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, None, tile_textures.get(&letter).unwrap())),
 					"b" =>  { 
@@ -237,6 +237,10 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	//Winning team. Is set to None until one of the Teams wins
 	let mut winning_team: Option<Team> = None;
+	let mut player1_on_base = 0;
+	let mut player2_on_base = 0;
+	// Not sure how else to check on_base once per turn
+	let mut next_team_check = Team::Player;
 	
 	'gameloop: loop {
 		core.wincan.clear();
@@ -305,13 +309,46 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			match current_player {
 				Team::Player => {
 					player_turn::handle_player_turn(&core, &mut player_state, &mut p2_units, &mut barbarian_units, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
+					// Checks to see if the player's units are on the opponent's castle tile
+					if next_team_check == Team::Player {
+						match player_state.p1_units.get_mut(&enemy_castle) {
+							Some(player1_unit) => {
+								player1_on_base += 1;
+								if player1_on_base >= TURNS_ON_BASE {
+									winning_team = set_winner(Team::Player, &mut winner_banner);
+								}
+							},
+							_ => {
+								player1_on_base = 0;
+							},
+						}
+						println!("Turns on enemy castle: {}/{}", player1_on_base, TURNS_ON_BASE);
+						// Makes it so that this isn't checked every time it loops through
+						next_team_check = Team::Enemy;
+					}
 				},
 				Team::Enemy => {
 					enemy_turn::handle_enemy_turn(&mut p2_units, &mut player_state.p1_units, &mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player, &enemy_castle, &player_castle, &camp_coords);
+					// Checks to see if the opponent is on the player's castle
+					if next_team_check == Team::Enemy {
+						match p2_units.get_mut(&player_castle) {
+							Some(player2_unit) => {
+								player2_on_base += 1;
+								if player2_on_base >= TURNS_ON_BASE {
+									winning_team = set_winner(Team::Enemy, &mut winner_banner);
+								}
+							},
+							_ => {
+								player2_on_base = 0;
+							},
+						}
+						println!("Turns on player castle: {}/{}", player2_on_base, TURNS_ON_BASE);
+						next_team_check = Team::Player;
+					}
 				},
 				Team::Barbarians => {
 					barbarian_turn::handle_barbarian_turn(&core, &mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player)?;
-					player_state.p1_units = initialize_next_turn(player_state.p1_units);
+					initialize_next_turn(&mut player_state.p1_units);
 				},
 			}
 
