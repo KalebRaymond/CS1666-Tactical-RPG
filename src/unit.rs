@@ -197,8 +197,47 @@ impl Unit <'_>{
 
     // There is a chance that the best move for an enemy unit is no longer possible once we actually start moving units
     // Thus we should try to find the closest possible tile to move to
-    pub fn get_closest_move(&self, desired_move:(u32,u32)) -> (u32,u32) {
-        
+    pub fn get_closest_move(&self, desired_move:(u32,u32), map: &mut HashMap<(u32, u32), Tile>,) -> (u32,u32) {
+        let mut y_increment: i32 = 1;
+        let mut x_increment: i32 = 1;
+        let mut current_x:i32 = desired_move.0 as i32;
+        let mut current_y:i32 = desired_move.1 as i32;
+
+        if desired_move.1 > self.y { //If the coorodinate is below then our increment should be -1;
+            y_increment = -1;
+        } else if desired_move.1 == self.y { //If the coordinates are at the same y focus on moving x first
+            y_increment = 0;
+        }
+        if desired_move.0 > self.x { //If the coorodinate is to the right then our increment should be -1;
+            x_increment = -1;
+        } else if desired_move.0 == self.x { //If the coordinates are at the same x focus on moving y first
+            x_increment = 0;
+        }
+        loop {
+            if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((current_y as u32, (current_x + x_increment) as u32)) {
+                //As long as a unit can move to this tile and we have not already visited this tile
+                if entry.get().unit_can_move_here() {
+                    return ((current_x + x_increment) as u32, current_y as u32)
+                }
+            }
+            if let std::collections::hash_map::Entry::Occupied(entry) = map.entry(((current_y + y_increment) as u32, current_x as u32)) {
+                //As long as a unit can move to this tile and we have not already visited this tile
+                if entry.get().unit_can_move_here() {
+                    return (current_x as u32, (current_y + y_increment) as u32)
+                }
+            }
+            if let std::collections::hash_map::Entry::Occupied(entry) = map.entry(((current_y + y_increment) as u32, (current_x + x_increment) as u32)) {
+                //As long as a unit can move to this tile and we have not already visited this tile
+                if entry.get().unit_can_move_here() {
+                    return ((current_x + x_increment) as u32, (current_y + y_increment) as u32)
+                }
+            }
+            current_x += x_increment;
+            current_y += y_increment;
+            if(current_x == self.x as i32 && current_y == self.y as i32) {
+                break;
+            }
+        }
         //In the event that no closer moves are found, stay at current position
         (self.x, self.y)
     }

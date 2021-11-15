@@ -42,7 +42,7 @@ impl PopulationState {
                 return true;
             }
         }
-        true
+        false
     }
 
     // Currently just returns the movements for each unit (will eventually also handle attacks)
@@ -54,15 +54,16 @@ impl PopulationState {
         for index in 0..self.units_and_utility.len() {
             let mut new_move = self.units_and_utility[index].0;
             let mut actual_unit = actual_units_mut.next().unwrap(); //Units should be in order so we can just use next to get corresponding unit (nth panics)
-            let possible_moves = actual_unit.get_tiles_in_movement_range(map);
             
             // If this move exists in the moves of the unit, move to it...
-            if self.is_dupe_unit_placement_ending_at(&new_move, index) {
+            if !self.is_dupe_unit_placement_ending_at(&new_move, index) {
                 //Would like to update the hashmap of units but borrow checker says otherwise...
                 actual_moves.push(((actual_unit.x, actual_unit.y), new_move));
             } else { // Else, we need to move to the closest possible tile
                 println!("Best move not possible; need to find closest tile...");
-                new_move = actual_unit.get_closest_move(new_move);
+                println!("OldMove:{},{}", new_move.0, new_move.1);
+                new_move = actual_unit.get_closest_move(new_move, map);
+                println!("NewMove:{},{}", new_move.0, new_move.1);
                 actual_moves.push(((actual_unit.x, actual_unit.y), new_move));
             }
             // Update map tiles (even though we are not updating units, should still update map to properly restrict movements)
