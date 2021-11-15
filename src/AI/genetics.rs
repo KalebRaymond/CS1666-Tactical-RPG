@@ -52,6 +52,10 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
     let mut rng_thread = thread_rng();
     let index_of_units_to_mutate = (0..state.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, MUT_NUM); 
     for index in index_of_units_to_mutate {
+        //If the unit only has 1 move to choose from, nothing will change. So move on to next unit to mutate... 
+        if succinct_units[index].possible_moves.len() == 1 {
+            continue;
+        }
         let mut index_of_new_move: usize = (0..succinct_units[index].possible_moves.len() as usize).choose(&mut rng_thread).unwrap();
         let mut new_move = succinct_units[index].possible_moves.get(index_of_new_move).unwrap();
         let mut attempts: u32 = 0;
