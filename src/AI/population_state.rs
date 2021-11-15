@@ -32,6 +32,19 @@ impl PopulationState {
         }
         false
     }
+
+    // Currently just returns the movements for each unit (will eventually also handle attacks)
+    pub fn convert_state_to_action(&self, actual_units: &mut HashMap<(u32, u32), Unit>, map: &mut HashMap<(u32, u32), Tile>) {
+        let mut actual_units_mut = actual_units.values_mut();
+
+        //Both the hashmap of units and the vector of moves should be the same length; if not something went wrong and should panic
+        for index in 0..self.units_and_utility.len() {
+            let new_move = self.units_and_utility[index].0;
+            let mut actual_unit = actual_units_mut.nth(index).unwrap();
+            let possible_moves = actual_unit.get_tiles_in_movement_range(map);
+        }
+    }
+    
 }
 
 impl Ord for PopulationState {
