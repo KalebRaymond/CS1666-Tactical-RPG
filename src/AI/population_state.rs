@@ -21,6 +21,17 @@ impl PopulationState {
             overall_utility,
         }
     }
+    // To reduce some of the issues with units moving to the same tile, adding a quick check to see if there is already a unit at this tile
+    // returns true if a unit is already at this tile and false if otherwise
+    pub fn is_dupe_unit_placement(&self, coordinates:&(u32,u32)) -> bool {
+        for unit in self.units_and_utility.iter() {
+            if unit.0 == *coordinates {
+                //println!("{},{} == {},{}; this move already exists...", coordinates.0, coordinates.1, unit.0.0, unit.0.1);
+                return true;
+            }
+        }
+        false
+    }
 }
 
 impl Ord for PopulationState {

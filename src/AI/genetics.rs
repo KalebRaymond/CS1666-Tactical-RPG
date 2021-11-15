@@ -53,7 +53,8 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
     let index_of_units_to_mutate = (0..state.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, MUT_NUM); 
     for index in index_of_units_to_mutate {
 		let mut new_move: (u32, u32) = *succinct_units[index].possible_moves.iter().choose(&mut rng_thread).unwrap();
-        while new_move == state.units_and_utility[index].0 {
+        //Although is_dupe_unit_placement also takes care of the case where the current placement is the same move as before, this might allow for constant check in the best case
+        while new_move == state.units_and_utility[index].0 || state.is_dupe_unit_placement(&new_move){
             //println!("Generating new mutation...");
             new_move = *succinct_units[index].possible_moves.iter().choose(&mut rng_thread).unwrap();   
         }
@@ -64,7 +65,8 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
     assign_value_to_state(state); 
 }
 
-//Produces 2 new states by randomly selecting 2 endpoints within the units and joining the two states at these end points
+// Produces 2 new states by randomly selecting 2 endpoints within the units and joining the two states at these end points
+// No easy way to check for duplicates here, so we will need to do so when actually processing the move
 fn crossover(state_1: &PopulationState, state_2: &PopulationState) -> (PopulationState, PopulationState) {
     let mut rng_thread = thread_rng();
     let endpoints = (0..state_1.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, 2); 
