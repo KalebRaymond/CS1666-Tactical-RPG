@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 
@@ -9,18 +10,39 @@ const MAP_HEIGHT: u32 = 64;
 #[derive(Clone)]
 pub struct PopulationState {
     //Will likely need a struct to keep track of individuals in a population (all units current position and the value of that state)
-    pub units_and_utility: Vec<((u32, u32), f64)>,
+    pub units_and_utility: Vec<((u32, u32), (f64, bool, bool, bool, bool))>,
     pub overall_utility: f64,
 }
 
 impl PopulationState {
-    pub fn new(units_and_utility: Vec<((u32, u32), f64)>, overall_utility: f64) -> PopulationState {
+    pub fn new(units_and_utility: Vec<((u32, u32), (f64, bool, bool, bool, bool))>, overall_utility: f64) -> PopulationState {
         PopulationState{
             units_and_utility,
             overall_utility,
         }
     }
 }
+
+impl Ord for PopulationState {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.overall_utility.partial_cmp(&other.overall_utility).unwrap()
+    }
+} 
+
+impl PartialOrd for PopulationState {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+} 
+
+impl PartialEq for PopulationState {
+    fn eq(&self, other: &Self) -> bool {
+        self.overall_utility == other.overall_utility
+    }
+} 
+
+impl Eq for PopulationState {
+} 
 
 //A succinct way to represent units since we will only be concerned with possible_moves and attack_range
 pub struct SuccinctUnit {
