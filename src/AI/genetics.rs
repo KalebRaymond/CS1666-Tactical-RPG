@@ -53,26 +53,27 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
     let index_of_units_to_mutate = (0..state.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, MUT_NUM); 
     for index in index_of_units_to_mutate {
         let mut index_of_new_move: usize = (0..succinct_units[index].possible_moves.len() as usize).choose(&mut rng_thread).unwrap();
-        let mut new_move = succinct_units[index].possible_moves[index_of_new_move];
+        let mut new_move = succinct_units[index].possible_moves.get(index_of_new_move).unwrap();
         let mut attempts: u32 = 0;
         //Although is_dupe_unit_placement also takes care of the case where the current placement is the same move as before, this might allow for constant check in the best case
-        while new_move == state.units_and_utility[index].0 || state.is_dupe_unit_placement(&new_move){
+        while *new_move == state.units_and_utility[index].0 || state.is_dupe_unit_placement(&new_move){
             //println!("Generating new mutation {:?} has issues...", new_move);
             index_of_new_move = (0..succinct_units[index].possible_moves.len() as usize).choose(&mut rng_thread).unwrap();
-            new_move = succinct_units[index].possible_moves[index_of_new_move];
+            new_move = succinct_units[index].possible_moves.get(index_of_new_move).unwrap();
             //println!("New move {:?} selected", new_move);
             attempts += 1;
+            //println!("Len of possible moves at index {}:{}", index, succinct_units[index].possible_moves.len());
             if attempts == 10 {
                 if index_of_new_move == 0 {
-                    new_move = succinct_units[index].possible_moves[index_of_new_move+1];
+                    new_move = succinct_units[index].possible_moves.get(index_of_new_move+1).unwrap();
                 } else {
-                    new_move = succinct_units[index].possible_moves[index_of_new_move-1];
+                    new_move = succinct_units[index].possible_moves.get(index_of_new_move-1).unwrap();
                 }
                 break;
             }
         }
-        let move_value = current_unit_value(succinct_units[index].attack_range, new_move, map, p2_castle, p1_castle, camp_coords);
-        state.units_and_utility[index] = (new_move, move_value);
+        let move_value = current_unit_value(succinct_units[index].attack_range, *new_move, map, p2_castle, p1_castle, camp_coords);
+        state.units_and_utility[index] = (*new_move, move_value);
 	}
     //Don't forget to update the overall value of the state (can't just substract the difference in values from the state as we are also checking overall conditions)
     assign_value_to_state(state); 
@@ -103,6 +104,8 @@ fn crossover(state_1: &PopulationState, state_2: &PopulationState) -> (Populatio
     let mut new_state_1 = PopulationState::new(new_state_1_unit_movements, 0.0);
     let mut new_state_2 = PopulationState::new(new_state_2_unit_movements, 0.0);
 
+    //println!("len of state_1:{}, len of state_2: {}", state_1.units_and_utility.len(), state_2.units_and_utility.len());
+    
     assign_value_to_state(&mut new_state_1);
     assign_value_to_state(&mut new_state_2);
 
