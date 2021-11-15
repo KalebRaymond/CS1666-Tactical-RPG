@@ -98,8 +98,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	tile_textures.insert("<", texture_creator.load_texture("images/tiles/river_end_left.png")?);
 	//Bases
 	tile_textures.insert("b", texture_creator.load_texture("images/tiles/barbarian_camp.png")?);
-	tile_textures.insert("1", texture_creator.load_texture("images/tiles/red_castle.png")?);
-	tile_textures.insert("2", texture_creator.load_texture("images/tiles/blue_castle.png")?);
+	tile_textures.insert("1", texture_creator.load_texture("images/tiles/blue_castle.png")?);
+	tile_textures.insert("2", texture_creator.load_texture("images/tiles/red_castle.png")?);
 	//Tree
 	tile_textures.insert("t", texture_creator.load_texture("images/tiles/tree_tile.png")?);
 
@@ -309,6 +309,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			match current_player {
 				Team::Player => {
 					player_turn::handle_player_turn(&core, &mut player_state, &mut p2_units, &mut barbarian_units, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
+					
 					// Checks to see if the player's units are on the opponent's castle tile
 					if next_team_check == Team::Player {
 						match player_state.p1_units.get_mut(&enemy_castle) {
@@ -329,6 +330,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				},
 				Team::Enemy => {
 					enemy_turn::handle_enemy_turn(&mut p2_units, &mut player_state.p1_units, &mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player, &enemy_castle, &player_castle, &camp_coords);
+					
 					// Checks to see if the opponent is on the player's castle
 					if next_team_check == Team::Enemy {
 						match p2_units.get_mut(&player_castle) {
@@ -348,7 +350,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				},
 				Team::Barbarians => {
 					barbarian_turn::handle_barbarian_turn(&core, &mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player)?;
-					initialize_next_turn(&mut player_state.p1_units);
 				},
 			}
 
