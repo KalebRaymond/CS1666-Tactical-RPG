@@ -195,6 +195,14 @@ impl Unit <'_>{
         tiles_in_range
     }
 
+    // There is a chance that the best move for an enemy unit is no longer possible once we actually start moving units
+    // Thus we should try to find the closest possible tile to move to
+    pub fn get_closest_move(&self, desired_move:(u32,u32)) -> (u32,u32) {
+        
+        //In the event that no closer moves are found, stay at current position
+        (self.x, self.y)
+    }
+
     pub fn get_tiles_in_attack_range(&self, map: &mut HashMap<(u32, u32), Tile>,) -> Vec<(u32, u32)> {
         let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
         let mut visited: HashMap<(u32,u32), bool> = HashMap::new();

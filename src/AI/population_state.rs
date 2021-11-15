@@ -33,31 +33,45 @@ impl PopulationState {
         false
     }
 
+    // It does not matter if there is a duplicate move after only before
+    // This is used in actually converting the state to action
+    pub fn is_dupe_unit_placement_ending_at(&self, coordinates:&(u32,u32), ending_point: usize) -> bool {
+        for index in 0..ending_point {
+            if self.units_and_utility[index].0 == *coordinates {
+                //println!("{},{} == {},{}; this move already exists...", coordinates.0, coordinates.1, self.units_and_utility[index].0.0, self.units_and_utility[index].0.1);
+                return true;
+            }
+        }
+        true
+    }
+
     // Currently just returns the movements for each unit (will eventually also handle attacks)
     pub fn convert_state_to_action(&self, actual_units: &mut HashMap<(u32, u32), Unit>, map: &mut HashMap<(u32, u32), Tile>) {
         let mut actual_units_mut = actual_units.values_mut();
         let mut actual_moves: Vec<((u32, u32), (u32, u32))> = Vec::new();  //Original coordinates followed by new coordinates
-        println!("{} == {}", actual_units_mut.len(), self.units_and_utility.len());
+        //println!("{} == {}", actual_units_mut.len(), self.units_and_utility.len()); //Check to make sure same size
         //Both the hashmap of units and the vector of moves should be the same length; if not something went wrong and should panic
         for index in 0..self.units_and_utility.len() {
-            let new_move = self.units_and_utility[index].0;
+            let mut new_move = self.units_and_utility[index].0;
             let mut actual_unit = actual_units_mut.next().unwrap(); //Units should be in order so we can just use next to get corresponding unit (nth panics)
             let possible_moves = actual_unit.get_tiles_in_movement_range(map);
             
             // If this move exists in the moves of the unit, move to it...
-            if possible_moves.contains(&new_move) {
+            if self.is_dupe_unit_placement_ending_at(&new_move, index) {
                 //Would like to update the hashmap of units but borrow checker says otherwise...
                 actual_moves.push(((actual_unit.x, actual_unit.y), new_move));
-                // Update map tiles
-                // Have to remember that map indexing is swapped
-                if let Some(old_map_tile) = map.get_mut(&(actual_unit.y, actual_unit.x)) {
-                    old_map_tile.update_team(None);
-                }
-                if let Some(new_map_tile) = map.get_mut(&(new_move.1, new_move.0)) {
-                    new_map_tile.update_team(Some(Team::Enemy));
-                }
             } else { // Else, we need to move to the closest possible tile
                 println!("Best move not possible; need to find closest tile...");
+                new_move = actual_unit.get_closest_move(new_move);
+                actual_moves.push(((actual_unit.x, actual_unit.y), new_move));
+            }
+            // Update map tiles (even though we are not updating units, should still update map to properly restrict movements)
+            // Have to remember that map indexing is swapped
+            if let Some(old_map_tile) = map.get_mut(&(actual_unit.y, actual_unit.x)) {
+                old_map_tile.update_team(None);
+            }
+            if let Some(new_map_tile) = map.get_mut(&(new_move.1, new_move.0)) {
+                new_map_tile.update_team(Some(Team::Enemy));
             }
             // Handle attack
             // Will implement later
