@@ -52,11 +52,24 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
     let mut rng_thread = thread_rng();
     let index_of_units_to_mutate = (0..state.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, MUT_NUM); 
     for index in index_of_units_to_mutate {
-		let mut new_move: (u32, u32) = *succinct_units[index].possible_moves.iter().choose(&mut rng_thread).unwrap();
+        let mut index_of_new_move: usize = (0..succinct_units[index].possible_moves.len() as usize).choose(&mut rng_thread).unwrap();
+        let mut new_move = succinct_units[index].possible_moves[index_of_new_move];
+        let mut attempts: u32 = 0;
         //Although is_dupe_unit_placement also takes care of the case where the current placement is the same move as before, this might allow for constant check in the best case
         while new_move == state.units_and_utility[index].0 || state.is_dupe_unit_placement(&new_move){
-            //println!("Generating new mutation...");
-            new_move = *succinct_units[index].possible_moves.iter().choose(&mut rng_thread).unwrap();   
+            //println!("Generating new mutation {:?} has issues...", new_move);
+            index_of_new_move = (0..succinct_units[index].possible_moves.len() as usize).choose(&mut rng_thread).unwrap();
+            new_move = succinct_units[index].possible_moves[index_of_new_move];
+            //println!("New move {:?} selected", new_move);
+            attempts += 1;
+            if attempts == 10 {
+                if index_of_new_move == 0 {
+                    new_move = succinct_units[index].possible_moves[index_of_new_move+1];
+                } else {
+                    new_move = succinct_units[index].possible_moves[index_of_new_move-1];
+                }
+                break;
+            }
         }
         let move_value = current_unit_value(succinct_units[index].attack_range, new_move, map, p2_castle, p1_castle, camp_coords);
         state.units_and_utility[index] = (new_move, move_value);
