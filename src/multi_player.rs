@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use sdl2::image::LoadTexture;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
@@ -18,7 +20,9 @@ pub struct MultiPlayer<'i, 'r> {
 	bg_rect: Rect,
 
 	join_text: Texture<'i>,
-    join_text_rect: Rect,
+	join_text_period: Texture<'i>,
+    join_text_rects: Vec<Rect>,
+	join_text_anim_start: Instant,
     room_text: Texture<'i>,
     room_text_rect: Rect,
 }
@@ -32,14 +36,24 @@ impl MultiPlayer<'_, '_> {
 		let bg_interface = core.texture_creator.load_texture("images/interface/unit_interface.png")?;
 		let bg_rect = centered_rect!(core, 800, 650);
 
-		let join_str = "Waiting for another player to join...";
+		let join_str = "Waiting for another player to join.";
 		let (join_w, join_h) = core.bold_font.size_of(&join_str).map_err(|_e| "Could not determine text size")?;
 		let join_text = core.texture_creator.create_texture_from_surface(
 			core.bold_font.render(&join_str)
 				.blended(Color::RGBA(0,0,0,0)) //Black font
 				.map_err(|e| e.to_string())?
 		).map_err(|e| e.to_string())?;
-		let join_text_rect = Rect::new(300, 120, join_w, join_h);
+		let (join_period_w, join_period_h) = core.bold_font.size_of(".").map_err(|_e| "Could not determine text size")?;
+		let join_text_period = core.texture_creator.create_texture_from_surface(
+			core.bold_font.render(".")
+				.blended(Color::RGBA(0,0,0,0)) //Black font
+				.map_err(|e| e.to_string())?
+		).map_err(|e| e.to_string())?;
+		let join_text_rects = vec![
+			Rect::new(300, 120, join_w, join_h),
+			Rect::new(300+join_w as i32, 120, join_period_w, join_period_h),
+			Rect::new(300+(join_w+join_period_w) as i32, 120, join_period_w, join_period_h)
+		];
 
 		let room_str = format!("Room Code: {:04}", client.code);
 		let (room_w, room_h) = core.bold_font.size_of(&room_str).map_err(|_e| "Could not determine text size")?;
@@ -59,7 +73,9 @@ impl MultiPlayer<'_, '_> {
 			bg_rect,
 
 			join_text,
-			join_text_rect,
+			join_text_period,
+			join_text_rects,
+			join_text_anim_start: Instant::now(),
 
 			room_text,
 			room_text_rect,
@@ -89,10 +105,19 @@ impl Drawable for MultiPlayer<'_, '_> {
 		self.core.wincan.clear();
 
 		if !self.client.is_joined {
+			// calculate time elapsed for join text
+			let millis = self.join_text_anim_start.elapsed().subsec_millis();
+			let anim_state = if millis == 999 { 2 } else { millis/333 }; // math to never be 3 if millis = 999
 			// waiting for other player to join; draw prompt
 			self.core.wincan.copy(&self.bg_texture, None, None)?;
 			self.core.wincan.copy(&self.bg_interface, None, self.bg_rect)?;
-			self.core.wincan.copy(&self.join_text, None, self.join_text_rect)?;
+			self.core.wincan.copy(&self.join_text, None, self.join_text_rects[0])?;
+			if anim_state > 0 {
+				self.core.wincan.copy(&self.join_text_period, None, self.join_text_rects[1])?;
+				if anim_state > 1 {
+					self.core.wincan.copy(&self.join_text_period, None, self.join_text_rects[2])?;
+				}
+			}
         	self.core.wincan.copy(&self.room_text, None, self.room_text_rect)?;
 			self.core.wincan.present();
 			return Ok(GameState::MultiPlayer);
