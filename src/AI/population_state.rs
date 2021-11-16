@@ -4,6 +4,11 @@ use std::collections::HashMap;
 
 use crate::tile::Tile;
 use crate::unit::{Unit, Team, QueueObject};
+use crate::game_map::GameMap;
+use crate::pixel_coordinates::PixelCoordinates;
+use crate::damage_indicator::DamageIndicator;
+use crate::SDLCore;
+
 const MAP_WIDTH: u32 = 64;
 const MAP_HEIGHT: u32 = 64;
 
@@ -21,6 +26,135 @@ impl PopulationState {
             overall_utility,
         }
     }
+    // To reduce some of the issues with units moving to the same tile, adding a quick check to see if there is already a unit at this tile
+    // returns true if a unit is already at this tile and false if otherwise
+    pub fn is_dupe_unit_placement(&self, coordinates:&(u32,u32)) -> bool {
+        for unit in self.units_and_utility.iter() {
+            if unit.0 == *coordinates {
+                //println!("{},{} == {},{}; this move already exists...", coordinates.0, coordinates.1, unit.0.0, unit.0.1);
+                return true;
+            }
+        }
+        false
+    }
+
+    // It does not matter if there is a duplicate move after only before
+    // This is used in actually converting the state to action
+    pub fn is_dupe_unit_placement_ending_at(&self, coordinates:&(u32,u32), ending_point: usize) -> bool {
+        for index in 0..ending_point {
+            if self.units_and_utility[index].0 == *coordinates {
+                //println!("{},{} == {},{}; this move already exists...", coordinates.0, coordinates.1, self.units_and_utility[index].0.0, self.units_and_utility[index].0.1);
+                return true;
+            }
+        }
+        false
+    }
+
+    // Currently just returns the movements for each unit (will eventually also handle attacks)
+    pub fn convert_state_to_action<'b> (&self, core: &SDLCore<'b>, actual_units: &mut HashMap<(u32, u32), Unit>, p1_units: &mut HashMap<(u32, u32), Unit>, barb_units: &mut HashMap<(u32, u32), Unit>, game_map: &mut GameMap<'b>) -> Result<(), String> {
+        let mut actual_units_mut = actual_units.values_mut();
+        let mut actual_moves: Vec<((u32, u32), (u32, u32))> = Vec::new();  //Original coordinates followed by new coordinates
+        //println!("{} == {}", actual_units_mut.len(), self.units_and_utility.len()); //Check to make sure same size
+        //Both the hashmap of units and the vector of moves should be the same length; if not something went wrong and should panic
+        for index in 0..self.units_and_utility.len() {
+            let mut new_move = self.units_and_utility[index].0;
+            let mut actual_unit = actual_units_mut.next().unwrap(); //Units should be in order so we can just use next to get corresponding unit (nth panics)
+            
+            // If this move exists in the moves of the unit, move to it...
+            if !self.is_dupe_unit_placement_ending_at(&new_move, index) {
+                //Would like to update the hashmap of units but borrow checker says otherwise...
+                actual_moves.push(((actual_unit.x, actual_unit.y), new_move));
+            } else { // Else, we need to move to the closest possible tile
+                println!("Best move not possible; need to find closest tile...");
+                println!("OldMove:{},{}", new_move.0, new_move.1);
+                new_move = actual_unit.get_closest_move(new_move, &mut game_map.map_tiles);
+                println!("NewMove:{},{}", new_move.0, new_move.1);
+                actual_moves.push(((actual_unit.x, actual_unit.y), new_move));
+            }
+            // Update map tiles (even though we are not updating units, should still update map to properly restrict movements)
+            // Have to remember that map indexing is swapped
+            if let Some(old_map_tile) = game_map.map_tiles.get_mut(&(actual_unit.y, actual_unit.x)) {
+                old_map_tile.update_team(None);
+            }
+            if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(new_move.1, new_move.0)) {
+                new_map_tile.update_team(Some(Team::Enemy));
+            }
+        }
+
+        //Now need to actually act on these moves now that units are no longer being borrowed
+        for (ogcoord, newcoord) in actual_moves {
+            let mut active_unit = actual_units.remove(&(ogcoord.0, ogcoord.1)).unwrap();
+            active_unit.update_pos(newcoord.0, newcoord.1);
+
+            //Also need to handle the attack at this tile if there is an attack
+            let enemies_to_attack = active_unit.get_tiles_can_attack(&mut game_map.map_tiles);
+            if !enemies_to_attack.is_empty() {
+                let damage_done = active_unit.get_attack_damage();
+                //The enemy should attack the unit with the least health
+                let mut tile_with_least_health: (u32, u32) = enemies_to_attack[0];
+                let mut least_health: u32 = 1000;
+                for possible_attack in enemies_to_attack.iter() {
+                    if let Some(tile_under_attack) = game_map.map_tiles.get_mut(&(possible_attack.1, possible_attack.0)) {
+                        match tile_under_attack.contained_unit_team {
+                            Some(Team::Player) => {
+                                if let Some(unit) = p1_units.get_mut(&(possible_attack.0, possible_attack.1)) {
+                                    if unit.hp < least_health {
+                                        least_health = unit.hp;
+                                        tile_with_least_health = (possible_attack.0, possible_attack.1);
+                                    }
+                                }
+                            },
+                            _ => {
+                                if let Some(unit) = barb_units.get_mut(&(possible_attack.0, possible_attack.1)) {
+                                    if unit.hp < least_health {
+                                        least_health = unit.hp;
+                                        tile_with_least_health = (possible_attack.0, possible_attack.1);
+                                    }
+                                }
+                            } //This handles the barbarian case and also prevents rust from complaining about unchecked cases,
+                        }
+                    }
+                }
+                if let Some(tile_under_attack) = game_map.map_tiles.get_mut(&(tile_with_least_health.1, tile_with_least_health.0)) {
+                    match tile_under_attack.contained_unit_team {
+                        Some(Team::Player) => {
+                            if let Some(unit) = p1_units.get_mut(&(tile_with_least_health.0, tile_with_least_health.1)) {
+                                println!("Unit starting at {} hp.", unit.hp);
+                                if unit.hp <= damage_done {
+                                    p1_units.remove(&(tile_with_least_health.0, tile_with_least_health.1));
+                                    println!("Player unit at {}, {} is dead after taking {} damage.", tile_with_least_health.0, tile_with_least_health.1, damage_done);
+                                    tile_under_attack.update_team(None);
+                                } else {
+                                    unit.receive_damage(damage_done);
+                                    game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
+                                    println!("Enemy at {}, {} attacking player unit at {}, {} for {} damage. Unit now has {} hp.", active_unit.x, active_unit.y, tile_with_least_health.0, tile_with_least_health.1, damage_done, unit.hp);
+                                }
+                            }
+                        },
+                        _ => {
+                            if let Some(unit) = barb_units.get_mut(&(tile_with_least_health.0, tile_with_least_health.1)) {
+                                println!("Barbarian unit starting at {} hp.", unit.hp);
+                                if unit.hp <= damage_done {
+                                    barb_units.remove(&(tile_with_least_health.0, tile_with_least_health.1));
+                                    println!("Barbarian unit at {}, {} is dead after taking {} damage.", tile_with_least_health.0, tile_with_least_health.1, damage_done);
+                                    tile_under_attack.update_team(None);
+                                } else {
+                                    unit.receive_damage(damage_done);
+                                    game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
+                                    println!("Enemy at {}, {} attacking barbarian unit at {}, {} for {} damage. Unit now has {} hp.", active_unit.x, active_unit.y, tile_with_least_health.0, tile_with_least_health.1, damage_done, unit.hp);
+                                }
+                            }
+                        } //This handles the enemy case and also prevents rust from complaining about unchecked cases,
+                    }
+                }
+            }
+
+            //Don't forget to reinsert the unit into the hashmap
+            actual_units.insert((newcoord.0, newcoord.1), active_unit);
+        }
+        Ok(())
+    }
+    
 }
 
 impl Ord for PopulationState {
