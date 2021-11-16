@@ -8,6 +8,8 @@ use crate::unit::{Team, Unit};
 use crate::SDLCore;
 use crate::TILE_SIZE;
 
+const HEALTH_WIDTH: u32 = 5;
+
 pub struct Cursor<'a> {
     pub x: i32,
     pub y: i32,
@@ -53,13 +55,13 @@ impl Cursor<'_> {
         }
 
         if self.is_visible {
-            let back_health = Rect::new(self.x, self.y-2, self.unit_max_hp*2, 2);
+            let back_health = Rect::new(self.x, self.y-2, self.unit_max_hp*2, HEALTH_WIDTH);
             core.wincan.set_draw_color(Color::GRAY);
             core.wincan.fill_rect(back_health)?;
             core.wincan.draw_rect(back_health)?;
 
             core.wincan.set_draw_color(Color::RED);
-            core.wincan.fill_rect(Rect::new(self.x, self.y-2, self.unit_hp*2, 2))?;
+            core.wincan.fill_rect(Rect::new(self.x, self.y-2, self.unit_hp*2, HEALTH_WIDTH))?;
         }
 
         Ok(())
