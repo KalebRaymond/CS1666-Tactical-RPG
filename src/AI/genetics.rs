@@ -282,25 +282,30 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
                     } else {
                         false
                     };
-
-    let distance_from_enemy_castle = (unit_pos.0 as i32 - p1_castle.0 as i32).abs() + (unit_pos.1 as i32 - p1_castle.1 as i32).abs();
-
-    let sieging: bool =   if distance_from_enemy_castle <= MIN_DISTANCE {
+    
+    //let distance_from_enemy_castle = (unit_pos.0 as i32 - p1_castle.0 as i32).abs() + (unit_pos.1 as i32 - p1_castle.1 as i32).abs();
+    let distance_from_enemy_castle = get_actual_distance_from_goal(&unit_pos, &p1_castle, map);
+    let sieging: bool =   if distance_from_enemy_castle <= MIN_DISTANCE as u32 {
                         true
                     } else {
                         false
                     };
 
     let distance_from_nearest_camp = {
-        let mut distances_from_camps: Vec<i32> = Vec::new();
-
-        for camp in camp_coords {
-            distances_from_camps.push((unit_pos.0 as i32 - camp.0 as i32).abs() + (unit_pos.1 as i32 - camp.1 as i32).abs())
+        let mut min_distance_index = 0;
+        let mut min_distance = 1000;
+        for index in 0..camp_coords.len() {
+            let camp = camp_coords.get(index).unwrap();
+            let current_distance = (unit_pos.0 as i32 - camp.0 as i32).abs() + (unit_pos.1 as i32 - camp.1 as i32).abs();
+            if current_distance < min_distance {
+                min_distance = current_distance;
+                min_distance_index = index;
+            }
         }
-        *distances_from_camps.iter().min().unwrap()
+        get_actual_distance_from_goal(&unit_pos, camp_coords.get(min_distance_index).unwrap(), map)
     };
 
-    let near_camp: bool = if distance_from_nearest_camp <= MIN_DISTANCE {
+    let near_camp: bool = if distance_from_nearest_camp <= MIN_DISTANCE as u32 {
                         true
                     } else {
                         false
@@ -335,7 +340,7 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
 }
 
 // Perform a bidirectional search to find the actual distance of the unit from the goal
-pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>) -> u32 {
+pub fn get_actual_distance_from_goal(unit_pos: &(u32, u32), goal_pos: &(u32, u32), map: &mut HashMap<(u32, u32), Tile>) -> u32 {
     let mut visited_init: HashMap<(u32,u32), u32> = HashMap::new();
     let mut visited_goal: HashMap<(u32,u32), u32> = HashMap::new();
     let mut init_heap = BinaryHeap::new();
@@ -359,7 +364,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0-1, coords.1)){
+                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0-1, coords.1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0-1, coords.1), cost:cost+1}));
                             visited_goal.insert((coords.0-1, coords.1), cost);
                         }
@@ -372,7 +377,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0+1, coords.1)){
+                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0+1, coords.1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0+1, coords.1), cost:cost+1}));
                             visited_goal.insert((coords.0+1, coords.1), cost);
                         }
@@ -385,7 +390,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0, coords.1-1)){
+                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0, coords.1-1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1-1), cost:cost+1}));
                             visited_goal.insert((coords.0, coords.1-1), cost);
                         }
@@ -398,8 +403,8 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0, coords.1+1)){
-                            goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1}));
+                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0, coords.1+1)){
+                            goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost+1}));
                             visited_goal.insert((coords.0, coords.1+1), cost);
                         }
                     }
@@ -414,7 +419,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0-1, coords.1)){
+                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0-1, coords.1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0-1, coords.1), cost:cost+1}));
                             visited_init.insert((coords.0-1, coords.1), cost);
                         }
@@ -427,7 +432,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0+1, coords.1)){
+                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0+1, coords.1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0+1, coords.1), cost:cost+1}));
                             visited_init.insert((coords.0+1, coords.1), cost);
                         }
@@ -440,7 +445,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0, coords.1-1)){
+                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0, coords.1-1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1-1), cost:cost+1}));
                             visited_init.insert((coords.0, coords.1-1), cost);
                         }
@@ -453,8 +458,8 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0, coords.1+1)){
-                            init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1}));
+                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0, coords.1+1)){
+                            init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost+1}));
                             visited_init.insert((coords.0, coords.1+1), cost);
                         }
                     }
