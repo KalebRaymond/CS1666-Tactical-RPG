@@ -3,7 +3,6 @@ extern crate sdl2;
 #[macro_use] mod sdl_macros;
 
 
-mod AI;
 mod credits;
 mod cursor;
 mod damage_indicator;
