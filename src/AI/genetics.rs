@@ -1,11 +1,12 @@
 use rand::{seq::IteratorRandom, Rng, thread_rng};
-use std::collections::HashMap;
+use std::collections::{HashMap, BinaryHeap};
 use std::convert::TryInto;
+use std::cmp::Reverse;
 
 use crate::AI::genetic_params::GeneticParams;
 use crate::AI::population_state::*;
 use crate::game_map::GameMap;
-use crate::unit::Unit;
+use crate::unit::*;
 use crate::tile::Tile;
 
 //Genetic Algorithm Constants (instead of a struct to make things easier to modify and less things to pass around)
@@ -24,6 +25,9 @@ const CAMP_WEIGHT: f64 = 2.5;
 const ATTACK_VALUE: f64 = 1.0;
 const MIN_DEFENSE: u32 = 5; //Since one of our AI goals says that some units should stay behind and defend, we need metrics to enforce this
 const DEFENSE_PENALTY: f64 = 5.0;
+
+const MAP_WIDTH: u32 = 64;
+const MAP_HEIGHT: u32 = 64;
 
 fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> Vec<PopulationState> {
     let mut rng_thread = thread_rng();
@@ -328,6 +332,137 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
     //println!("Unit at {}, {}\nValue: {}, D(own_castle): {}, D(enemy_castle): {}, D(camp): {}, can_attack: {}\n", unit_pos.0, unit_pos.1, value, distance_from_own_castle, distance_from_enemy_castle, distance_from_nearest_camp, able_to_attack);
 
     (value, defending, sieging, near_camp, able_to_attack)
+}
+
+// Perform a bidirectional search to find the actual distance of the unit from the goal
+pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>) -> u32 {
+    let mut visited_init: HashMap<(u32,u32), u32> = HashMap::new();
+    let mut visited_goal: HashMap<(u32,u32), u32> = HashMap::new();
+    let mut init_heap = BinaryHeap::new();
+    let mut goal_heap = BinaryHeap::new();
+
+    //If current approach proves to be too inefficient implement smart state additions rather than adding all cardinal directions
+    let goal_is_above = unit_pos.1 > goal_pos.1;
+    let goal_is_left = unit_pos.0 > goal_pos.0;
+
+    init_heap.push(Reverse(QueueObject{coords: (unit_pos.0, unit_pos.1), cost: 0}));
+    goal_heap.push(Reverse(QueueObject{coords: (goal_pos.0, goal_pos.1), cost: 0}));
+    
+    while !init_heap.is_empty() && !goal_heap.is_empty() {
+        //If the init_heap is further along, then we should work on expanding goal
+        if init_heap.peek().unwrap() < goal_heap.peek().unwrap() {
+            if let Some(Reverse(QueueObject { coords, cost })) = goal_heap.pop() {
+                if coords.0 > 0 {
+                    if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0-1 as u32)) {
+                        //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
+                        if let Some(num) = visited_init.get(&(coords.0-1, coords.1)) {
+                            return num + cost;
+                        }
+                        //As long as a unit can move to this tile and we have not already visited this tile
+                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0-1, coords.1)){
+                            goal_heap.push(Reverse(QueueObject { coords: (coords.0-1, coords.1), cost:cost+1}));
+                            visited_goal.insert((coords.0-1, coords.1), cost);
+                        }
+                    }
+                }
+                if coords.0 < MAP_WIDTH-1 {
+                    if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0+1 as u32)) {
+                        //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
+                        if let Some(num) = visited_init.get(&(coords.0+1, coords.1)) {
+                            return num + cost;
+                        }
+                        //As long as a unit can move to this tile and we have not already visited this tile
+                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0+1, coords.1)){
+                            goal_heap.push(Reverse(QueueObject { coords: (coords.0+1, coords.1), cost:cost+1}));
+                            visited_goal.insert((coords.0+1, coords.1), cost);
+                        }
+                    }
+                }
+                if coords.1 > 0 {
+                    if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1-1 as u32, coords.0 as u32)) {
+                        //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
+                        if let Some(num) = visited_init.get(&(coords.0, coords.1-1)) {
+                            return num + cost;
+                        }
+                        //As long as a unit can move to this tile and we have not already visited this tile
+                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0, coords.1-1)){
+                            goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1-1), cost:cost+1}));
+                            visited_goal.insert((coords.0, coords.1-1), cost);
+                        }
+                    }
+                }
+                if coords.1 < MAP_HEIGHT-1 {
+                    if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1+1 as u32, coords.0 as u32)) {
+                        //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
+                        if let Some(num) = visited_init.get(&(coords.0, coords.1+1)) {
+                            return num + cost;
+                        }
+                        //As long as a unit can move to this tile and we have not already visited this tile
+                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0, coords.1+1)){
+                            goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1}));
+                            visited_goal.insert((coords.0, coords.1+1), cost);
+                        }
+                    }
+                }
+            }
+        } else {
+            if let Some(Reverse(QueueObject { coords, cost })) = init_heap.pop() {
+                if coords.0 > 0 {
+                    if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0-1 as u32)) {
+                        //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
+                        if let Some(num) = visited_goal.get(&(coords.0-1, coords.1)) {
+                            return num + cost;
+                        }
+                        //As long as a unit can move to this tile and we have not already visited this tile
+                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0-1, coords.1)){
+                            init_heap.push(Reverse(QueueObject { coords: (coords.0-1, coords.1), cost:cost+1}));
+                            visited_init.insert((coords.0-1, coords.1), cost);
+                        }
+                    }
+                }
+                if coords.0 < MAP_WIDTH-1 {
+                    if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0+1 as u32)) {
+                        //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
+                        if let Some(num) = visited_goal.get(&(coords.0+1, coords.1)) {
+                            return num + cost;
+                        }
+                        //As long as a unit can move to this tile and we have not already visited this tile
+                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0+1, coords.1)){
+                            init_heap.push(Reverse(QueueObject { coords: (coords.0+1, coords.1), cost:cost+1}));
+                            visited_init.insert((coords.0+1, coords.1), cost);
+                        }
+                    }
+                }
+                if coords.1 > 0 {
+                    if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1-1 as u32, coords.0 as u32)) {
+                        //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
+                        if let Some(num) = visited_goal.get(&(coords.0, coords.1-1)) {
+                            return num + cost;
+                        }
+                        //As long as a unit can move to this tile and we have not already visited this tile
+                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0, coords.1-1)){
+                            init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1-1), cost:cost+1}));
+                            visited_init.insert((coords.0, coords.1-1), cost);
+                        }
+                    }
+                }
+                if coords.1 < MAP_HEIGHT-1 {
+                    if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1+1 as u32, coords.0 as u32)) {
+                        //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
+                        if let Some(num) = visited_goal.get(&(coords.0, coords.1+1)) {
+                            return num + cost;
+                        }
+                        //As long as a unit can move to this tile and we have not already visited this tile
+                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0, coords.1+1)){
+                            init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1}));
+                            visited_init.insert((coords.0, coords.1+1), cost);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    0
 }
 
 //In order to convert utilities into probabilities, we are using the Boltzman distribution (slightly flipped since we are aiming for max instead of min)
