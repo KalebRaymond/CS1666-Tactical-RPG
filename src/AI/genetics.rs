@@ -28,36 +28,23 @@ const DEFENSE_PENALTY: f64 = 5.0;
 
 const MAP_WIDTH: u32 = 64;
 const MAP_HEIGHT: u32 = 64;
-const NONSENSE_DIST: i32 = 10000000;
 
 fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> Vec<PopulationState> {
     let mut rng_thread = thread_rng();
     let mut population: Vec<PopulationState> = Vec::new();
-    let mut init_pop_state_values: Vec<(f64, bool, bool, bool, bool, i32, i32, i32, i32)> = Vec::new();
+    
     //Generate 1 less state so we can add the initial population
     for i in 1..POP_NUM {
-        let mut unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool, i32, i32, i32, i32))> = Vec::new();
-        if i == 1 {
-            for unit in succinct_units.iter() {
-                let selected_move: (u32, u32) = *unit.possible_moves.iter().choose(&mut rng_thread).unwrap();
-                let move_value = current_unit_value(unit.attack_range, selected_move, map, p2_castle, p1_castle, camp_coords, NONSENSE_DIST, 0, NONSENSE_DIST, 0);
-                unit_movements.push((selected_move, move_value));
-                init_pop_state_values.push(move_value);
-            }
-            let mut state = PopulationState::new(unit_movements, 0.0);
-            assign_value_to_state(&mut state);
-            population.push(state);
-        } else {
-            for index in 0..succinct_units.len() {
-                let unit = succinct_units.get(index).unwrap();
-                let selected_move: (u32, u32) = *unit.possible_moves.iter().choose(&mut rng_thread).unwrap();
-                let move_value = current_unit_value(unit.attack_range, selected_move, map, p2_castle, p1_castle, camp_coords, init_pop_state_values.get(index).unwrap().5, init_pop_state_values.get(index).unwrap().6, init_pop_state_values.get(index).unwrap().7, init_pop_state_values.get(index).unwrap().8);
-                unit_movements.push((selected_move, move_value));
-            }
-            let mut state = PopulationState::new(unit_movements, 0.0);
-            assign_value_to_state(&mut state);
-            population.push(state);
+        let mut unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
+
+        for unit in succinct_units.iter() {
+            let selected_move: (u32, u32) = *unit.possible_moves.iter().choose(&mut rng_thread).unwrap();
+            let move_value = current_unit_value(unit.attack_range, selected_move, map, p2_castle, p1_castle, camp_coords);
+            unit_movements.push((selected_move, move_value));
         }
+        let mut state = PopulationState::new(unit_movements, 0.0);
+        assign_value_to_state(&mut state);
+		population.push(state);
     }
 
     population
@@ -93,8 +80,7 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
                 break;
             }
         }
-        let current_state_values = state.units_and_utility[index].1;
-        let move_value = current_unit_value(succinct_units[index].attack_range, *new_move, map, p2_castle, p1_castle, camp_coords, current_state_values.5, current_state_values.6, current_state_values.7, current_state_values.8);
+        let move_value = current_unit_value(succinct_units[index].attack_range, *new_move, map, p2_castle, p1_castle, camp_coords);
         state.units_and_utility[index] = (*new_move, move_value);
 	}
     //Don't forget to update the overall value of the state (can't just substract the difference in values from the state as we are also checking overall conditions)
@@ -111,8 +97,8 @@ fn crossover(state_1: &PopulationState, state_2: &PopulationState) -> (Populatio
     let mut state_1_copy = state_1.clone();
     let mut state_2_copy = state_2.clone();
     
-    let mut new_state_1_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool, i32, i32, i32, i32))> = Vec::new();
-    let mut new_state_2_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool, i32, i32, i32, i32))> = Vec::new();
+    let mut new_state_1_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
+    let mut new_state_2_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
 
     new_state_1_unit_movements.append(&mut state_2_copy.units_and_utility[0..lower_endpoint].to_vec());
     new_state_1_unit_movements.append(&mut state_1_copy.units_and_utility[lower_endpoint..upper_endpoint].to_vec());
@@ -154,7 +140,7 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
     let mut succinct_units: Vec<SuccinctUnit> = Vec::new();
 
     //Also want to include the unmodified initial state among possible candidate states
-    let mut original_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool, i32, i32, i32, i32))> = Vec::new();
+    let mut original_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
     
     println!("Utility Function Constants:\nMinimum Distance from Objectives: {}, Defending Weight: {}, Sieging Weight: {}, Camp Weight: {}, Value from Attack: {}, Minimum Defending Units: {}, Defense Penalty: {}\n", MIN_DISTANCE, DEFENDING_WEIGHT, SIEGING_WEIGHT, CAMP_WEIGHT, ATTACK_VALUE, MIN_DEFENSE, DEFENSE_PENALTY);
     println!("Genetic Algorithm Constants:\nPopulation Size: {}, Number of Generations: {}, Mutation Probability: {}, Number of Units Changed on Mutate: {}, Elite Percentage: {}, Culling Percentage: {}\n", POP_NUM, GEN_NUM, MUT_PROB, MUT_NUM, E_PERC, C_PERC);
@@ -162,7 +148,7 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
     for unit in units.values() {  
         let current_unit = SuccinctUnit::new(unit.get_tiles_in_movement_range(&mut game_map.map_tiles), unit.attack_range);
         
-        let move_value = current_unit_value(current_unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords, NONSENSE_DIST, 0, NONSENSE_DIST, 0);
+        let move_value = current_unit_value(current_unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords);
         original_unit_movements.push(((unit.x, unit.y), move_value));
         
         succinct_units.push(current_unit);
@@ -284,13 +270,9 @@ fn assign_value_to_state (current_state: &mut PopulationState) {
 // 2: near_enemy_castle
 // 3: near_camp
 // 4: able_to_attack
-// 5: actual_distance_from_enemy_castle
-// 6: heuristic_distance_from_enemy_castle
-// 7: actual_distance_from_nearest_camp
-// 8: heuristic_distance_from_nearest_camp
 // Minus "being able to attack" all other values will be calculated using heuristics (relative manhattan distance)
 // Additionally not calculating closest unit to save time since based on the distance from objectives and the ability to attack this distance should be implied
-fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, prev_distance_from_castle: i32, heuristic_distance_from_castle: i32, prev_distance_from_camp: i32, heuristic_distance_from_camp: i32) -> (f64, bool, bool, bool, bool, i32, i32, i32, i32) {    
+fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> (f64, bool, bool, bool, bool) {    
     let mut value: f64 = 0.0;
 
     let distance_from_own_castle = (unit_pos.0 as i32 - p2_castle.0 as i32).abs() + (unit_pos.1 as i32 - p2_castle.1 as i32).abs();
@@ -300,38 +282,22 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
                     } else {
                         false
                     };
-    let mut distance_from_enemy_castle: i32 = 0;
-    let current_heur_distance_from_castle = (unit_pos.0 as i32 - p1_castle.0 as i32).abs() + (unit_pos.1 as i32 - p1_castle.1 as i32).abs();
-    if prev_distance_from_castle == NONSENSE_DIST {
-        distance_from_enemy_castle = get_actual_distance_from_goal(&unit_pos, &p1_castle, map) as i32;
-    } else {
-        distance_from_enemy_castle = prev_distance_from_castle - (heuristic_distance_from_castle - current_heur_distance_from_castle);
-    }
-    
+
+    let distance_from_enemy_castle = (unit_pos.0 as i32 - p1_castle.0 as i32).abs() + (unit_pos.1 as i32 - p1_castle.1 as i32).abs();
+
     let sieging: bool =   if distance_from_enemy_castle <= MIN_DISTANCE {
                         true
                     } else {
                         false
                     };
 
-    let mut current_heur_distance_from_camp: i32 = 0;
     let distance_from_nearest_camp = {
-        let mut min_distance_index = 0;
-        let mut min_distance = 1000;
-        for index in 0..camp_coords.len() {
-            let camp = camp_coords.get(index).unwrap();
-            let current_distance = (unit_pos.0 as i32 - camp.0 as i32).abs() + (unit_pos.1 as i32 - camp.1 as i32).abs();
-            if current_distance < min_distance {
-                min_distance = current_distance;
-                min_distance_index = index;
-            }
+        let mut distances_from_camps: Vec<i32> = Vec::new();
+
+        for camp in camp_coords {
+            distances_from_camps.push((unit_pos.0 as i32 - camp.0 as i32).abs() + (unit_pos.1 as i32 - camp.1 as i32).abs())
         }
-        current_heur_distance_from_camp = min_distance;
-        if prev_distance_from_camp == NONSENSE_DIST { //STILL RUN INTO ISSUE OF UNITS RUNNING INTO MOUNTAIN THINKING IT'S GOOD ENOUGH... CAN'T JUST MODIFY BASED ON HEURISTIC
-            get_actual_distance_from_goal(&unit_pos, camp_coords.get(min_distance_index).unwrap(), map) as i32
-        } else {
-            prev_distance_from_camp - (heuristic_distance_from_camp - current_heur_distance_from_camp)
-        }
+        *distances_from_camps.iter().min().unwrap()
     };
 
     let near_camp: bool = if distance_from_nearest_camp <= MIN_DISTANCE {
@@ -365,12 +331,11 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
 
     //println!("Unit at {}, {}\nValue: {}, D(own_castle): {}, D(enemy_castle): {}, D(camp): {}, can_attack: {}\n", unit_pos.0, unit_pos.1, value, distance_from_own_castle, distance_from_enemy_castle, distance_from_nearest_camp, able_to_attack);
 
-    (value, defending, sieging, near_camp, able_to_attack, distance_from_enemy_castle, current_heur_distance_from_castle, distance_from_nearest_camp, current_heur_distance_from_camp)
+    (value, defending, sieging, near_camp, able_to_attack)
 }
 
 // Perform a bidirectional search to find the actual distance of the unit from the goal
-// We should only need to do this once per unit as the heuristic calculation should be able to accurately account for any differences
-pub fn get_actual_distance_from_goal(unit_pos: &(u32, u32), goal_pos: &(u32, u32), map: &mut HashMap<(u32, u32), Tile>) -> u32 {
+pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>) -> u32 {
     let mut visited_init: HashMap<(u32,u32), u32> = HashMap::new();
     let mut visited_goal: HashMap<(u32,u32), u32> = HashMap::new();
     let mut init_heap = BinaryHeap::new();
@@ -394,7 +359,7 @@ pub fn get_actual_distance_from_goal(unit_pos: &(u32, u32), goal_pos: &(u32, u32
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0-1, coords.1)){
+                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0-1, coords.1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0-1, coords.1), cost:cost+1}));
                             visited_goal.insert((coords.0-1, coords.1), cost);
                         }
@@ -407,7 +372,7 @@ pub fn get_actual_distance_from_goal(unit_pos: &(u32, u32), goal_pos: &(u32, u32
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0+1, coords.1)){
+                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0+1, coords.1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0+1, coords.1), cost:cost+1}));
                             visited_goal.insert((coords.0+1, coords.1), cost);
                         }
@@ -420,7 +385,7 @@ pub fn get_actual_distance_from_goal(unit_pos: &(u32, u32), goal_pos: &(u32, u32
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0, coords.1-1)){
+                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0, coords.1-1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1-1), cost:cost+1}));
                             visited_goal.insert((coords.0, coords.1-1), cost);
                         }
@@ -433,8 +398,8 @@ pub fn get_actual_distance_from_goal(unit_pos: &(u32, u32), goal_pos: &(u32, u32
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0, coords.1+1)){
-                            goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost+1}));
+                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0, coords.1+1)){
+                            goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1}));
                             visited_goal.insert((coords.0, coords.1+1), cost);
                         }
                     }
@@ -449,7 +414,7 @@ pub fn get_actual_distance_from_goal(unit_pos: &(u32, u32), goal_pos: &(u32, u32
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0-1, coords.1)){
+                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0-1, coords.1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0-1, coords.1), cost:cost+1}));
                             visited_init.insert((coords.0-1, coords.1), cost);
                         }
@@ -462,7 +427,7 @@ pub fn get_actual_distance_from_goal(unit_pos: &(u32, u32), goal_pos: &(u32, u32
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0+1, coords.1)){
+                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0+1, coords.1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0+1, coords.1), cost:cost+1}));
                             visited_init.insert((coords.0+1, coords.1), cost);
                         }
@@ -475,7 +440,7 @@ pub fn get_actual_distance_from_goal(unit_pos: &(u32, u32), goal_pos: &(u32, u32
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0, coords.1-1)){
+                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0, coords.1-1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1-1), cost:cost+1}));
                             visited_init.insert((coords.0, coords.1-1), cost);
                         }
@@ -488,8 +453,8 @@ pub fn get_actual_distance_from_goal(unit_pos: &(u32, u32), goal_pos: &(u32, u32
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0, coords.1+1)){
-                            init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost+1}));
+                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0, coords.1+1)){
+                            init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1}));
                             visited_init.insert((coords.0, coords.1+1), cost);
                         }
                     }
