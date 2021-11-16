@@ -90,6 +90,10 @@ pub struct Unit<'a> {
     is_attacked: bool,
     last_damaged_drawn: Instant,
     time_since_damaged: f32,
+
+    //Used for barbarians to make sure they roam within a small radius
+    pub starting_x: u32,
+    pub starting_y: u32,
 }
 
 impl Unit <'_>{
@@ -117,6 +121,9 @@ impl Unit <'_>{
             is_attacked: false,
             last_damaged_drawn: Instant::now(),
             time_since_damaged: 0.0,
+
+            starting_x: x,
+            starting_y: y,
         }
     }
 

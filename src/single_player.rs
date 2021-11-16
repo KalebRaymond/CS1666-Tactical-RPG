@@ -27,17 +27,15 @@ use crate::enemy_turn;
 use crate::barbarian_turn;
 use crate::SDLCore;
 use crate::tile::{Tile, Structure};
-use crate::turn_banner::TurnBanner;
+use crate::banner::Banner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
 
 const BANNER_TIMEOUT: u64 = 1500;
+const TURNS_ON_BASE: u32 = 3;
 
 pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let texture_creator = core.wincan.texture_creator();
-	
-	//Stuff for banner that appears at beginning of each turn
-	let mut turn_banner = TurnBanner::new();
 
 	//Stuff for enemy AI calculations
 	let mut camp_coords: Vec<(u32, u32)> = Vec::new();
@@ -57,7 +55,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	//Set camera size based on map size
 	core.cam.w = (map_width as u32 * TILE_SIZE) as i32;
 	core.cam.h = (map_height as u32 * TILE_SIZE) as i32;
-
 	//Start camera in lower left corner, to start with the player castle in view
 	core.cam.x = 0;
 	core.cam.y = -core.cam.h + core.wincan.window().size().1 as i32;
@@ -117,9 +114,11 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	unit_textures.insert("bl", texture_creator.load_texture("images/units/barbarian_melee.png")?);
 	unit_textures.insert("br", texture_creator.load_texture("images/units/barbarian_archer.png")?);
 
-	let mut text_textures: HashMap<&str, Texture> = HashMap::new();
+	//Stuff for banner that appears at beginning of each turn
+	let mut turn_banner = Banner::new();
+	let mut turn_text_textures: HashMap<&str, Texture> = HashMap::new();
 	{
-		text_textures.insert("p1_banner", {
+		turn_text_textures.insert("p1_banner", {
 			let text_surface = core.bold_font.render("Player 1's Turn")
 					.blended_wrapped(Color::RGBA(0,0,0, turn_banner.current_banner_transparency), 320) //Black font
 					.map_err(|e| e.to_string())?;
@@ -128,7 +127,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 					.map_err(|e| e.to_string())?
 		});
 
-		text_textures.insert("p2_banner", {
+		turn_text_textures.insert("p2_banner", {
 			let text_surface = core.bold_font.render("Player 2's Turn")
 					.blended_wrapped(Color::RGBA(0,0,0, turn_banner.current_banner_transparency), 320) //Black font
 					.map_err(|e| e.to_string())?;
@@ -137,8 +136,31 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 					.map_err(|e| e.to_string())?
 		});
 
-		text_textures.insert("b_banner", {
+		turn_text_textures.insert("b_banner", {
 			let text_surface = core.bold_font.render("Barbarians' Turn")
+					.blended_wrapped(Color::RGBA(0,0,0, turn_banner.current_banner_transparency), 320) //Black font
+					.map_err(|e| e.to_string())?;
+
+			texture_creator.create_texture_from_surface(&text_surface)
+					.map_err(|e| e.to_string())?
+		});
+	}
+
+	//Stuff for banner that appears when a team has won
+	let mut winner_banner = Banner::new();
+	let mut win_text_textures: HashMap<&str, Texture> = HashMap::new();
+	{
+		win_text_textures.insert("p1_banner", {
+			let text_surface = core.bold_font.render("Player 1 wins!")
+					.blended_wrapped(Color::RGBA(0,0,0, turn_banner.current_banner_transparency), 320) //Black font
+					.map_err(|e| e.to_string())?;
+
+			texture_creator.create_texture_from_surface(&text_surface)
+					.map_err(|e| e.to_string())?
+		});
+
+		win_text_textures.insert("p2_banner", {
+			let text_surface = core.bold_font.render("Player 2 wins!")
 					.blended_wrapped(Color::RGBA(0,0,0, turn_banner.current_banner_transparency), 320) //Black font
 					.map_err(|e| e.to_string())?;
 
@@ -158,7 +180,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			for col in row.iter() { 
 				let letter = &col[..];
 				match letter {
-					//I wanted to do something that wasn't just hardcoding all the textures, but it seems that tile_textures.get() refuses anything that isn't a hard-coded string
 					"║" | "^" | "v" | "<" | "=" | ">" | "t" => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, None, tile_textures.get(&letter).unwrap())),
 					" " => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, None, tile_textures.get(&letter).unwrap())),
 					"b" =>  { 
@@ -192,6 +213,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	player_state.p1_units = HashMap::new();
 	let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (8,46)), ('l', (10,45)), ('l', (10,53)), ('l', (12,46)), ('l', (17,51)), ('l', (17,55)), ('l', (18,53)), ('r', (9,49)), ('r', (10,46)), ('r', (13,50)), ('r', (14,54)), ('r', (16,53)), ('m', (10,50)), ('m', (10,52)), ('m', (11,53)), ('m', (13,53)));
+	//let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (14, 40))); //Spawns a player unit right next to some barbarians
 	prepare_player_units(&mut player_state.p1_units, Team::Player, p1_units_abrev, &unit_textures, &mut game_map.map_tiles);
 
 	let mut p2_units: HashMap<(u32, u32), Unit> = HashMap::new();
@@ -200,6 +222,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	let mut barbarian_units: HashMap<(u32, u32), Unit> = HashMap::new();
 	let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (4,6)), ('l', (6,8)), ('l', (7,7)), ('l', (9,7)), ('r', (6,6)), ('r', (8,5)), ('l', (55,55)), ('l', (59,56)), ('l', (56,56)), ('l', (54,57)), ('r', (56,59)), ('r', (57,57)), ('l', (28,15)), ('l', (29,10)), ('l', (31,12)), ('l', (31,17)), ('l', (32,11)), ('l', (35,15)), ('l', (34,11)), ('r', (31,10)), ('r', (33,9)), ('r', (30,8)), ('r', (36,10)), ('l', (28,52)), ('l', (28,48)), ('l', (33,51)), ('l', (31,46)), ('l', (31,52)), ('l', (35,52)), ('l', (35,48)), ('r', (32,53)), ('r', (33,56)), ('r', (30,54)), ('r', (34,54)), ('l', (17,38)), ('l', (16,37)), ('r', (23,36)), ('r', (18,30)), ('l', (46,25)), ('l', (47,26)), ('r', (40,27)), ('r', (45,33)),);
+	//let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (32, 60))); //Spawns a single barbarian near the bottom of the map
 	prepare_player_units(&mut barbarian_units, Team::Barbarians, barb_units_abrev, &unit_textures, &mut game_map.map_tiles);
 	
 	let unit_interface_texture = texture_creator.load_texture("images/interface/unit_interface.png")?;
@@ -213,6 +236,13 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	//Button for player to end their turn
     let mut end_turn_button = Button::new(core, Rect::new((CAM_W - 240).try_into().unwrap(), (CAM_H - 90).try_into().unwrap(), 200, 50), "End Turn")?;
 
+	//Winning team. Is set to None until one of the Teams wins
+	let mut winning_team: Option<Team> = None;
+	let mut player1_on_base = 0;
+	let mut player2_on_base = 0;
+	// Not sure how else to check on_base once per turn
+	let mut next_team_check = Team::Player;
+	
 	'gameloop: loop {
 		core.wincan.clear();
 
@@ -284,7 +314,9 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			Team::Barbarians => {
 				barbarian_turn::handle_barbarian_turn(&core, &mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player)?;
 			},
+
 		}
+		
 
 		//Draw tiles & sprites
 		for i in 0..map_height {
@@ -345,9 +377,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		}
 		//Remove the damage indicators that have expired
 		game_map.damage_indicators.retain(|damage_indicator| {
-			if !damage_indicator.is_visible {
-				println!("Damage Indicator destroyed: {} damage, ({}, {})", damage_indicator.damage, damage_indicator.x, damage_indicator.y);
-			}
 			damage_indicator.is_visible
 		});
 
@@ -372,11 +401,11 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		}
 
 		//Draw banner that appears at beginning of turn
-		{
+		if winning_team.is_none() {
 			//As long as the banner isn't completely transparent, draw it
 			if turn_banner.current_banner_transparency != 0 {
 				turn_banner.banner_colors.a = turn_banner.current_banner_transparency;
-				draw_player_banner(core, &text_textures, turn_banner.banner_key, turn_banner.banner_colors)?;
+				draw_banner(core, &turn_text_textures, turn_banner.banner_key, turn_banner.banner_colors)?;
 			} else if turn_banner.banner_visible {
 				turn_banner.banner_visible = false;
 			}
@@ -391,13 +420,37 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			if turn_banner.initial_banner_output.elapsed() >= Duration::from_millis(BANNER_TIMEOUT) && turn_banner.current_banner_transparency != 0 {
 				turn_banner.current_banner_transparency -= 25;
 			}
-		}	
+		}
+		else {
+			//Draw the winner's banner if someone has won
+			//As long as the banner isn't completely transparent, draw it
+			if winner_banner.current_banner_transparency != 0 {
+				winner_banner.banner_colors.a = winner_banner.current_banner_transparency;
+				draw_banner(core, &win_text_textures, winner_banner.banner_key, winner_banner.banner_colors)?;
+			} else if winner_banner.banner_visible {
+				winner_banner.banner_visible = false;
+				
+				//End the game by returning to the main menu
+				return Ok(GameState::MainMenu);
+			}
+
+			//The first time we draw the banner we need to keep track of when it first appears
+			if winner_banner.current_banner_transparency == 250 {
+				winner_banner.initial_banner_output = Instant::now();
+				winner_banner.current_banner_transparency -= 25;
+			}
+
+			//After a set amount of seconds pass and if the banner is still visible, start to make the banner disappear
+			if winner_banner.initial_banner_output.elapsed() >= Duration::from_millis(BANNER_TIMEOUT) && winner_banner.current_banner_transparency != 0 {
+				winner_banner.current_banner_transparency -= 25;
+			}
+		}
 		
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
 	}
 
-	//Single player finished running cleanly, automatically quit game
+	//Single player somehow finished without a winner, automatically quit game
 	Ok(GameState::Quit)
 }
 
@@ -410,7 +463,7 @@ pub fn initialize_next_turn(team_units: &mut HashMap<(u32, u32), Unit>) {
 }
 
 // Draws a banner at the center of the camera to signify whose turn it currently is
-fn draw_player_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_index: &str, rect_color: Color) -> Result< (), String> {
+fn draw_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_index: &str, rect_color: Color) -> Result< (), String> {
 	let banner_rect = Rect::new(core.cam.x.abs(), core.cam.y.abs() + (360-64), CAM_W, 128);
 	let text_rect = Rect::new(core.cam.x.abs() + (640-107), core.cam.y.abs() + (360-64), CAM_W/6, 128);
 	core.wincan.set_blend_mode(BlendMode::Blend);
@@ -463,4 +516,31 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 7, 3, 75,  5, 9, unit_textures.get(mage).unwrap())),
 		};
 	}
+}
+
+//Sets up the winner's banner so it can start displaying, and returns an Option containing the Team corresponding to the winning team
+pub fn set_winner(winner: Team, winner_banner: &mut Banner) -> Option<Team> {
+	//Set up the winner's banner
+	winner_banner.current_banner_transparency = 250;
+	winner_banner.banner_visible = true;
+
+	match winner {
+		Team::Player => {
+			println!("Player 1 wins!");
+			winner_banner.banner_key = "p1_banner";
+			winner_banner.banner_colors = Color::RGBA(0, 89, 178, winner_banner.current_banner_transparency);
+		},
+		Team::Enemy => {
+			println!("Enemy wins!");
+			winner_banner.banner_key = "p2_banner";
+			winner_banner.banner_colors = Color::RGBA(207, 21, 24, winner_banner.current_banner_transparency);
+		},
+		Team::Barbarians => {
+			println!("Barbarians win!");
+			winner_banner.banner_key = "b_banner";
+			winner_banner.banner_colors = Color::RGBA(163, 96, 30, winner_banner.current_banner_transparency);
+		},
+	};
+
+	return Some(winner);
 }

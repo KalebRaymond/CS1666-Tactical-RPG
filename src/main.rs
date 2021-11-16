@@ -19,7 +19,7 @@ mod enemy_turn;
 mod barbarian_turn;
 mod single_player;
 mod multi_player;
-mod turn_banner;
+mod banner;
 mod unit_interface;
 pub mod button;
 pub mod tile;
