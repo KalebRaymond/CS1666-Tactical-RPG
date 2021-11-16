@@ -305,7 +305,7 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
     if prev_distance_from_castle == NONSENSE_DIST {
         distance_from_enemy_castle = get_actual_distance_from_goal(&unit_pos, &p1_castle, map) as i32;
     } else {
-        distance_from_enemy_castle = prev_distance_from_castle + (heuristic_distance_from_castle - current_heur_distance_from_castle);
+        distance_from_enemy_castle = prev_distance_from_castle - (heuristic_distance_from_castle - current_heur_distance_from_castle);
     }
     
     let sieging: bool =   if distance_from_enemy_castle <= MIN_DISTANCE {
@@ -327,10 +327,10 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
             }
         }
         current_heur_distance_from_camp = min_distance;
-        if prev_distance_from_camp == NONSENSE_DIST {
+        if prev_distance_from_camp == NONSENSE_DIST { //STILL RUN INTO ISSUE OF UNITS RUNNING INTO MOUNTAIN THINKING IT'S GOOD ENOUGH... CAN'T JUST MODIFY BASED ON HEURISTIC
             get_actual_distance_from_goal(&unit_pos, camp_coords.get(min_distance_index).unwrap(), map) as i32
         } else {
-            prev_distance_from_camp + (heuristic_distance_from_camp - current_heur_distance_from_camp)
+            prev_distance_from_camp - (heuristic_distance_from_camp - current_heur_distance_from_camp)
         }
     };
 
