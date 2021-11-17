@@ -504,8 +504,6 @@ pub fn get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, 
     writeln!(file_io, "HashMap::from([");
     for i in 0..MAP_WIDTH {
         for j in 0..MAP_HEIGHT {
-            println!("({}, {})", i, j);
-
             let dist = get_actual_distance_from_goal((i, j), p1_castle, map);
             writeln!(file_io, "  (({}, {}), {}),", i, j, dist);
         }
