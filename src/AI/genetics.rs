@@ -493,16 +493,19 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
 }
 
 //Creates a txt file containing rust code that initializes a bunch of hashmaps that contain the distance from each tile to each goal area
-pub fn get_goal_distances(map_height: u32, map_width: u32, map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, u32), enemy_castle: (u32, u32), camp_coords: &Vec<(u32, u32)>) -> Result<(), String>{
+pub fn get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, u32), enemy_castle: (u32, u32), camp_coords: &Vec<(u32, u32)>) -> Result<(), String>{
     println!("Calculating distances to each goal from each tile");
 
-    let file = File::create("./distance.txt").expect("src/AI/distance.txt already exists.");
+    let file = File::create("./src/AI/distances.txt").expect("Could not create src/AI/distances.txt");
     let mut file_io = BufWriter::new(file);
 
     //Get distance from each tile to the p1 castle
+    writeln!(file_io, "//Distances to player castle");
     writeln!(file_io, "HashMap::from([");
-    for i in 0..map_width {
-        for j in 0..map_height {
+    for i in 0..MAP_WIDTH {
+        for j in 0..MAP_HEIGHT {
+            println!("({}, {})", i, j);
+
             let dist = get_actual_distance_from_goal((i, j), p1_castle, map);
             writeln!(file_io, "  (({}, {}), {}),", i, j, dist);
         }
@@ -511,15 +514,33 @@ pub fn get_goal_distances(map_height: u32, map_width: u32, map: &mut HashMap<(u3
     writeln!(file_io);
 
     //Get distance from each tile to the enemy castle
+    writeln!(file_io, "//Distances to enemy castle");
     writeln!(file_io, "HashMap::from([");
-    for i in 0..map_width {
-        for j in 0..map_height {
+    for i in 0..MAP_WIDTH {
+        for j in 0..MAP_HEIGHT {
             let dist = get_actual_distance_from_goal((i, j), enemy_castle, map);
             writeln!(file_io, "  (({}, {}), {}),", i, j, dist);
         }
     }
     writeln!(file_io, "]);");
     writeln!(file_io);
+
+    //Get the distance from each tile to each barbarian camp
+    writeln!(file_io, "//Distances to barbarian camps");
+    writeln!(file_io, "HashMap::from([");
+    for cur_camp in camp_coords.iter() {
+        writeln!(file_io, " (({}, {}), HashMap::from([", cur_camp.0, cur_camp.1);
+
+        for i in 0..MAP_WIDTH {
+            for j in 0..MAP_HEIGHT {
+                let dist = get_actual_distance_from_goal((i, j), *cur_camp, map);
+                writeln!(file_io, "     (({}, {}), {}),", i, j, dist);
+            }
+        }
+
+        writeln!(file_io, "  ]),");
+    }
+    writeln!(file_io, "]);");
 
     Ok(())
 }

@@ -248,7 +248,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	 * this code can be deleted or commented out. I just put it here
 	 * since it was most convenient.
 	 */
-	 genetics::get_goal_distances(map_height.try_into().unwrap(), map_width.try_into().unwrap(), &mut game_map.map_tiles, player_castle, enemy_castle, &camp_coords)?;
+	 genetics::get_goal_distances(&mut game_map.map_tiles, player_castle, enemy_castle, &camp_coords)?;
 	
 	'gameloop: loop {
 		core.wincan.clear();
