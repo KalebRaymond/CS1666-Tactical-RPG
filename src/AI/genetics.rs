@@ -386,7 +386,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0-1, coords.1)){
+                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0-1, coords.1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0-1, coords.1), cost:cost+1}));
                             visited_goal.insert((coords.0-1, coords.1), cost);
                         }
@@ -399,7 +399,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0+1, coords.1)){
+                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0+1, coords.1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0+1, coords.1), cost:cost+1}));
                             visited_goal.insert((coords.0+1, coords.1), cost);
                         }
@@ -412,7 +412,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0, coords.1-1)){
+                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0, coords.1-1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1-1), cost:cost+1}));
                             visited_goal.insert((coords.0, coords.1-1), cost);
                         }
@@ -425,8 +425,8 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0, coords.1+1)){
-                            goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1}));
+                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0, coords.1+1)){
+                            goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost+1}));
                             visited_goal.insert((coords.0, coords.1+1), cost);
                         }
                     }
@@ -441,7 +441,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0-1, coords.1)){
+                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0-1, coords.1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0-1, coords.1), cost:cost+1}));
                             visited_init.insert((coords.0-1, coords.1), cost);
                         }
@@ -454,7 +454,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0+1, coords.1)){
+                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0+1, coords.1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0+1, coords.1), cost:cost+1}));
                             visited_init.insert((coords.0+1, coords.1), cost);
                         }
@@ -467,7 +467,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0, coords.1-1)){
+                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0, coords.1-1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1-1), cost:cost+1}));
                             visited_init.insert((coords.0, coords.1-1), cost);
                         }
@@ -480,8 +480,8 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0, coords.1+1)){
-                            init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1}));
+                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0, coords.1+1)){
+                            init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost+1}));
                             visited_init.insert((coords.0, coords.1+1), cost);
                         }
                     }
