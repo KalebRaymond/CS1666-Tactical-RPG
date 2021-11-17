@@ -11,7 +11,7 @@ use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::{Instant, Duration};
-
+use crate::AI::*;
 use crate::button::Button;
 use crate::cursor::Cursor;
 use crate::damage_indicator::DamageIndicator;
@@ -34,7 +34,7 @@ use crate::unit::{Team, Unit};
 const BANNER_TIMEOUT: u64 = 1500;
 const TURNS_ON_BASE: u32 = 3;
 
-pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
+pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {	
 	let texture_creator = core.wincan.texture_creator();
 
 	//Stuff for enemy AI calculations
@@ -242,6 +242,13 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut player2_on_base = 0;
 	// Not sure how else to check on_base once per turn
 	let mut next_team_check = Team::Player;
+
+	/* Precalculating distances to each goal from each tile
+	 * This is used for enemy's AI. Once the text file is created,
+	 * this code can be deleted or commented out. I just put it here
+	 * since it was most convenient.
+	 */
+	 genetics::get_goal_distances(map_height.try_into().unwrap(), map_width.try_into().unwrap(), &mut game_map.map_tiles, player_castle, enemy_castle, &camp_coords)?;
 	
 	'gameloop: loop {
 		core.wincan.clear();

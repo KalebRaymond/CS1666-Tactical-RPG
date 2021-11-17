@@ -1,7 +1,9 @@
 use rand::{seq::IteratorRandom, Rng, thread_rng};
+use std::cmp::Reverse;
 use std::collections::{HashMap, BinaryHeap};
 use std::convert::TryInto;
-use std::cmp::Reverse;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 
 use crate::AI::genetic_params::GeneticParams;
 use crate::AI::population_state::*;
@@ -334,6 +336,31 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
     (value, defending, sieging, near_camp, able_to_attack)
 }
 
+//In order to convert utilities into probabilities, we are using the Boltzman distribution (slightly flipped since we are aiming for max instead of min)
+fn convert_utilities_to_probabilities(utilities: Vec<f64>) -> Vec<f64>{
+    let min_utility = *utilities.iter().min_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
+    let max_utility = *utilities.iter().max_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
+    let temperature = max_utility - min_utility;
+    let utilities_to_p_accept: Vec<f64> = utilities.iter().map(|current_utility| (-(max_utility - current_utility)/temperature).exp()).collect();
+    let p_accept_sum:f64 = utilities_to_p_accept.iter().sum();
+    utilities_to_p_accept.iter().map(|p_accept| p_accept/p_accept_sum).collect()
+}
+
+//Randomly select an index by summing values of distribution until we exceed a random value
+//since our higher valued utilities are first they have a higher likelihood of being selected
+fn choose_index_from_distribution(probabilities: &Vec<f64>) -> usize {
+    let mut rng_thread = thread_rng();
+    let rand_num: f64 = rng_thread.gen();
+    let mut sum:f64 = 0.0;
+    for index in 0..probabilities.len() {
+        sum += probabilities[index];
+        if rand_num <= sum {
+            return index;
+        } 
+    }
+    return probabilities.len();
+}
+
 // Perform a bidirectional search to find the actual distance of the unit from the goal
 pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>) -> u32 {
     let mut visited_init: HashMap<(u32,u32), u32> = HashMap::new();
@@ -465,27 +492,34 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
     0
 }
 
-//In order to convert utilities into probabilities, we are using the Boltzman distribution (slightly flipped since we are aiming for max instead of min)
-fn convert_utilities_to_probabilities(utilities: Vec<f64>) -> Vec<f64>{
-    let min_utility = *utilities.iter().min_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
-    let max_utility = *utilities.iter().max_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
-    let temperature = max_utility - min_utility;
-    let utilities_to_p_accept: Vec<f64> = utilities.iter().map(|current_utility| (-(max_utility - current_utility)/temperature).exp()).collect();
-    let p_accept_sum:f64 = utilities_to_p_accept.iter().sum();
-    utilities_to_p_accept.iter().map(|p_accept| p_accept/p_accept_sum).collect()
-}
+//Creates a txt file containing rust code that initializes a bunch of hashmaps that contain the distance from each tile to each goal area
+pub fn get_goal_distances(map_height: u32, map_width: u32, map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, u32), enemy_castle: (u32, u32), camp_coords: &Vec<(u32, u32)>) -> Result<(), String>{
+    println!("Calculating distances to each goal from each tile");
 
-//Randomly select an index by summing values of distribution until we exceed a random value
-//since our higher valued utilities are first they have a higher likelihood of being selected
-fn choose_index_from_distribution(probabilities: &Vec<f64>) -> usize {
-    let mut rng_thread = thread_rng();
-    let rand_num: f64 = rng_thread.gen();
-    let mut sum:f64 = 0.0;
-    for index in 0..probabilities.len() {
-        sum += probabilities[index];
-        if rand_num <= sum {
-            return index;
-        } 
+    let file = File::create("./distance.txt").expect("src/AI/distance.txt already exists.");
+    let mut file_io = BufWriter::new(file);
+
+    //Get distance from each tile to the p1 castle
+    writeln!(file_io, "HashMap::from([");
+    for i in 0..map_width {
+        for j in 0..map_height {
+            let dist = get_actual_distance_from_goal((i, j), p1_castle, map);
+            writeln!(file_io, "  (({}, {}), {}),", i, j, dist);
+        }
     }
-    return probabilities.len();
+    writeln!(file_io, "]);");
+    writeln!(file_io);
+
+    //Get distance from each tile to the enemy castle
+    writeln!(file_io, "HashMap::from([");
+    for i in 0..map_width {
+        for j in 0..map_height {
+            let dist = get_actual_distance_from_goal((i, j), enemy_castle, map);
+            writeln!(file_io, "  (({}, {}), {}),", i, j, dist);
+        }
+    }
+    writeln!(file_io, "]);");
+    writeln!(file_io);
+
+    Ok(())
 }
