@@ -243,13 +243,12 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	// Not sure how else to check on_base once per turn
 	let mut next_team_check = Team::Player;
 
-	/* Precalculating distances to each goal from each tile, used for enemy's AI. 
-	 * If AI/distances.txt already exists, this line can be commented out.
-	 */
-	genetics::get_goal_distances(&mut game_map.map_tiles, player_castle, enemy_castle, &camp_coords)?;
+	//Precalculating distances to each goal from each tile, used for enemy's AI. 
+	//If AI/distances.txt already exists, this line can be commented out.
+	//genetics::get_goal_distances(&mut game_map.map_tiles, player_castle, enemy_castle, &camp_coords)?;
 	
 	//Distance from each tile to each goal, used for enemy's AI
-	//let distance_map = distance_map::DistanceMap::new();
+	let distance_map = distance_map::DistanceMap::new();
 
 	'gameloop: loop {
 		core.wincan.clear();
