@@ -27,13 +27,11 @@ pub mod unit;
 
 use std::env;
 use std::path::Path;
-use std::time::{Duration,Instant};
 
 use sdl2::rect::Rect;
 use sdl2::render::TextureCreator;
 use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
 
-use crate::net::client::Client;
 use crate::main_menu::MainMenu;
 use crate::multi_player::MultiPlayer;
 

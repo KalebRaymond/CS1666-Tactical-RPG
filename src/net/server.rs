@@ -1,7 +1,6 @@
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream, IpAddr};
 use std::collections::HashMap;
-use std::convert::TryInto;
 
 use rand::Rng;
 use rand::prelude::*;

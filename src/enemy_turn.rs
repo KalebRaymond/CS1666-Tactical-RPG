@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 use crate::AI::*;
 use crate::game_map::GameMap;
-use crate::pixel_coordinates::PixelCoordinates;
 use crate::unit::{Team, Unit};
 use crate::banner::Banner;
 use crate::SDLCore;

@@ -241,7 +241,7 @@ impl Unit <'_>{
             }
             current_x += x_increment;
             current_y += y_increment;
-            if(current_x == self.x as i32 && current_y == self.y as i32) {
+            if current_x == self.x as i32 && current_y == self.y as i32 {
                 break;
             }
         }
