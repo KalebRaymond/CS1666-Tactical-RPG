@@ -1,7 +1,9 @@
 use rand::{seq::IteratorRandom, Rng, thread_rng};
+use std::cmp::Reverse;
 use std::collections::{HashMap, BinaryHeap};
 use std::convert::TryInto;
-use std::cmp::Reverse;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 
 use crate::AI::genetic_params::GeneticParams;
 use crate::AI::population_state::*;
@@ -334,6 +336,31 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
     (value, defending, sieging, near_camp, able_to_attack)
 }
 
+//In order to convert utilities into probabilities, we are using the Boltzman distribution (slightly flipped since we are aiming for max instead of min)
+fn convert_utilities_to_probabilities(utilities: Vec<f64>) -> Vec<f64>{
+    let min_utility = *utilities.iter().min_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
+    let max_utility = *utilities.iter().max_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
+    let temperature = max_utility - min_utility;
+    let utilities_to_p_accept: Vec<f64> = utilities.iter().map(|current_utility| (-(max_utility - current_utility)/temperature).exp()).collect();
+    let p_accept_sum:f64 = utilities_to_p_accept.iter().sum();
+    utilities_to_p_accept.iter().map(|p_accept| p_accept/p_accept_sum).collect()
+}
+
+//Randomly select an index by summing values of distribution until we exceed a random value
+//since our higher valued utilities are first they have a higher likelihood of being selected
+fn choose_index_from_distribution(probabilities: &Vec<f64>) -> usize {
+    let mut rng_thread = thread_rng();
+    let rand_num: f64 = rng_thread.gen();
+    let mut sum:f64 = 0.0;
+    for index in 0..probabilities.len() {
+        sum += probabilities[index];
+        if rand_num <= sum {
+            return index;
+        } 
+    }
+    return probabilities.len();
+}
+
 // Perform a bidirectional search to find the actual distance of the unit from the goal
 pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>) -> u32 {
     let mut visited_init: HashMap<(u32,u32), u32> = HashMap::new();
@@ -359,7 +386,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0-1, coords.1)){
+                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0-1, coords.1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0-1, coords.1), cost:cost+1}));
                             visited_goal.insert((coords.0-1, coords.1), cost);
                         }
@@ -372,7 +399,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0+1, coords.1)){
+                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0+1, coords.1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0+1, coords.1), cost:cost+1}));
                             visited_goal.insert((coords.0+1, coords.1), cost);
                         }
@@ -385,7 +412,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0, coords.1-1)){
+                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0, coords.1-1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1-1), cost:cost+1}));
                             visited_goal.insert((coords.0, coords.1-1), cost);
                         }
@@ -398,8 +425,8 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_goal.contains_key(&(coords.0, coords.1+1)){
-                            goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1}));
+                        if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0, coords.1+1)){
+                            goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost+1}));
                             visited_goal.insert((coords.0, coords.1+1), cost);
                         }
                     }
@@ -414,7 +441,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0-1, coords.1)){
+                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0-1, coords.1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0-1, coords.1), cost:cost+1}));
                             visited_init.insert((coords.0-1, coords.1), cost);
                         }
@@ -427,7 +454,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0+1, coords.1)){
+                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0+1, coords.1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0+1, coords.1), cost:cost+1}));
                             visited_init.insert((coords.0+1, coords.1), cost);
                         }
@@ -440,7 +467,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0, coords.1-1)){
+                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0, coords.1-1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1-1), cost:cost+1}));
                             visited_init.insert((coords.0, coords.1-1), cost);
                         }
@@ -453,8 +480,8 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                             return num + cost;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
-                        if entry.get().unit_can_move_here() && !visited_init.contains_key(&(coords.0, coords.1+1)){
-                            init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1}));
+                        if entry.get().is_traversable && !visited_init.contains_key(&(coords.0, coords.1+1)){
+                            init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost+1}));
                             visited_init.insert((coords.0, coords.1+1), cost);
                         }
                     }
@@ -465,27 +492,50 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
     0
 }
 
-//In order to convert utilities into probabilities, we are using the Boltzman distribution (slightly flipped since we are aiming for max instead of min)
-fn convert_utilities_to_probabilities(utilities: Vec<f64>) -> Vec<f64>{
-    let min_utility = *utilities.iter().min_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
-    let max_utility = *utilities.iter().max_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
-    let temperature = max_utility - min_utility;
-    let utilities_to_p_accept: Vec<f64> = utilities.iter().map(|current_utility| (-(max_utility - current_utility)/temperature).exp()).collect();
-    let p_accept_sum:f64 = utilities_to_p_accept.iter().sum();
-    utilities_to_p_accept.iter().map(|p_accept| p_accept/p_accept_sum).collect()
-}
+//Creates a txt file containing rust code that initializes a bunch of hashmaps that contain the distance from each tile to each goal area
+pub fn get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, u32), enemy_castle: (u32, u32), camp_coords: &Vec<(u32, u32)>) -> Result<(), String>{
+    println!("Calculating distances to each goal from each tile");
 
-//Randomly select an index by summing values of distribution until we exceed a random value
-//since our higher valued utilities are first they have a higher likelihood of being selected
-fn choose_index_from_distribution(probabilities: &Vec<f64>) -> usize {
-    let mut rng_thread = thread_rng();
-    let rand_num: f64 = rng_thread.gen();
-    let mut sum:f64 = 0.0;
-    for index in 0..probabilities.len() {
-        sum += probabilities[index];
-        if rand_num <= sum {
-            return index;
-        } 
+    let file = File::create("./src/AI/distances.txt").expect("Could not create src/AI/distances.txt");
+    let mut file_io = BufWriter::new(file);
+
+    //Get distance from each tile to the p1 castle
+    writeln!(file_io, "p1_castle");
+    for i in 0..MAP_HEIGHT {
+        for j in 0..MAP_WIDTH {
+            //Flip i & j so that they are in (x, y) order in the file
+            let dist = get_actual_distance_from_goal((j, i), p1_castle, map);
+            writeln!(file_io, "{} {} {}", j, i, dist);
+        }
     }
-    return probabilities.len();
+    writeln!(file_io, "end");
+    writeln!(file_io);
+
+    //Get distance from each tile to the enemy castle
+    writeln!(file_io, "enemy_castle");
+    for i in 0..MAP_HEIGHT {
+        for j in 0..MAP_WIDTH {
+            //Flip i & j so that they are in (x, y) order in the file
+            let dist = get_actual_distance_from_goal((j, i), enemy_castle, map);
+            writeln!(file_io, "{} {} {}", j, i, dist);
+        }
+    }
+    writeln!(file_io, "end");
+    writeln!(file_io);
+
+    //Get the distance from each tile to each barbarian camp
+    writeln!(file_io, "barb_camps");
+    for cur_camp in camp_coords.iter() {
+        writeln!(file_io, "# {} {}", cur_camp.0, cur_camp.1);
+        for i in 0..MAP_HEIGHT {
+            for j in 0..MAP_WIDTH {
+                //Flip i & j so that they are in (x, y) order in the file
+                let dist = get_actual_distance_from_goal((j, i), *cur_camp, map);
+                writeln!(file_io, "{} {} {}", j, i, dist);
+            }
+        }
+    }
+    writeln!(file_io, "end");
+
+    Ok(())
 }
