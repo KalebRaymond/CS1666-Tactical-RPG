@@ -14,7 +14,6 @@ use std::time::{Instant, Duration};
 use crate::AI::*;
 use crate::button::Button;
 use crate::cursor::Cursor;
-use crate::damage_indicator::DamageIndicator;
 use crate::game_map::GameMap;
 use crate::GameState;
 use crate::{CAM_H, CAM_W, TILE_SIZE};

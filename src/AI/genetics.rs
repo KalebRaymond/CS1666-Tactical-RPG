@@ -5,7 +5,6 @@ use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
-use crate::AI::genetic_params::GeneticParams;
 use crate::AI::population_state::*;
 use crate::game_map::GameMap;
 use crate::unit::*;

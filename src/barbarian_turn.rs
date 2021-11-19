@@ -1,4 +1,4 @@
-use rand::{seq::IteratorRandom, Rng, thread_rng};
+use rand::{seq::IteratorRandom, thread_rng};
 
 use sdl2::pixels::Color;
 
@@ -9,7 +9,6 @@ use crate::damage_indicator::DamageIndicator;
 use crate::game_map::GameMap;
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::SDLCore;
-use crate::TILE_SIZE;
 use crate::unit::{Team, Unit};
 
 pub fn handle_barbarian_turn<'a, 'b>(core: &SDLCore<'b>, barb_units: &mut HashMap<(u32, u32), Unit<'a>>, p1_units: &mut HashMap<(u32, u32), Unit<'a>>, p2_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap<'b>, turn_banner: &mut Banner, current_player: &mut Team) -> Result<(), String> {
