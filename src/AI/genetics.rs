@@ -7,6 +7,7 @@ use std::io::{BufWriter, Write};
 
 use crate::AI::genetic_params::GeneticParams;
 use crate::AI::population_state::*;
+use crate::AI::distance_map::*;
 use crate::game_map::GameMap;
 use crate::unit::*;
 use crate::tile::Tile;
@@ -20,7 +21,7 @@ const C_PERC: f32 = 0.2; //Percentage of the least fit individuals to be removed
 const E_PERC: f32 = 0.1; //Proportion of best individuals to carry over from one generation to the next
 
 //Utility Function Constants
-const MIN_DISTANCE: i32 = 5; // Defines the minimum distance a unit can be from an objective to be considered near it
+const MIN_DISTANCE: u32 = 5; // Defines the minimum distance a unit can be from an objective to be considered near it
 const DEFENDING_WEIGHT: f64 = 5.0;
 const SIEGING_WEIGHT: f64 = 7.5;
 const CAMP_WEIGHT: f64 = 2.5;
@@ -31,7 +32,7 @@ const DEFENSE_PENALTY: f64 = 5.0;
 const MAP_WIDTH: u32 = 64;
 const MAP_HEIGHT: u32 = 64;
 
-fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> Vec<PopulationState> {
+fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> Vec<PopulationState> {
     let mut rng_thread = thread_rng();
     let mut population: Vec<PopulationState> = Vec::new();
     
@@ -41,7 +42,7 @@ fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut Has
 
         for unit in succinct_units.iter() {
             let selected_move: (u32, u32) = *unit.possible_moves.iter().choose(&mut rng_thread).unwrap();
-            let move_value = current_unit_value(unit.attack_range, selected_move, map, p2_castle, p1_castle, camp_coords);
+            let move_value = current_unit_value(unit.attack_range, selected_move, map, p2_castle, p1_castle, camp_coords, distance_map);
             unit_movements.push((selected_move, move_value));
         }
         let mut state = PopulationState::new(unit_movements, 0.0);
@@ -54,7 +55,7 @@ fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut Has
 
 //Randomly selects unit within a state and reassigns them a new position
 //After we mutate a state we also need to be able to update its value
-fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) {
+fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) {
     let mut rng_thread = thread_rng();
     let index_of_units_to_mutate = (0..state.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, MUT_NUM); 
     for index in index_of_units_to_mutate {
@@ -82,7 +83,7 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
                 break;
             }
         }
-        let move_value = current_unit_value(succinct_units[index].attack_range, *new_move, map, p2_castle, p1_castle, camp_coords);
+        let move_value = current_unit_value(succinct_units[index].attack_range, *new_move, map, p2_castle, p1_castle, camp_coords, distance_map);
         state.units_and_utility[index] = (*new_move, move_value);
 	}
     //Don't forget to update the overall value of the state (can't just substract the difference in values from the state as we are also checking overall conditions)
@@ -136,7 +137,7 @@ fn culling(current_population: &Vec<PopulationState>) -> Vec<PopulationState> {
 	return current_population[0..(current_population.len() - num_to_drop)].to_vec();
 }
 
-pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameMap, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> Vec<PopulationState>{
+pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameMap, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> Vec<PopulationState>{
     let mut rng_thread = thread_rng();
     //Keeps track of all the possible unit movements
     let mut succinct_units: Vec<SuccinctUnit> = Vec::new();
@@ -150,13 +151,13 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
     for unit in units.values() {  
         let current_unit = SuccinctUnit::new(unit.get_tiles_in_movement_range(&mut game_map.map_tiles), unit.attack_range);
         
-        let move_value = current_unit_value(current_unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords);
+        let move_value = current_unit_value(current_unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords, distance_map);
         original_unit_movements.push(((unit.x, unit.y), move_value));
         
         succinct_units.push(current_unit);
     }
 
-    let mut initial_population = generate_initial_population(&succinct_units, &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords);
+    let mut initial_population = generate_initial_population(&succinct_units, &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords, distance_map);
     let mut original_state = PopulationState::new(original_unit_movements, 0.0);
     assign_value_to_state(&mut original_state);
     initial_population.push(original_state);
@@ -219,7 +220,7 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
         let num_to_mutate: usize = ((MUT_PROB * (new_generation.len() as f32)).round() as i32).try_into().unwrap();
         let mut states_to_mutate = new_generation.iter_mut().choose_multiple(&mut rng_thread, num_to_mutate); 
         for state in states_to_mutate.iter_mut() {
-            mutate(state, &succinct_units, &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords);
+            mutate(state, &succinct_units, &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords, distance_map);
         }
 
         initial_population = new_generation.clone();
@@ -274,18 +275,29 @@ fn assign_value_to_state (current_state: &mut PopulationState) {
 // 4: able_to_attack
 // Minus "being able to attack" all other values will be calculated using heuristics (relative manhattan distance)
 // Additionally not calculating closest unit to save time since based on the distance from objectives and the ability to attack this distance should be implied
-fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>) -> (f64, bool, bool, bool, bool) {    
+fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> (f64, bool, bool, bool, bool) {    
     let mut value: f64 = 0.0;
 
-    let distance_from_own_castle = (unit_pos.0 as i32 - p2_castle.0 as i32).abs() + (unit_pos.1 as i32 - p2_castle.1 as i32).abs();
-    
+    //let distance_from_own_castle = (unit_pos.0 as i32 - p2_castle.0 as i32).abs() + (unit_pos.1 as i32 - p2_castle.1 as i32).abs();
+    let distance_from_own_castle: u32 = if let Some(dist) = distance_map.to_enemy_castle.get(&unit_pos) {
+                                        *dist
+                                    } else {
+                                        panic!();
+                                        100000
+                                    };
+
     let defending: bool = if distance_from_own_castle <= MIN_DISTANCE {
                         true
                     } else {
                         false
                     };
 
-    let distance_from_enemy_castle = (unit_pos.0 as i32 - p1_castle.0 as i32).abs() + (unit_pos.1 as i32 - p1_castle.1 as i32).abs();
+    let distance_from_enemy_castle = if let Some(dist) = distance_map.to_player_castle.get(&unit_pos) {
+                                        *dist
+                                    } else {
+                                        panic!();
+                                        100000
+                                    };
 
     let sieging: bool =   if distance_from_enemy_castle <= MIN_DISTANCE {
                         true
@@ -294,12 +306,26 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
                     };
 
     let distance_from_nearest_camp = {
-        let mut distances_from_camps: Vec<i32> = Vec::new();
-
-        for camp in camp_coords {
-            distances_from_camps.push((unit_pos.0 as i32 - camp.0 as i32).abs() + (unit_pos.1 as i32 - camp.1 as i32).abs())
+        let mut min_distance_index = 0;
+        let mut min_distance = 1000;
+        for index in 0..camp_coords.len() {
+            let camp = camp_coords.get(index).unwrap();
+            let current_distance = (unit_pos.0 as i32 - camp.0 as i32).abs() + (unit_pos.1 as i32 - camp.1 as i32).abs();
+            if current_distance < min_distance {
+                min_distance = current_distance;
+                min_distance_index = index;
+            }
         }
-        *distances_from_camps.iter().min().unwrap()
+        if let Some(hash_map) = distance_map.to_barbarian_camps.get(&camp_coords.get(min_distance_index).unwrap()) {
+            if let Some(dist) = hash_map.get(&unit_pos) {
+                *dist
+            } else {
+                panic!();
+                100000
+            }
+        } else {
+            panic!();
+        }
     };
 
     let near_camp: bool = if distance_from_nearest_camp <= MIN_DISTANCE {
