@@ -136,7 +136,7 @@ fn culling(current_population: &Vec<PopulationState>) -> Vec<PopulationState> {
 	return current_population[0..(current_population.len() - num_to_drop)].to_vec();
 }
 
-pub fn genetic_algorithm<'a>(units: &HashMap<(u32, u32), Unit>, map_tiles: &mut HashMap<(u32, u32), Tile<'a>>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> Vec<PopulationState>{
+pub fn genetic_algorithm<'a>(units: &HashMap<(u32, u32), Unit>, map_tiles: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> Vec<PopulationState>{
     let mut rng_thread = thread_rng();
     //Keeps track of all the possible unit movements
     let mut succinct_units: Vec<SuccinctUnit> = Vec::new();

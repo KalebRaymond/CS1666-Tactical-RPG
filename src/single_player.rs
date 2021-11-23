@@ -179,23 +179,34 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			for col in row.iter() { 
 				let letter = &col[..];
 				match letter {
-					"║" | "^" | "v" | "<" | "=" | ">" | "t" => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, None, tile_textures.get(&letter).unwrap())),
-					" " => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, None, tile_textures.get(&letter).unwrap())),
-					"b" =>  { 
-								camp_coords.push((y,x));
-								game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), tile_textures.get(&letter).unwrap()))
-							},
-					"_" => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), tile_textures.get(&letter).unwrap())),
-					"1" =>  {
-								player_castle = (y, x);
-								game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::PCastle), tile_textures.get(&letter).unwrap()))
-							},
-					"2" =>  {
-								enemy_castle = (y, x);
-								game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::ECastle), tile_textures.get(&letter).unwrap()))
-							},
-					  _ => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, false, None, None, tile_textures.get(&letter).unwrap())),
+					"║" | "^" | "v" | "<" | "=" | ">" | "t" => {
+						game_map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, None));
+					},
+					" " => {
+						game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, None)); 
+					},
+					"b" => { 
+						camp_coords.push((y,x));
+						game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp)));
+					},
+					"_" => {
+						game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp)));
+					},
+					"1" => {
+						player_castle = (y, x);
+						game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::PCastle)));
+					},
+					"2" => {
+						enemy_castle = (y, x);
+						game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::ECastle)));
+					},
+					_ => {
+						game_map.map_tiles.insert((x,y), Tile::new(x, y, false, false, None, None));
+					},
 				};
+
+				game_map.map_textures.insert((x, y), tile_textures.get(&letter).unwrap());
+				
 				y += 1;
 			}
 			x += 1;
@@ -337,8 +348,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, map_tile_size, map_tile_size);
 
 				//Draw map tile at this coordinate
-				if let Some(map_tile) = game_map.map_tiles.get(&(i as u32, j as u32)) {
-					core.wincan.copy(map_tile.texture, None, dest)?
+				if let Some(map_tile_texture) = game_map.map_textures.get(&(i as u32, j as u32)) {
+					core.wincan.copy(map_tile_texture, None, dest)?
 				}
 
 				//Use default sprite size for all non-map sprites
@@ -457,7 +468,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	}
 
 	//Single player somehow finished without a winner, automatically quit game
-	Ok(GameState::Quit)
+	return Ok(GameState::Quit);
 }
 
 

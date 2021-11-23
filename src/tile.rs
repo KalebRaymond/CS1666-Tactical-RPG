@@ -1,7 +1,7 @@
-use sdl2::render::Texture;
 use std::fmt;
 use crate::unit::{Team};
 
+#[derive(Clone)]
 pub enum Structure {
 	Camp,
 	PCastle,
@@ -18,18 +18,18 @@ impl PartialEq for Structure {
     }
 }
 
-pub struct Tile<'a> {
+#[derive(Clone)]
+pub struct Tile {
     pub x: u32,
     pub y: u32,
     pub is_traversable: bool,
     pub can_attack_through: bool, // e.x. archers and mages can attack over rivers and through trees
     pub contained_unit_team: Option<Team>, // Storing a unit causes some pains with lifetimes and references, so store an enum that is better than a boolean
     pub contained_structure: Option<Structure>,
-    pub texture: &'a Texture<'a>,
 }
 
-impl Tile <'_>{
-    pub fn new<'a> (x:u32, y:u32, is_traversable: bool, can_attack_through: bool, contained_unit_team: Option<Team>, contained_structure: Option<Structure>, texture: &'a Texture) -> Tile<'a> {
+impl Tile {
+    pub fn new (x:u32, y:u32, is_traversable: bool, can_attack_through: bool, contained_unit_team: Option<Team>, contained_structure: Option<Structure>) -> Tile {
         Tile {
             x,
             y,
@@ -37,7 +37,6 @@ impl Tile <'_>{
             can_attack_through,
             contained_unit_team,
             contained_structure,
-            texture,
         }
     }
     pub fn update_team(&mut self, new_team: Option<Team>) {
@@ -51,7 +50,7 @@ impl Tile <'_>{
     }
 }
 
-impl fmt::Display for Tile<'_> {
+impl fmt::Display for Tile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Tile(x:{}, y:{}, is_traversable:{})", self.x, self.y, self.is_traversable)
     }

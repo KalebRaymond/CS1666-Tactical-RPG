@@ -34,7 +34,7 @@ pub fn handle_enemy_turn<'a, 'b>(core: &SDLCore<'b>, p2_units: &mut HashMap<(u32
     Ok(())
 }
 
-fn minimax<'a>(cur_state: PopulationState, depth: u32, maximizing_enemy: bool, cur_team_units: &mut HashMap<(u32, u32), Unit>, map_tiles: &mut HashMap<(u32, u32), Tile<'a>>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> PopulationState {
+fn minimax<'a>(cur_state: PopulationState, depth: u32, maximizing_enemy: bool, cur_team_units: &mut HashMap<(u32, u32), Unit>, map_tiles: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> PopulationState {
     if depth == 0 /* or cur_state has a game over condition */ {
         return cur_state;
     }
@@ -86,8 +86,8 @@ fn minimax<'a>(cur_state: PopulationState, depth: u32, maximizing_enemy: bool, c
     }
 }
 
-fn create_potential_game_map_tiles<'a>(map_tiles: &mut HashMap<(u32, u32), Tile<'a>>, potential_state: PopulationState) -> HashMap<(u32, u32), Tile<'a>> {
-    let potential_map_tiles: HashMap<(u32, u32), Tile<'a>>  = map_tiles.clone();
+fn create_potential_game_map_tiles(map_tiles: &mut HashMap<(u32, u32), Tile>, potential_state: PopulationState) -> HashMap<(u32, u32), Tile> {
+    let potential_map_tiles: HashMap<(u32, u32), Tile>  = map_tiles.clone();
 
     return potential_map_tiles;
 }
