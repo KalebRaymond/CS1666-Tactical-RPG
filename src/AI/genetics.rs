@@ -333,8 +333,9 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
                     } else {
                         false
                     };
-
-    let able_to_attack: bool =  if generalized_tiles_can_attack(map, unit_pos, unit_attack_range).is_empty() {
+    
+    let tiles_to_attack = generalized_tiles_can_attack(map, unit_pos, unit_attack_range);
+    let able_to_attack: bool =  if tiles_to_attack.is_empty() {
                                     false
                                 } else {
                                     true
@@ -354,7 +355,7 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
         value += CAMP_WEIGHT*2.0;
     }
     if able_to_attack == true {
-        value += ATTACK_VALUE;
+        value += ATTACK_VALUE * (*tiles_to_attack.iter().min().unwrap() as f64); //Should favor moves that allows unit to attack from further away
     }
 
     //println!("Unit at {}, {}\nValue: {}, D(own_castle): {}, D(enemy_castle): {}, D(camp): {}, can_attack: {}\n", unit_pos.0, unit_pos.1, value, distance_from_own_castle, distance_from_enemy_castle, distance_from_nearest_camp, able_to_attack);
