@@ -194,9 +194,9 @@ impl SuccinctUnit {
 }
 
 //Since we won't be passing around units, we need to create a generalized way to get units that can be attacked
-//First two values in tuple represent x and y whilst the third represents the distance from that tile
-pub fn generalized_tiles_can_attack(map: &mut HashMap<(u32, u32), Tile>, coordinates: (u32, u32), range: u32) -> Vec<(u32, u32, u32)> {
-    let mut tiles_in_range: Vec<(u32, u32, u32)> = Vec::new();
+//Unlike the regular can attack function we only care about the units distance from that tile here
+pub fn generalized_tiles_can_attack(map: &mut HashMap<(u32, u32), Tile>, coordinates: (u32, u32), range: u32) -> Vec<u32> {
+    let mut tiles_in_range: Vec<u32> = Vec::new();
     let mut visited: HashMap<(u32,u32), bool> = HashMap::new();
     let mut heap = BinaryHeap::new();
     heap.push(QueueObject{coords: (coordinates.0, coordinates.1), cost: range});
@@ -215,7 +215,7 @@ pub fn generalized_tiles_can_attack(map: &mut HashMap<(u32, u32), Tile>, coordin
                     match entry.get().contained_unit_team {
                         Some(team) => {
                             if team != Team::Enemy {
-                                tiles_in_range.push((coords.0-1, coords.1, range-(cost-1)));
+                                tiles_in_range.push(range-(cost-1));
                             }
                         },
                         None => {}
@@ -232,7 +232,7 @@ pub fn generalized_tiles_can_attack(map: &mut HashMap<(u32, u32), Tile>, coordin
                     match entry.get().contained_unit_team {
                         Some(team) => {
                             if team != Team::Enemy {
-                                tiles_in_range.push((coords.0+1, coords.1, range-(cost-1)));
+                                tiles_in_range.push(range-(cost-1));
                             }
                         },
                         None => {}
@@ -249,7 +249,7 @@ pub fn generalized_tiles_can_attack(map: &mut HashMap<(u32, u32), Tile>, coordin
                     match entry.get().contained_unit_team {
                         Some(team) => {
                             if team != Team::Enemy {
-                                tiles_in_range.push((coords.0, coords.1-1, range-(cost-1)));
+                                tiles_in_range.push(range-(cost-1));
                             }
                         },
                         None => {}
@@ -266,7 +266,7 @@ pub fn generalized_tiles_can_attack(map: &mut HashMap<(u32, u32), Tile>, coordin
                     match entry.get().contained_unit_team {
                         Some(team) => {
                             if team != Team::Enemy {
-                                tiles_in_range.push((coords.0, coords.1+1, range-(cost-1)));
+                                tiles_in_range.push(range-(cost-1));
                             }
                         },
                         None => {}
