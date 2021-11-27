@@ -13,9 +13,9 @@ use crate::unit::*;
 use crate::tile::Tile;
 
 //Genetic Algorithm Constants (instead of a struct to make things easier to modify and less things to pass around)
-const POP_NUM: usize = 50; //Population size
-const GEN_NUM: u32 = 25; //Number of generations to run
-const MUT_PROB: f32 = 0.1; //Probability of an individual being mutated
+const POP_NUM: usize = 100; //Population size
+const GEN_NUM: u32 = 50; //Number of generations to run
+const MUT_PROB: f32 = 0.3; //Probability of an individual being mutated
 const MUT_NUM: usize = 5; //How many units should be changed on mutation
 const C_PERC: f32 = 0.2; //Percentage of the least fit individuals to be removed
 const E_PERC: f32 = 0.1; //Proportion of best individuals to carry over from one generation to the next
@@ -225,9 +225,12 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
 
         initial_population = new_generation.clone();
         let best_individual = initial_population.iter().max().unwrap();
-        println!("Best score in generation {}:{}", i+1, best_individual.overall_utility);
-        let moves: Vec<(u32, u32)> = best_individual.units_and_utility.iter().map(|tup| tup.0).collect();
-        println!("Moves:{:?}", moves);
+        //Only print every 5 generations to save console from becoming unreadable
+        if i % 5 == 0 {
+            println!("Best score in generation {}:{}", i, best_individual.overall_utility);
+            let moves: Vec<(u32, u32)> = best_individual.units_and_utility.iter().map(|tup| tup.0).collect();
+            println!("Moves:{:?}\n", moves);
+        }
         //println!("Num units: {}", best_individual.units_and_utility.len());
         //Also need to remember to reset the corresponding vectors for the next generation
         new_generation = Vec::new();

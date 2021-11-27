@@ -66,9 +66,9 @@ impl PopulationState {
                 actual_moves.push(((actual_unit.x, actual_unit.y), new_move));
             } else { // Else, we need to move to the closest possible tile
                 println!("Best move not possible; need to find closest tile...");
-                println!("OldMove:{},{}", new_move.0, new_move.1);
+                print!("Old:{},{} -> ", new_move.0, new_move.1);
                 new_move = actual_unit.get_closest_move(new_move, &mut game_map.map_tiles);
-                println!("NewMove:{},{}", new_move.0, new_move.1);
+                println!("New:{},{}\n", new_move.0, new_move.1);
                 actual_moves.push(((actual_unit.x, actual_unit.y), new_move));
             }
             // Update map tiles (even though we are not updating units, should still update map to properly restrict movements)
