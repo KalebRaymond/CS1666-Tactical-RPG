@@ -97,8 +97,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	tile_textures.insert("<", texture_creator.load_texture("images/tiles/river_end_left.png")?);
 	//Bases
 	tile_textures.insert("b", texture_creator.load_texture("images/tiles/barbarian_camp.png")?);
-	tile_textures.insert("1", texture_creator.load_texture("images/tiles/red_castle.png")?);
-	tile_textures.insert("2", texture_creator.load_texture("images/tiles/blue_castle.png")?);
+	tile_textures.insert("1", texture_creator.load_texture("images/tiles/blue_castle.png")?);
+	tile_textures.insert("2", texture_creator.load_texture("images/tiles/red_castle.png")?);
 	//Tree
 	tile_textures.insert("t", texture_creator.load_texture("images/tiles/tree_tile.png")?);
 
