@@ -45,7 +45,7 @@ impl DamageIndicator<'_> {
             elapsed_time: 0.0,
 
             texture: texture,
-            text_size: core.bold_font.size_of(&text).map_err(|e| "Could not determine text size")?,
+            text_size: core.bold_font.size_of(&text).map_err(|_e| "Could not determine text size")?,
         })  
     }
 

@@ -23,7 +23,7 @@ impl Button<'_> {
 		Ok(Button {
 			rect,
 			text: text.to_string(),
-			text_size: core.bold_font.size_of(text).map_err(|e| "Could not determine text size")?,
+			text_size: core.bold_font.size_of(text).map_err(|_e| "Could not determine text size")?,
 			texture,
 		})
 	}

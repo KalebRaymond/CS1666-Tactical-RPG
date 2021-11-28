@@ -34,9 +34,10 @@ pub fn handle_barbarian_turn<'a, 'b>(core: &SDLCore<'b>, barb_units: &mut HashMa
                 let actual_attacks: Vec<(u32, u32)> = barbarian.get_tiles_can_attack(&mut game_map.map_tiles);
                 if !actual_attacks.is_empty() {
                     // Need to check and make sure that a barbarian has not already moved to this tile
-                    if let Some(coordinates) = moving_barbs.get(&(barbarian.x, barbarian.y)) {
+                    if let Some(_coordinates) = moving_barbs.get(&(barbarian.x, barbarian.y)) {
                         continue;
                     }
+                    
                     //Need to update map outside of this loop as this will allow for easier updating movement later on if we want
                     moving_barbs.insert((barbarian.x, barbarian.y), (original_x, original_y));
                     aggroed_barbs.insert((barbarian.x, barbarian.y), true);

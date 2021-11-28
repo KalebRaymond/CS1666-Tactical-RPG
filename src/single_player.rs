@@ -551,14 +551,12 @@ fn draw_possible_moves(core: &mut SDLCore, tiles: &Vec<(u32, u32)>, color:Color)
 // Method for preparing the HashMap of player units whilst also properly marking them in the map
 // l melee r ranged m mage
 fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>>, player_team: Team, units: Vec<(char, (u32, u32))>, unit_textures: &'a HashMap<&str, Texture<'a>>, map: &'b mut HashMap<(u32, u32), Tile>) {
-	let melee: &str;
-	let range: &str;
-	let mage: &str;
 	let (melee, range, mage)  = match player_team {
 		Team::Player => ("pll", "plr", "plm"),
 		Team::Enemy =>  ("pl2l", "pl2r", "pl2m"),
 		Team::Barbarians => ("bl", "br", ""),
 	};
+
 	for unit in units {
 		//Remember map is flipped indexing
 		match player_team {

@@ -499,42 +499,42 @@ pub fn get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, 
     let mut file_io = BufWriter::new(file);
 
     //Get distance from each tile to the p1 castle
-    writeln!(file_io, "p1_castle");
+    writeln!(file_io, "p1_castle").expect("Write error");
     for i in 0..MAP_HEIGHT {
         for j in 0..MAP_WIDTH {
             //Flip i & j so that they are in (x, y) order in the file
             let dist = get_actual_distance_from_goal((j, i), p1_castle, map);
-            writeln!(file_io, "{} {} {}", j, i, dist);
+            writeln!(file_io, "{} {} {}", j, i, dist).expect("Write error");
         }
     }
-    writeln!(file_io, "end");
-    writeln!(file_io);
+    writeln!(file_io, "end").expect("Write error");
+    writeln!(file_io).expect("Write error");
 
     //Get distance from each tile to the enemy castle
-    writeln!(file_io, "enemy_castle");
+    writeln!(file_io, "enemy_castle").expect("Write error");
     for i in 0..MAP_HEIGHT {
         for j in 0..MAP_WIDTH {
             //Flip i & j so that they are in (x, y) order in the file
             let dist = get_actual_distance_from_goal((j, i), enemy_castle, map);
-            writeln!(file_io, "{} {} {}", j, i, dist);
+            writeln!(file_io, "{} {} {}", j, i, dist).expect("Write error");
         }
     }
-    writeln!(file_io, "end");
-    writeln!(file_io);
+    writeln!(file_io, "end").expect("Write error");
+    writeln!(file_io).expect("Write error");
 
     //Get the distance from each tile to each barbarian camp
-    writeln!(file_io, "barb_camps");
+    writeln!(file_io, "barb_camps").expect("Write error");
     for cur_camp in camp_coords.iter() {
-        writeln!(file_io, "# {} {}", cur_camp.0, cur_camp.1);
+        writeln!(file_io, "# {} {}", cur_camp.0, cur_camp.1).expect("Write error");
         for i in 0..MAP_HEIGHT {
             for j in 0..MAP_WIDTH {
                 //Flip i & j so that they are in (x, y) order in the file
                 let dist = get_actual_distance_from_goal((j, i), *cur_camp, map);
-                writeln!(file_io, "{} {} {}", j, i, dist);
+                writeln!(file_io, "{} {} {}", j, i, dist).expect("Write error");
             }
         }
     }
-    writeln!(file_io, "end");
+    writeln!(file_io, "end").expect("Write error");
 
     Ok(())
 }
