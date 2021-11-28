@@ -315,7 +315,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				player_turn::handle_player_turn(&core, &mut player_state, &mut p2_units, &mut barbarian_units, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
 			},
 			Team::Enemy => {
-				enemy_turn::handle_enemy_turn(&core, &mut p2_units, &mut player_state.p1_units, &mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player, &enemy_castle, &player_castle, &camp_coords);
+				enemy_turn::handle_enemy_turn(&core, &mut p2_units, &mut player_state.p1_units, &mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player, &enemy_castle, &player_castle, &camp_coords, &distance_map);
 			},
 			Team::Barbarians => {
 				barbarian_turn::handle_barbarian_turn(&core, &mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player)?;
@@ -517,9 +517,9 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 			Team::Barbarians => map.get_mut(&(unit.1.1, unit.1.0)).unwrap().update_team(Some(Team::Barbarians)),
 		}
 		match unit.0 {
-			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 6, 1, 95, 1, 5, unit_textures.get(melee).unwrap())),
+			'l' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 7, 1, 95, 1, 5, unit_textures.get(melee).unwrap())),
 			'r' => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 5, 4, 85, 3, 7, unit_textures.get(range).unwrap())),
-			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 7, 3, 75,  5, 9, unit_textures.get(mage).unwrap())),
+			 _ => player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 6, 3, 75,  5, 9, unit_textures.get(mage).unwrap())),
 		};
 	}
 }
