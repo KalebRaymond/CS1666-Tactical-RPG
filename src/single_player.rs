@@ -211,17 +211,20 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut cursor = Cursor::new(&cursor_texture);
 
 	player_state.p1_units = HashMap::new();
-	let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (8,46)), ('l', (10,45)), ('l', (10,53)), ('l', (12,46)), ('l', (17,51)), ('l', (17,55)), ('l', (18,53)), ('r', (9,49)), ('r', (10,46)), ('r', (13,50)), ('r', (14,54)), ('r', (16,53)), ('m', (10,50)), ('m', (10,52)), ('m', (11,53)), ('m', (13,53)));
-	//let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (14, 40))); //Spawns a player unit right next to some barbarians
+	//let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (8,46)), ('l', (10,45)), ('l', (10,53)), ('l', (12,46)), ('l', (17,51)), ('l', (17,55)), ('l', (18,53)), ('r', (9,49)), ('r', (10,46)), ('r', (13,50)), ('r', (14,54)), ('r', (16,53)), ('m', (10,50)), ('m', (10,52)), ('m', (11,53)), ('m', (13,53)));
+	let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (14, 40))); //Spawns a player unit right next to some barbarians
+	//Spawns a player unit right next to the enemy's castle
 	prepare_player_units(&mut player_state.p1_units, Team::Player, p1_units_abrev, &unit_textures, &mut game_map.map_tiles);
 
 	let mut p2_units: HashMap<(u32, u32), Unit> = HashMap::new();
-	let p2_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (46,8)), ('l', (45,10)), ('l', (53,10)), ('l', (46,12)), ('l', (51,17)), ('l', (55,17)), ('l', (53,18)), ('r', (49,9)), ('r', (47,10)), ('r', (50,13)), ('r', (54,14)), ('r', (53,16)), ('m', (50,10)), ('m', (52,10)), ('m', (53,11)), ('m', (53,13)));
+	//let p2_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (46,8)), ('l', (45,10)), ('l', (53,10)), ('l', (46,12)), ('l', (51,17)), ('l', (55,17)), ('l', (53,18)), ('r', (49,9)), ('r', (47,10)), ('r', (50,13)), ('r', (54,14)), ('r', (53,16)), ('m', (50,10)), ('m', (52,10)), ('m', (53,11)), ('m', (53,13)));
+	let p2_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (16,44))); //Spawns a single enemy near the player
 	prepare_player_units(&mut p2_units, Team::Enemy, p2_units_abrev, &unit_textures, &mut game_map.map_tiles);
 
 	let mut barbarian_units: HashMap<(u32, u32), Unit> = HashMap::new();
-	let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (4,6)), ('l', (6,8)), ('l', (7,7)), ('l', (9,7)), ('r', (6,6)), ('r', (8,5)), ('l', (55,55)), ('l', (59,56)), ('l', (56,56)), ('l', (54,57)), ('r', (56,59)), ('r', (57,57)), ('l', (28,15)), ('l', (29,10)), ('l', (31,12)), ('l', (31,17)), ('l', (32,11)), ('l', (35,15)), ('l', (34,11)), ('r', (31,10)), ('r', (33,9)), ('r', (30,8)), ('r', (36,10)), ('l', (28,52)), ('l', (28,48)), ('l', (33,51)), ('l', (31,46)), ('l', (31,52)), ('l', (35,52)), ('l', (35,48)), ('r', (32,53)), ('r', (33,56)), ('r', (30,54)), ('r', (34,54)), ('l', (17,38)), ('l', (16,37)), ('r', (23,36)), ('r', (18,30)), ('l', (46,25)), ('l', (47,26)), ('r', (40,27)), ('r', (45,33)),);
+	//let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (4,6)), ('l', (6,8)), ('l', (7,7)), ('l', (9,7)), ('r', (6,6)), ('r', (8,5)), ('l', (55,55)), ('l', (59,56)), ('l', (56,56)), ('l', (54,57)), ('r', (56,59)), ('r', (57,57)), ('l', (28,15)), ('l', (29,10)), ('l', (31,12)), ('l', (31,17)), ('l', (32,11)), ('l', (35,15)), ('l', (34,11)), ('r', (31,10)), ('r', (33,9)), ('r', (30,8)), ('r', (36,10)), ('l', (28,52)), ('l', (28,48)), ('l', (33,51)), ('l', (31,46)), ('l', (31,52)), ('l', (35,52)), ('l', (35,48)), ('r', (32,53)), ('r', (33,56)), ('r', (30,54)), ('r', (34,54)), ('l', (17,38)), ('l', (16,37)), ('r', (23,36)), ('r', (18,30)), ('l', (46,25)), ('l', (47,26)), ('r', (40,27)), ('r', (45,33)),);
 	//let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (32, 60))); //Spawns a single barbarian near the bottom of the map
+	let barb_units_abrev: Vec<(char, (u32,u32))> = Vec::new(); //No barbarians
 	prepare_player_units(&mut barbarian_units, Team::Barbarians, barb_units_abrev, &unit_textures, &mut game_map.map_tiles);
 	
 	let unit_interface_texture = texture_creator.load_texture("images/interface/unit_interface.png")?;
@@ -309,18 +312,31 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			_ => {},
 		}
 
-		//Handle the current team's move
-		match current_player {
-			Team::Player => {
-				player_turn::handle_player_turn(&core, &mut player_state, &mut p2_units, &mut barbarian_units, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
-			},
-			Team::Enemy => {
-				enemy_turn::handle_enemy_turn(&core, &mut p2_units, &mut player_state.p1_units, &mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player, &enemy_castle, &player_castle, &camp_coords);
-			},
-			Team::Barbarians => {
-				barbarian_turn::handle_barbarian_turn(&core, &mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player)?;
-			},
+		//If no one has won so far...
+		if winning_team.is_none() {
+			//Handle the current team's move
+			match current_player {
+				Team::Player => {
+					player_turn::handle_player_turn(&core, &mut player_state, &mut p2_units, &mut barbarian_units, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
+				},
+				Team::Enemy => {
+					enemy_turn::handle_enemy_turn(&core, &mut p2_units, &mut player_state.p1_units, &mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player, &enemy_castle, &player_castle, &camp_coords);
+				},
+				Team::Barbarians => {
+					barbarian_turn::handle_barbarian_turn(&core, &mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player)?;
+				},
+			}
 
+			//Check for total party kill and set the other team as the winner
+			//Ideally you would check this whenever a unit on either team gets attacked, but this works
+			if player_state.p1_units.len() == 0 {
+				println!("Enemy team won via Total Party Kill!");
+				winning_team = set_winner(Team::Enemy, &mut winner_banner);
+			}
+			else if p2_units.len() == 0 {
+				println!("Player team won via Total Party Kill!");
+				winning_team = set_winner(Team::Player, &mut winner_banner);
+			}
 		}
 		
 
