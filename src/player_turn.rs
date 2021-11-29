@@ -173,7 +173,7 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
                         }
                         active_unit.has_attacked = true;
                         if dead_barb {
-                            //Need to check and see if this barbarian was converted - currently a 50/50
+                            //Need to check and see if this barbarian was converted - currently a 40% chance
                             let chance = rand::thread_rng().gen_range(0..100);
                             if chance < 40 {
                                 println!("Barbarian has been converted. Defaulting respawn to melee.");

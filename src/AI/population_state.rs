@@ -158,7 +158,7 @@ impl PopulationState {
             //Don't forget to reinsert the unit into the hashmap
             actual_units.insert((newcoord.0, newcoord.1), active_unit);
             if dead_barb {
-                //Need to check and see if this barbarian was converted - currently a 50/50
+                //Need to check and see if this barbarian was converted - currently a 40% chance
                 let chance = rand::thread_rng().gen_range(0..100);
                 if chance < 40 {
                     println!("Barbarian has been converted. Defaulting respawn to melee.");
