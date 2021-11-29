@@ -106,7 +106,7 @@ impl GameMap<'_> {
 		//Draw tiles & sprites
 		for x in 0..self.map_size.0 {
 			for y in 0..self.map_size.1 {
-				let map_tile = self.map_tiles.get(&(x as u32, y as u32));
+				let map_tile = self.map_tiles.get(&(y as u32, x as u32));
 				let map_tile_size = match map_tile {
 					Some(Tile{contained_structure: Some(Structure::Camp), ..}) => TILE_SIZE * 2,
 					_ => TILE_SIZE,
@@ -116,7 +116,7 @@ impl GameMap<'_> {
 				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, map_tile_size, map_tile_size);
 
 				//Draw map tile at this coordinate
-				if let Some(map_tile) = self.map_tiles.get(&(x as u32, y as u32)) {
+				if let Some(map_tile) = self.map_tiles.get(&(y as u32, x as u32)) {
 					core.wincan.copy(map_tile.texture, None, dest);
 				}
 
