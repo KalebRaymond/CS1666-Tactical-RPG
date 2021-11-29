@@ -175,13 +175,18 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
                         if dead_barb {
                             //Need to check and see if this barbarian was converted - currently a 50/50
                             let chance = rand::thread_rng().gen_range(0..100);
-                            if chance < 101 {
+                            if chance < 40 {
                                 println!("Barbarian has been converted. Defaulting respawn to melee.");
-                                //Create the new unit with default stats and update the position of it accordingly
+                                //Create the new unit with default stats and update the position of it accordingly (might want to make it so stats are not at max after converting)
                                 let mut new_unit = Unit::new(castle_coord.0-5, castle_coord.1+5, Team::Player, 20, 7, 1, 95, 1, 5, unit_textures.get("pll").unwrap());
                                 let respawn_location = new_unit.respawn_loc(&mut game_map.map_tiles, *castle_coord);
                                 new_unit.update_pos(respawn_location.0, respawn_location.1);
+
+                                //The new unit should not be able to move immediately after being converted
+                                new_unit.has_moved = true;
+                                new_unit.has_attacked = true;
                                 println!("Unit spawned at {}, {}", respawn_location.0, respawn_location.1);
+                                
                                 //Don't forget to update the players units and the hash map
                                 player_state.p1_units.insert(respawn_location, new_unit);
                                 if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(respawn_location.1, respawn_location.0)) {
