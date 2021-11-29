@@ -1,3 +1,5 @@
+use rand::Rng;
+
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::render::Texture;
@@ -18,7 +20,7 @@ use crate::banner::Banner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
 
-pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerState, p2_units: &mut HashMap<(u32, u32), Unit<'a>>, barbarian_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap<'b>, input: &Input, turn_banner: &mut Banner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
+pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerState, p2_units: &mut HashMap<(u32, u32), Unit<'a>>, barbarian_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap<'b>, castle_coord: &(u32, u32), input: &Input, turn_banner: &mut Banner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
     if !turn_banner.banner_visible {
         //Check if player ended turn by pressing backspace
         if input.keystate.contains(&Keycode::Backspace) {
@@ -158,6 +160,14 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
                                             barbarian_units.remove(&(j, i));
                                             println!("Barbarian unit at {}, {} is dead after taking {} damage.", j, i, damage_done);
                                             tile_under_attack.update_team(None);
+                                            
+                                            //Need to check and see if this barbarian was converted
+                                            let chance = rand::thread_rng().gen_range(0..100);
+                                            if chance < 50 {
+                                                println!("Barbarian has been converted. Defaulting respawn to melee.")
+                                                //let respawn_loc = unit.is_converted(&mut game_map.map_tiles, *castle_coord);
+                                            }
+                                            
                                         } else {
                                             unit.receive_damage(damage_done);
                                             game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);

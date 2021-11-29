@@ -146,6 +146,19 @@ impl Unit <'_>{
         self.has_moved = false;
     }
 
+    pub fn respawn_loc(&self, map: &mut HashMap<(u32, u32), Tile>, where_to_spawn: (u32,u32)) -> (u32, u32) {
+        if let std::collections::hash_map::Entry::Occupied(entry) = map.entry(where_to_spawn) {
+            //As long as a unit can move to this tile return it otherwise find closest available
+            if entry.get().unit_can_move_here() {
+                where_to_spawn
+            } else {
+                self.get_closest_move(where_to_spawn, map)
+            }
+        } else {
+            panic!("Trying to spawn unit off map")
+        }
+    }
+
     pub fn get_tiles_in_movement_range(&self, map: &mut HashMap<(u32, u32), Tile>,) -> Vec<(u32, u32)> {
         let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
         let mut visited: HashMap<(u32,u32), bool> = HashMap::new();
