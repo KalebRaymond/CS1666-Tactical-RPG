@@ -8,13 +8,11 @@ use sdl2::render::Texture;
 
 use std::collections::HashMap;
 use std::convert::TryInto;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 use std::time::{Instant, Duration};
 use crate::AI::*;
 use crate::button::Button;
 use crate::cursor::Cursor;
-use crate::game_map::GameMap;
+use crate::game_map::{GameMap, load_textures};
 use crate::GameState;
 use crate::{CAM_H, CAM_W, TILE_SIZE};
 use crate::input::Input;
@@ -25,7 +23,7 @@ use crate::player_turn;
 use crate::enemy_turn;
 use crate::barbarian_turn;
 use crate::SDLCore;
-use crate::tile::{Tile, Structure};
+use crate::tile::Tile;
 use crate::banner::Banner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
@@ -33,30 +31,8 @@ use crate::unit::{Team, Unit};
 const BANNER_TIMEOUT: u64 = 1500;
 const TURNS_ON_BASE: u32 = 3;
 
-pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {	
+pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let texture_creator = core.wincan.texture_creator();
-
-	//Stuff for enemy AI calculations
-	let mut camp_coords: Vec<(u32, u32)> = Vec::new();
-	let mut player_castle: (u32, u32) = (0, 0);
-	let mut enemy_castle: (u32, u32) = (0, 0);
-
-	//Load map from file
-	let map_data = File::open("maps/map.txt").expect("Unable to open map file");
-	let mut map_data = BufReader::new(map_data);
-	let mut line = String::new();
-
-	//Sets size of the map from the first line of the text file
-	map_data.read_line(&mut line).unwrap();
-	let map_width: usize = line.trim().parse().unwrap();
-	let map_height: usize = line.trim().parse().unwrap();
-
-	//Set camera size based on map size
-	core.cam.w = (map_width as u32 * TILE_SIZE) as i32;
-	core.cam.h = (map_height as u32 * TILE_SIZE) as i32;
-	//Start camera in lower left corner, to start with the player castle in view
-	core.cam.x = 0;
-	core.cam.y = -core.cam.h + core.wincan.window().size().1 as i32;
 
 	//Initial mouse positions
 	let mut old_mouse_x = -1;
@@ -65,42 +41,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	//User input
 	let mut input = Input::new(&core.event_pump);
 
-	//Creates map from file
-	let map_string: Vec<Vec<String>> = map_data.lines()
-		.take(map_width)
-		.map(|x| x.unwrap().chars().collect::<Vec<char>>())
-		.map(|x| x.chunks(2).map(|chunk| chunk[0].to_string()).collect())
-		.collect();
-
 	//Load map textures
-	let mut tile_textures: HashMap<&str, Texture> = HashMap::new();
-	//Mountains
-	tile_textures.insert("▉", texture_creator.load_texture("images/tiles/mountain_tile.png")?);
-	tile_textures.insert("▒", texture_creator.load_texture("images/tiles/mountain2_tile.png")?);
-	tile_textures.insert("▀", texture_creator.load_texture("images/tiles/mountain_side_top.png")?);
-	tile_textures.insert("▐", texture_creator.load_texture("images/tiles/mountain_side_vertical_right.png")?);
-	tile_textures.insert("▃", texture_creator.load_texture("images/tiles/mountain_side_bottom.png")?);
-	tile_textures.insert("▍", texture_creator.load_texture("images/tiles/mountain_side_vertical_left.png")?);
-	tile_textures.insert("▛", texture_creator.load_texture("images/tiles/mountain_top_left.png")?);
-	tile_textures.insert("▜", texture_creator.load_texture("images/tiles/mountain_top_right.png")?);
-	tile_textures.insert("▙", texture_creator.load_texture("images/tiles/mountain_bottom_left.png")?);
-	tile_textures.insert("▟", texture_creator.load_texture("images/tiles/mountain_bottom_right.png")?);
-	//Grass
-	tile_textures.insert(" ", texture_creator.load_texture("images/tiles/grass_tile.png")?);
-	tile_textures.insert("_", texture_creator.load_texture("images/tiles/empty_tile.png")?);
-	//Rivers
-	tile_textures.insert("=", texture_creator.load_texture("images/tiles/river_tile.png")?);
-	tile_textures.insert("║", texture_creator.load_texture("images/tiles/river_vertical.png")?);
-	tile_textures.insert("^", texture_creator.load_texture("images/tiles/river_end_vertical_top.png")?);
-	tile_textures.insert("v", texture_creator.load_texture("images/tiles/river_end_vertical_bottom.png")?);
-	tile_textures.insert(">", texture_creator.load_texture("images/tiles/river_end_right.png")?);
-	tile_textures.insert("<", texture_creator.load_texture("images/tiles/river_end_left.png")?);
-	//Bases
-	tile_textures.insert("b", texture_creator.load_texture("images/tiles/barbarian_camp.png")?);
-	tile_textures.insert("1", texture_creator.load_texture("images/tiles/blue_castle.png")?);
-	tile_textures.insert("2", texture_creator.load_texture("images/tiles/red_castle.png")?);
-	//Tree
-	tile_textures.insert("t", texture_creator.load_texture("images/tiles/tree_tile.png")?);
+	let textures = load_textures(&texture_creator)?;
 
 	//Load unit textures
 	let mut unit_textures: HashMap<&str, Texture> = HashMap::new();
@@ -168,40 +110,18 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		});
 	}
 
+	let unit_interface_texture = texture_creator.load_texture("images/interface/unit_interface.png")?;
+	let mut unit_interface: Option<UnitInterface> = None;
+
 	//Collection of variables useful for handling map interaction & tile overlays
-	let mut game_map = GameMap::new();
-	//Set up the HashMap of Tiles that can be interacted with
-	//Ideally this would be handled by the GameMap struct
-	{
-		let mut x = 0;
-		let mut y = 0;
-		for row in map_string.iter() {
-			for col in row.iter() { 
-				let letter = &col[..];
-				match letter {
-					"║" | "^" | "v" | "<" | "=" | ">" | "t" => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, None, tile_textures.get(&letter).unwrap())),
-					" " => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, None, tile_textures.get(&letter).unwrap())),
-					"b" =>  { 
-								camp_coords.push((y,x));
-								game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), tile_textures.get(&letter).unwrap()))
-							},
-					"_" => game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), tile_textures.get(&letter).unwrap())),
-					"1" =>  {
-								player_castle = (y, x);
-								game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::PCastle), tile_textures.get(&letter).unwrap()))
-							},
-					"2" =>  {
-								enemy_castle = (y, x);
-								game_map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::ECastle), tile_textures.get(&letter).unwrap()))
-							},
-					  _ => game_map.map_tiles.insert((x,y), Tile::new(x, y, false, false, None, None, tile_textures.get(&letter).unwrap())),
-				};
-				y += 1;
-			}
-			x += 1;
-			y = 0;
-		}
-	}
+	let mut game_map = GameMap::new(&textures);
+
+	//Set camera size based on map size
+	core.cam.w = (game_map.map_size.0 as u32 * TILE_SIZE) as i32;
+	core.cam.h = (game_map.map_size.1 as u32 * TILE_SIZE) as i32;
+	//Start camera in lower left corner, to start with the player castle in view
+	core.cam.x = 0;
+	core.cam.y = -core.cam.h + core.wincan.window().size().1 as i32;
 
 	//Collection of variables useful for determining player's current state
 	let mut player_state = PlayerState::new();
@@ -210,28 +130,22 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let cursor_texture = texture_creator.load_texture("images/interface/cursor.png")?;
 	let mut cursor = Cursor::new(&cursor_texture);
 
-	player_state.p1_units = HashMap::new();
 	let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (8,46)), ('l', (10,45)), ('l', (10,53)), ('l', (12,46)), ('l', (17,51)), ('l', (17,55)), ('l', (18,53)), ('r', (9,49)), ('r', (10,46)), ('r', (13,50)), ('r', (14,54)), ('r', (16,53)), ('m', (10,50)), ('m', (10,52)), ('m', (11,53)), ('m', (13,53)));
 	//let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (14, 40))); //Spawns a player unit right next to some barbarians
 	//let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (54, 8))); //Spawns a player unit right next to the enemy's castle
-	prepare_player_units(&mut player_state.p1_units, Team::Player, p1_units_abrev, &unit_textures, &mut game_map.map_tiles);
+	prepare_player_units(&mut game_map.player_units, Team::Player, p1_units_abrev, &unit_textures, &mut game_map.map_tiles);
 
-	let mut p2_units: HashMap<(u32, u32), Unit> = HashMap::new();
 	let p2_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (46,8)), ('l', (45,10)), ('l', (53,10)), ('l', (46,12)), ('l', (51,17)), ('l', (55,17)), ('l', (53,18)), ('r', (49,9)), ('r', (47,10)), ('r', (50,13)), ('r', (54,14)), ('r', (53,16)), ('m', (50,10)), ('m', (52,10)), ('m', (53,11)), ('m', (53,13)));
 	//let p2_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (16,44))); //Spawns a single enemy near the player
-	prepare_player_units(&mut p2_units, Team::Enemy, p2_units_abrev, &unit_textures, &mut game_map.map_tiles);
+	prepare_player_units(&mut game_map.enemy_units, Team::Enemy, p2_units_abrev, &unit_textures, &mut game_map.map_tiles);
 
-	let mut barbarian_units: HashMap<(u32, u32), Unit> = HashMap::new();
 	let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (4,6)), ('l', (6,8)), ('l', (7,7)), ('r', (8,5)), ('l', (59,56)), ('l', (56,56)), ('l', (54,57)), ('r', (56,59)), ('l', (28,15)), ('l', (29,10)), ('l', (32,11)), ('l', (35,15)), ('r', (30,8)), ('r', (36,10)), ('l', (28,52)), ('l', (28,48)), ('l', (33,51)), ('l', (35,48)), ('r', (32,53)), ('r', (33,56)), ('l', (17,38)), ('l', (16,37)), ('r', (23,36)), ('r', (18,30)), ('l', (46,25)), ('l', (47,26)), ('r', (40,27)), ('r', (45,33)),);
 	//let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (32, 60))); //Spawns a single barbarian near the bottom of the map
 	//let barb_units_abrev: Vec<(char, (u32,u32))> = Vec::new(); //No barbarians
-	prepare_player_units(&mut barbarian_units, Team::Barbarians, barb_units_abrev, &unit_textures, &mut game_map.map_tiles);
-	
-	let unit_interface_texture = texture_creator.load_texture("images/interface/unit_interface.png")?;
-	let mut unit_interface: Option<UnitInterface> = None;
+	prepare_player_units(&mut game_map.barbarian_units, Team::Barbarians, barb_units_abrev, &unit_textures, &mut game_map.map_tiles);
 
 	// Do this right before the game starts so that player 1 starts
-	initialize_next_turn(&mut player_state.p1_units);
+	initialize_next_turn(&mut game_map.player_units);
 
 	let mut current_player = Team::Player;
 
@@ -245,10 +159,10 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	// Not sure how else to check on_base once per turn
 	let mut next_team_check = Team::Player;
 
-	//Precalculating distances to each goal from each tile, used for enemy's AI. 
+	//Precalculating distances to each goal from each tile, used for enemy's AI.
 	//If AI/distances.txt already exists, this line can be commented out.
 	//genetics::get_goal_distances(&mut game_map.map_tiles, player_castle, enemy_castle, &camp_coords)?;
-	
+
 	//Distance from each tile to each goal, used for enemy's AI
 	let distance_map = distance_map::DistanceMap::new();
 
@@ -275,7 +189,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			}
 			core.cam.x = (core.cam.x - (old_mouse_x - input.mouse_state.x())).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
 			core.cam.y = (core.cam.y - (old_mouse_y - input.mouse_state.y())).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0);
-			
+
 			old_mouse_x = input.mouse_state.x();
 			old_mouse_y = input.mouse_state.y();
 		}
@@ -285,13 +199,13 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		}
 
 		let (i, j) = PixelCoordinates::matrix_indices_from_pixel(
-            input.mouse_state.x().try_into().unwrap(), 
-            input.mouse_state.y().try_into().unwrap(), 
-            (-1 * core.cam.x).try_into().unwrap(), 
+            input.mouse_state.x().try_into().unwrap(),
+            input.mouse_state.y().try_into().unwrap(),
+            (-1 * core.cam.x).try_into().unwrap(),
             (-1 * core.cam.y).try_into().unwrap()
         );
 
-		match player_state.p1_units.get_mut(&(j,i)) {
+		match game_map.player_units.get_mut(&(j,i)) {
 			Some(active_unit) => {
 				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
 			},
@@ -299,13 +213,13 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				cursor.hide_cursor();
 			},
 		}
-		match p2_units.get_mut(&(j,i)) {
+		match game_map.enemy_units.get_mut(&(j,i)) {
 			Some(active_unit) => {
 				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
 			},
 			_ => {},
 		}
-		match barbarian_units.get_mut(&(j,i)) {
+		match game_map.barbarian_units.get_mut(&(j,i)) {
 			Some(active_unit) => {
 				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
 			},
@@ -317,12 +231,12 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			//Handle the current team's move
 			match current_player {
 				Team::Player => {
-					player_turn::handle_player_turn(&core, &mut player_state, &mut p2_units, &mut barbarian_units, &mut game_map, &player_castle, &input, &mut turn_banner, &mut unit_interface, &unit_textures, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
-				
+					player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_textures, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
+
 					// Checks to see if the player's units are on the opponent's castle tile
 					if next_team_check == Team::Player {
-						match player_state.p1_units.get_mut(&enemy_castle) {
-							Some(player1_unit) => {
+						match game_map.player_units.get_mut(&game_map.pos_enemy_castle) {
+							Some(_player1_unit) => {
 								player1_on_base += 1;
 								if player1_on_base >= TURNS_ON_BASE {
 									winning_team = set_winner(Team::Player, &mut winner_banner);
@@ -338,11 +252,11 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 					}
 				},
 				Team::Enemy => {
-					enemy_turn::handle_enemy_turn(&core, &mut p2_units, &mut player_state.p1_units, &mut barbarian_units, &mut game_map, &mut turn_banner, &mut current_player, &enemy_castle, &player_castle, &camp_coords, &distance_map, &unit_textures);
-				
+					enemy_turn::handle_enemy_turn(&core, &mut game_map, &mut turn_banner, &mut current_player, &distance_map, &unit_textures)?;
+
 					if next_team_check == Team::Enemy {
-						match p2_units.get_mut(&player_castle) {
-							Some(player2_unit) => {
+						match game_map.enemy_units.get_mut(&game_map.pos_player_castle) {
+							Some(_player2_unit) => {
 								player2_on_base += 1;
 								if player2_on_base >= TURNS_ON_BASE {
 									winning_team = set_winner(Team::Enemy, &mut winner_banner);
@@ -357,61 +271,25 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 					}
 				},
 				Team::Barbarians => {
-					barbarian_turn::handle_barbarian_turn(&core, &mut barbarian_units, &mut player_state.p1_units, &mut p2_units, &mut game_map, &mut turn_banner, &mut current_player)?;
+					barbarian_turn::handle_barbarian_turn(&core, &mut game_map, &mut turn_banner, &mut current_player)?;
 				},
 			}
 
 			//Check for total party kill and set the other team as the winner
 			//Ideally you would check this whenever a unit on either team gets attacked, but this works
-			if player_state.p1_units.len() == 0 {
+			if game_map.player_units.len() == 0 {
 				println!("Enemy team won via Total Party Kill!");
 				winning_team = set_winner(Team::Enemy, &mut winner_banner);
 			}
-			else if p2_units.len() == 0 {
+			else if game_map.enemy_units.len() == 0 {
 				println!("Player team won via Total Party Kill!");
 				winning_team = set_winner(Team::Player, &mut winner_banner);
 			}
 		}
-		
 
-		//Draw tiles & sprites
-		for i in 0..map_height {
-			for j in 0..map_width {
-				let map_tile = map_string[i][j].as_ref();
-				let map_tile_size = match map_tile {
-					"b" => TILE_SIZE * 2,
-					_ => TILE_SIZE,
-				};
+		game_map.draw(core);
 
-				let pixel_location = PixelCoordinates::from_matrix_indices(i as u32, j as u32);
-				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, map_tile_size, map_tile_size);
-
-				//Draw map tile at this coordinate
-				if let Some(map_tile) = game_map.map_tiles.get(&(i as u32, j as u32)) {
-					core.wincan.copy(map_tile.texture, None, dest)?
-				}
-
-				//Use default sprite size for all non-map sprites
-				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
-				
-				//Draw player unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let Some(mut unit) = player_state.p1_units.get_mut(&(j as u32, i as u32)) {
-					unit.draw(core, &dest)?;
-				}
-
-				//Draw enemy unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let Some(mut enemy) = p2_units.get_mut(&(j as u32, i as u32)) {
-					enemy.draw(core, &dest)?;
-				}
-
-				//Draw barbarian unit at this coordinate (Don't forget i is y and j is x because 2d arrays)
-				if let Some(mut barbarian) = barbarian_units.get_mut(&(j as u32, i as u32)) {
-					barbarian.draw(core, &dest)?;
-				}
-			}
-		}
-
-		match player_state.p1_units.get(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)) {
+		match game_map.player_units.get(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)) {
 			Some(_) => {
 				match player_state.current_player_action {
 					PlayerAction::MovingUnit => {
@@ -485,7 +363,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				draw_banner(core, &win_text_textures, winner_banner.banner_key, winner_banner.banner_colors)?;
 			} else if winner_banner.banner_visible {
 				winner_banner.banner_visible = false;
-				
+
 				//End the game by returning to the main menu
 				return Ok(GameState::MainMenu);
 			}
@@ -501,7 +379,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 				winner_banner.current_banner_transparency -= 25;
 			}
 		}
-		
+
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
 	}
@@ -531,11 +409,11 @@ fn draw_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_
 		Some(texture) => core.wincan.copy(&texture, None, text_rect)?,
 		None => {},
 	};
-	
+
 	Ok(())
 }
 
-// Draws a rect of a certain color over all tiles contained within the vector 
+// Draws a rect of a certain color over all tiles contained within the vector
 fn draw_possible_moves(core: &mut SDLCore, tiles: &Vec<(u32, u32)>, color:Color) -> Result< (), String> {
 	for (x,y) in tiles.into_iter() {
 		let pixel_location = PixelCoordinates::from_matrix_indices(*y, *x);
@@ -573,7 +451,7 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 				}
 				else {
 					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 7, 1, 95, 1, 5, unit_textures.get(melee).unwrap()));
-				}		
+				}
 			},
 			'r' => {
 				if player_team == Team::Barbarians {
@@ -590,7 +468,7 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 				else {
 					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 6, 3, 75,  5, 9, unit_textures.get(mage).unwrap()));
 				}
-			}, 
+			},
 		};
 	}
 }

@@ -20,38 +20,38 @@ use crate::banner::Banner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
 
-pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerState<'a>, p2_units: &mut HashMap<(u32, u32), Unit<'a>>, barbarian_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap<'b>, castle_coord: &(u32, u32), input: &Input, turn_banner: &mut Banner, unit_interface: &mut Option<UnitInterface<'a>>, unit_textures: &'a HashMap<&str, Texture<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
+pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState, game_map: &mut GameMap<'a>, input: &Input, turn_banner: &mut Banner, unit_interface: &mut Option<UnitInterface<'a>>, unit_textures: &'a HashMap<&str, Texture<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
     if !turn_banner.banner_visible {
         //Check if player ended turn by pressing backspace
         if input.keystate.contains(&Keycode::Backspace) {
-            end_player_turn(player_state, turn_banner, unit_interface, current_player, cursor);
+            end_player_turn(player_state, game_map, turn_banner, unit_interface, current_player, cursor);
             return Ok(());
         }
 
         //Check if user clicked the end turn button
 		if input.left_clicked && end_turn_button.is_mouse(core) {
-			end_player_turn(player_state, turn_banner, unit_interface, current_player, cursor);
+			end_player_turn(player_state, game_map, turn_banner, unit_interface, current_player, cursor);
             return Ok(());
 		}
 
         //Get map matrix indices from mouse position
         let (i, j) = PixelCoordinates::matrix_indices_from_pixel(
-            input.mouse_state.x().try_into().unwrap(), 
-            input.mouse_state.y().try_into().unwrap(), 
-            (-1 * core.cam.x).try_into().unwrap(), 
+            input.mouse_state.x().try_into().unwrap(),
+            input.mouse_state.y().try_into().unwrap(),
+            (-1 * core.cam.x).try_into().unwrap(),
             (-1 * core.cam.y).try_into().unwrap()
         );
         let (glob_x, glob_y) = PixelCoordinates::global_coordinates(
-            input.mouse_state.x().try_into().unwrap(), 
-            input.mouse_state.y().try_into().unwrap(), 
-            (-1 * core.cam.x).try_into().unwrap(), 
+            input.mouse_state.x().try_into().unwrap(),
+            input.mouse_state.y().try_into().unwrap(),
+            (-1 * core.cam.x).try_into().unwrap(),
             (-1 * core.cam.y).try_into().unwrap()
         );
 
         match player_state.current_player_action {
             PlayerAction::Default => {
                 //If player hovers over a unit, display cursor above that unit
-                match player_state.p1_units.get_mut(&(j,i)) {
+                match game_map.player_units.get_mut(&(j,i)) {
                     Some(active_unit) => {
                         //Now check if the player actually clicked on the unit they hovered over
                         if input.left_clicked {
@@ -69,7 +69,7 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
             PlayerAction::ChoosingUnitAction => {
                 if input.left_clicked {
                     // Handle clicking based on unit interface
-                    let active_unit = player_state.p1_units.get(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)).unwrap();
+                    let active_unit = game_map.player_units.get(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)).unwrap();
                     player_state.current_player_action = unit_interface.as_ref().unwrap().get_click_selection(glob_x, glob_y);
                     match player_state.current_player_action {
                         PlayerAction::Default => {
@@ -93,7 +93,7 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
                         },
                     }
                 }
-            },		
+            },
             PlayerAction::MovingUnit => {
                 if input.right_clicked {
                     // Deselect the active unit
@@ -105,10 +105,10 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
                     // Ensure valid tile to move to
                     if game_map.possible_moves.contains(&(j,i)) {
                         // Move unit
-                        let mut active_unit = player_state.p1_units.remove(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)).unwrap();
+                        let mut active_unit = game_map.player_units.remove(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)).unwrap();
                         active_unit.update_pos(j, i);
                         active_unit.has_moved = true;
-                        player_state.p1_units.insert((j, i), active_unit);
+                        game_map.player_units.insert((j, i), active_unit);
                         // Update map tiles
                         if let Some(old_map_tile) = game_map.map_tiles.get_mut(&(player_state.active_unit_i as u32, player_state.active_unit_j as u32)) {
                             old_map_tile.update_team(None);
@@ -117,7 +117,7 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
                             new_map_tile.update_team(Some(Team::Player));
                         }
                     }
-                    
+
                     //Now that the unit has moved, deselect
                     player_state.active_unit_i = -1;
                     player_state.active_unit_j = -1;
@@ -134,17 +134,17 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
                     // Attack unit clicked on
                     // The player should only be able to attack if the tile they clicked on contains an opposing unit within their range
                     if game_map.actual_attacks.contains(&(j, i)) {
-                        let mut active_unit = player_state.p1_units.get_mut(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)).unwrap();
+                        let mut active_unit = game_map.player_units.get_mut(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)).unwrap();
                         let mut dead_barb: bool = false;
                         //All attack handling is done here
                         let damage_done = active_unit.get_attack_damage();
                         if let Some(tile_under_attack) = game_map.map_tiles.get_mut(&(i, j)) {
                             match tile_under_attack.contained_unit_team {
                                 Some(Team::Enemy) => {
-                                    if let Some(unit) = p2_units.get_mut(&(j, i)) {
+                                    if let Some(unit) = game_map.enemy_units.get_mut(&(j, i)) {
                                         println!("Enemy unit starting at {} hp.", unit.hp);
                                         if unit.hp <= damage_done {
-                                            p2_units.remove(&(j, i));
+                                            game_map.enemy_units.remove(&(j, i));
                                             println!("Enemy unit at {}, {} is dead after taking {} damage.", j, i, damage_done);
                                             tile_under_attack.update_team(None);
                                         } else {
@@ -155,10 +155,10 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
                                     }
                                 },
                                 _ => {
-                                    if let Some(unit) = barbarian_units.get_mut(&(j, i)) {
+                                    if let Some(unit) = game_map.barbarian_units.get_mut(&(j, i)) {
                                         println!("Barbarian unit starting at {} hp.", unit.hp);
                                         if unit.hp <= damage_done {
-                                            barbarian_units.remove(&(j, i));
+                                            game_map.barbarian_units.remove(&(j, i));
                                             println!("Barbarian unit at {}, {} is dead after taking {} damage.", j, i, damage_done);
                                             tile_under_attack.update_team(None);
                                             dead_barb = true;
@@ -178,6 +178,7 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
                             if chance < 40 {
                                 println!("Barbarian has been converted. Defaulting respawn to melee.");
                                 //Create the new unit with default stats and update the position of it accordingly (might want to make it so stats are not at max after converting)
+                                let castle_coord = &game_map.pos_player_castle;
                                 let mut new_unit = Unit::new(castle_coord.0-5, castle_coord.1+5, Team::Player, 20, 7, 1, 95, 1, 5, unit_textures.get("pll").unwrap());
                                 let respawn_location = new_unit.respawn_loc(&mut game_map.map_tiles, *castle_coord);
                                 new_unit.update_pos(respawn_location.0, respawn_location.1);
@@ -186,9 +187,9 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
                                 new_unit.has_moved = true;
                                 new_unit.has_attacked = true;
                                 println!("Unit spawned at {}, {}", respawn_location.0, respawn_location.1);
-                                
+
                                 //Don't forget to update the players units and the hash map
-                                player_state.p1_units.insert(respawn_location, new_unit);
+                                game_map.player_units.insert(respawn_location, new_unit);
                                 if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(respawn_location.1, respawn_location.0)) {
                                     new_map_tile.update_team(Some(Team::Player));
                                 }
@@ -201,13 +202,13 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
                     player_state.current_player_action = PlayerAction::Default;
                 }
             }
-        }		
+        }
     }
 
     Ok(())
 }
 
-pub fn end_player_turn<'a>(player_state: &mut PlayerState, turn_banner: &mut Banner, unit_interface: &mut Option<UnitInterface<'a>>, current_player: &mut Team, cursor: &mut Cursor) {
+pub fn end_player_turn<'a>(player_state: &mut PlayerState, game_map: &mut GameMap<'a>, turn_banner: &mut Banner, unit_interface: &mut Option<UnitInterface<'a>>, current_player: &mut Team, cursor: &mut Cursor) {
     //End player's turn
     *current_player = Team::Enemy;
 
@@ -221,7 +222,7 @@ pub fn end_player_turn<'a>(player_state: &mut PlayerState, turn_banner: &mut Ban
     player_state.current_player_action = PlayerAction::Default;
 
     //Reactivate any grayed out player units
-    crate::single_player::initialize_next_turn(&mut player_state.p1_units);
+    crate::single_player::initialize_next_turn(&mut game_map.player_units);
 
     //Start displaying the enemy's banner
     turn_banner.current_banner_transparency = 250;

@@ -413,7 +413,7 @@ impl Unit <'_>{
         let src = if self.has_attacked && self.has_moved {
             //Draw the darkened sprite
             self.gray_sprite_src
-        } 
+        }
         else if self.is_attacked {
             self.time_since_damaged += self.last_damaged_drawn.elapsed().as_secs_f32();
             self.last_damaged_drawn = Instant::now();
@@ -431,7 +431,7 @@ impl Unit <'_>{
             //Draw the default sprite
             self.default_sprite_src
         };
-        
+
         //Draw the sprite
         core.wincan.copy(self.texture, src, *dest)?;
 
