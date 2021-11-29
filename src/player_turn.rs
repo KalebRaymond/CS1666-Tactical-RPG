@@ -20,7 +20,7 @@ use crate::banner::Banner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
 
-pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerState, p2_units: &mut HashMap<(u32, u32), Unit<'a>>, barbarian_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap<'b>, castle_coord: &(u32, u32), input: &Input, turn_banner: &mut Banner, unit_interface: &mut Option<UnitInterface<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
+pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerState<'a>, p2_units: &mut HashMap<(u32, u32), Unit<'a>>, barbarian_units: &mut HashMap<(u32, u32), Unit<'a>>, game_map: &mut GameMap<'b>, castle_coord: &(u32, u32), input: &Input, turn_banner: &mut Banner, unit_interface: &mut Option<UnitInterface<'a>>, unit_textures: &'a HashMap<&str, Texture<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
     if !turn_banner.banner_visible {
         //Check if player ended turn by pressing backspace
         if input.keystate.contains(&Keycode::Backspace) {
@@ -135,6 +135,7 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
                     // The player should only be able to attack if the tile they clicked on contains an opposing unit within their range
                     if game_map.actual_attacks.contains(&(j, i)) {
                         let mut active_unit = player_state.p1_units.get_mut(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)).unwrap();
+                        let mut dead_barb: bool = false;
                         //All attack handling is done here
                         let damage_done = active_unit.get_attack_damage();
                         if let Some(tile_under_attack) = game_map.map_tiles.get_mut(&(i, j)) {
@@ -160,14 +161,7 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
                                             barbarian_units.remove(&(j, i));
                                             println!("Barbarian unit at {}, {} is dead after taking {} damage.", j, i, damage_done);
                                             tile_under_attack.update_team(None);
-                                            
-                                            //Need to check and see if this barbarian was converted
-                                            let chance = rand::thread_rng().gen_range(0..100);
-                                            if chance < 50 {
-                                                println!("Barbarian has been converted. Defaulting respawn to melee.")
-                                                //let respawn_loc = unit.is_converted(&mut game_map.map_tiles, *castle_coord);
-                                            }
-                                            
+                                            dead_barb = true;
                                         } else {
                                             unit.receive_damage(damage_done);
                                             game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
@@ -178,6 +172,23 @@ pub fn handle_player_turn<'a, 'b>(core: &SDLCore<'b>, player_state: &mut PlayerS
                             }
                         }
                         active_unit.has_attacked = true;
+                        if dead_barb {
+                            //Need to check and see if this barbarian was converted - currently a 50/50
+                            let chance = rand::thread_rng().gen_range(0..100);
+                            if chance < 101 {
+                                println!("Barbarian has been converted. Defaulting respawn to melee.");
+                                //Create the new unit with default stats and update the position of it accordingly
+                                let mut new_unit = Unit::new(castle_coord.0-5, castle_coord.1+5, Team::Player, 20, 7, 1, 95, 1, 5, unit_textures.get("pll").unwrap());
+                                let respawn_location = new_unit.respawn_loc(&mut game_map.map_tiles, *castle_coord);
+                                new_unit.update_pos(respawn_location.0, respawn_location.1);
+                                println!("Unit spawned at {}, {}", respawn_location.0, respawn_location.1);
+                                //Don't forget to update the players units and the hash map
+                                player_state.p1_units.insert(respawn_location, new_unit);
+                                if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(respawn_location.1, respawn_location.0)) {
+                                    new_map_tile.update_team(Some(Team::Player));
+                                }
+                            }
+                        }
                     }
                     // After attack, deselect
                     player_state.active_unit_i = -1;

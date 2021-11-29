@@ -147,11 +147,13 @@ impl Unit <'_>{
     }
 
     pub fn respawn_loc(&self, map: &mut HashMap<(u32, u32), Tile>, where_to_spawn: (u32,u32)) -> (u32, u32) {
-        if let std::collections::hash_map::Entry::Occupied(entry) = map.entry(where_to_spawn) {
+        if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((where_to_spawn.1, where_to_spawn.0)) {
             //As long as a unit can move to this tile return it otherwise find closest available
             if entry.get().unit_can_move_here() {
+                println!("Tile is unoccupied");
                 where_to_spawn
             } else {
+                println!("Need to find another location");
                 self.get_closest_move(where_to_spawn, map)
             }
         } else {
