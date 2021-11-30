@@ -15,7 +15,6 @@ use crate::cursor::Cursor;
 use crate::game_map::GameMap;
 use crate::GameState;
 use crate::{CAM_H, CAM_W, TILE_SIZE};
-use crate::input::Input;
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::player_action::PlayerAction;
 use crate::player_state::PlayerState;
@@ -33,13 +32,6 @@ const TURNS_ON_BASE: u32 = 3;
 
 pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let texture_creator = core.wincan.texture_creator();
-
-	//Initial mouse positions
-	let mut old_mouse_x = -1;
-	let mut old_mouse_y = -1;
-
-	//User input
-	let mut input = Input::new(&core.event_pump);
 
 	//Load unit textures
 	let mut unit_textures: HashMap<&str, Texture> = HashMap::new();
@@ -177,60 +169,14 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		}
 
 		//Record user inputs
-		input.update(&core.event_pump);
-
-		//Camera controls should stay enabled even when it is not the player's turn,
-		//which is why this code block is not in player_turn.rs
-		if input.mouse_state.right() && !turn_banner.banner_visible{
-			if old_mouse_x < 0 || old_mouse_y < 0 {
-				old_mouse_x = input.mouse_state.x();
-				old_mouse_y = input.mouse_state.y();
-			}
-			core.cam.x = (core.cam.x - (old_mouse_x - input.mouse_state.x())).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
-			core.cam.y = (core.cam.y - (old_mouse_y - input.mouse_state.y())).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0);
-
-			old_mouse_x = input.mouse_state.x();
-			old_mouse_y = input.mouse_state.y();
-		}
-		else {
-			old_mouse_y = -1;
-			old_mouse_x = -1;
-		}
-
-		let (i, j) = PixelCoordinates::matrix_indices_from_pixel(
-            input.mouse_state.x().try_into().unwrap(),
-            input.mouse_state.y().try_into().unwrap(),
-            (-1 * core.cam.x).try_into().unwrap(),
-            (-1 * core.cam.y).try_into().unwrap()
-        );
-
-		match game_map.player_units.get_mut(&(j,i)) {
-			Some(active_unit) => {
-				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
-			},
-			_ => {
-				cursor.hide_cursor();
-			},
-		}
-		match game_map.enemy_units.get_mut(&(j,i)) {
-			Some(active_unit) => {
-				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
-			},
-			_ => {},
-		}
-		match game_map.barbarian_units.get_mut(&(j,i)) {
-			Some(active_unit) => {
-				cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
-			},
-			_ => {},
-		}
+		core.input.update(&core.event_pump);
 
 		//If no one has won so far...
 		if winning_team.is_none() {
 			//Handle the current team's move
 			match current_player {
 				Team::Player => {
-					player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &mut choose_unit_interface, &unit_textures, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
+					player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &mut turn_banner, &mut unit_interface, &mut choose_unit_interface, &unit_textures, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
 
 					// Checks to see if the player's units are on the opponent's castle tile
 					if next_team_check == Team::Player {

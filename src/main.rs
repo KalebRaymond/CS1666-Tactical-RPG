@@ -36,6 +36,7 @@ use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
 use crate::main_menu::MainMenu;
 use crate::multi_player::MultiPlayer;
 use crate::game_map::load_textures;
+use crate::input::Input;
 
 const TITLE: &str = "Castle Quest";
 const CAM_W: u32 = 1280;
@@ -65,6 +66,7 @@ pub struct SDLCore<'t> {
 	pub texture_map: &'t HashMap<&'t str, Texture<'t>>,
 	pub event_pump: sdl2::EventPump,
 	pub cam: Rect,
+	pub input: Input,
 }
 
 fn runner(vsync:bool) -> Result<(), String> {
@@ -93,6 +95,7 @@ fn runner(vsync:bool) -> Result<(), String> {
 		.map_err(|e| e.to_string())?;
 
 	let event_pump = sdl_ctx.event_pump()?;
+	let input = Input::new(&event_pump);
 
 	let cam = Rect::new(0, 0, CAM_W, CAM_H);
 
@@ -114,6 +117,7 @@ fn runner(vsync:bool) -> Result<(), String> {
 		texture_map: &texture_map,
 		event_pump,
 		cam,
+		input,
 	};
 
 	// ----- Start the game loop in the menu -----
