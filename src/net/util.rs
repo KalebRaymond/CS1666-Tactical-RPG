@@ -5,6 +5,10 @@ pub const MSG_POLL: u8 = 3;   // poll for new events in a room
 
 pub const EVENT_NONE: u8 = 0; // there are no events to poll
 pub const EVENT_JOIN: u8 = 1; // a player has joined the room
+pub const EVENT_MOVE: u8 = 2;
+pub const EVENT_ATTACK: u8 = 3;
+pub const EVENT_END_TURN: u8 = 4;
+pub const EVENT_END_GAME: u8 = 5;
 
 // allows a range of indeces in an array to be set with one expression
 // e.g. set_range!(arr[4..6] = [4, 5, 6, 7, 8]); will set arr[4] = 4 and arr[5] = 5
@@ -33,6 +37,15 @@ impl Event {
 			id: 0,
 			from_pos: (0, 0),
 			to_pos: (0, 0),
+		}
+	}
+
+	pub fn create(action: u8, id: u8, from_pos: (u32, u32), to_pos: (u32, u32)) -> Event {
+		Event {
+			action,
+			id,
+			from_pos,
+			to_pos,
 		}
 	}
 

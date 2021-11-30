@@ -116,8 +116,7 @@ impl GameMap<'_> {
 	pub fn draw(&mut self, core: &mut SDLCore) {
 		//Camera controls should stay enabled even when it is not the player's turn,
 		//which is why this code block is not in player_turn.rs
-		//&& !self.turn_banner.banner_visible
-		if core.input.right_held {
+		if core.input.right_held && !self.banner.banner_visible {
 			let max_move = TILE_SIZE as i32;
 			core.cam.x = (core.cam.x - (core.input.mouse_x_old - core.input.mouse_x).clamp(-max_move, max_move)).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
 			core.cam.y = (core.cam.y - (core.input.mouse_y_old - core.input.mouse_y).clamp(-max_move, max_move)).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0);

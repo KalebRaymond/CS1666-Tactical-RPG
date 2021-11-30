@@ -8,7 +8,6 @@ use sdl2::render::Texture;
 
 use std::collections::HashMap;
 use std::convert::TryInto;
-use std::time::{Instant, Duration};
 use crate::AI::*;
 use crate::button::Button;
 use crate::cursor::Cursor;
@@ -27,7 +26,6 @@ use crate::banner::Banner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
 
-const BANNER_TIMEOUT: u64 = 1500;
 const TURNS_ON_BASE: u32 = 3;
 
 pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
@@ -60,7 +58,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	core.cam.y = -core.cam.h + core.wincan.window().size().1 as i32;
 
 	//Collection of variables useful for determining player's current state
-	let mut player_state = PlayerState::new();
+	let mut player_state = PlayerState::new(Team::Player);
 
 	//Cursor that appears when you hover over one of your units
 	let cursor_texture = texture_creator.load_texture("images/interface/cursor.png")?;

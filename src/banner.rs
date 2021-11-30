@@ -10,6 +10,7 @@ use sdl2::rect::Rect;
 
 use crate::SDLCore;
 use crate::{CAM_H, CAM_W};
+use crate::unit::Team;
 
 const BANNER_TIMEOUT: u64 = 1500;
 const BANNER_ALPHA: u8 = 250;
@@ -37,6 +38,14 @@ impl Banner {
 			initial_banner_output: Instant::now(),
 			banner_visible: true,
 		}
+	}
+
+	pub fn show_turn(&mut self, banner_team: Team) {
+		self.show(match banner_team {
+			Team::Player => BANNER_TURN_P1,
+			Team::Enemy => BANNER_TURN_P2,
+			Team::Barbarians => BANNER_TURN_BARB,
+		});
 	}
 
 	pub fn show(&mut self, banner_key: &str) {
