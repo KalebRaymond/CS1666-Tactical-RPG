@@ -188,6 +188,7 @@ impl GameMap<'_> {
 		}
 
 		// draw UI/banners
+		self.cursor.draw(core);
 		self.banner.draw(core);
 	}
 }

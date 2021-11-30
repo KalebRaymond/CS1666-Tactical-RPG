@@ -60,10 +60,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	//Collection of variables useful for determining player's current state
 	let mut player_state = PlayerState::new(Team::Player);
 
-	//Cursor that appears when you hover over one of your units
-	let cursor_texture = texture_creator.load_texture("images/interface/cursor.png")?;
-	let mut cursor = Cursor::new(&cursor_texture);
-
 	let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (8,46)), ('l', (10,45)), ('l', (10,53)), ('l', (12,46)), ('l', (17,51)), ('l', (17,55)), ('l', (18,53)), ('r', (9,49)), ('r', (10,46)), ('r', (13,50)), ('r', (14,54)), ('r', (16,53)), ('m', (10,50)), ('m', (10,52)), ('m', (11,53)), ('m', (13,53)));
 	//let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (14, 40))); //Spawns a player unit right next to some barbarians
 	//let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (54, 8))); //Spawns a player unit right next to the enemy's castle
@@ -119,7 +115,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			//Handle the current team's move
 			match current_player {
 				Team::Player => {
-					player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &mut unit_interface, &mut choose_unit_interface, &unit_textures, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
+					player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &mut unit_interface, &mut choose_unit_interface, &unit_textures, &unit_interface_texture, &mut current_player, &mut end_turn_button)?;
 
 					// Checks to see if the player's units are on the opponent's castle tile
 					if next_team_check == Team::Player {
@@ -204,9 +200,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 		if current_player == Team::Player
 		{
-			//Draw the cursor
-			cursor.draw(core)?;
-
 			//Draw the scroll sprite UI
 			unit_interface = match unit_interface {
 				Some(mut ui) => {
