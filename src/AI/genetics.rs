@@ -136,27 +136,27 @@ fn culling(current_population: &Vec<PopulationState>) -> Vec<PopulationState> {
 	return current_population[0..(current_population.len() - num_to_drop)].to_vec();
 }
 
-pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameMap, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> Vec<PopulationState>{
+pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> Vec<PopulationState>{
     let mut rng_thread = thread_rng();
     //Keeps track of all the possible unit movements
     let mut succinct_units: Vec<SuccinctUnit> = Vec::new();
 
     //Also want to include the unmodified initial state among possible candidate states
     let mut original_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
-    
+
     println!("Utility Function Constants:\nMinimum Distance from Objectives: {}, Defending Weight: {}, Sieging Weight: {}, Camp Weight: {}, Value from Attack: {}, Minimum Defending Units: {}, Defense Penalty: {}\n", MIN_DISTANCE, DEFENDING_WEIGHT, SIEGING_WEIGHT, CAMP_WEIGHT, ATTACK_VALUE, MIN_DEFENSE, DEFENSE_PENALTY);
     println!("Genetic Algorithm Constants:\nPopulation Size: {}, Number of Generations: {}, Mutation Probability: {}, Number of Units Changed on Mutate: {}, Elite Percentage: {}, Culling Percentage: {}\n", POP_NUM, GEN_NUM, MUT_PROB, MUT_NUM, E_PERC, C_PERC);
-    
-    for unit in units.values() {  
+
+    for unit in game_map.enemy_units.values() {
         let current_unit = SuccinctUnit::new(unit.get_tiles_in_movement_range(&mut game_map.map_tiles), unit.attack_range);
-        
-        let move_value = current_unit_value(current_unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords, distance_map);
+
+        let move_value = current_unit_value(current_unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, &game_map.pos_enemy_castle, &game_map.pos_player_castle, &game_map.pos_barbarian_camps, distance_map);
         original_unit_movements.push(((unit.x, unit.y), move_value));
-        
+
         succinct_units.push(current_unit);
     }
 
-    let mut initial_population = generate_initial_population(&succinct_units, &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords, distance_map);
+    let mut initial_population = generate_initial_population(&succinct_units, &mut game_map.map_tiles, &game_map.pos_enemy_castle, &game_map.pos_player_castle, &game_map.pos_barbarian_camps, distance_map);
     let mut original_state = PopulationState::new(original_unit_movements, 0.0);
     assign_value_to_state(&mut original_state);
     initial_population.push(original_state);
@@ -167,12 +167,12 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
     for i in 0..GEN_NUM {
         initial_population.sort_unstable();
         initial_population.reverse();
-        
+
         new_generation.append(&mut elite_selection(&initial_population));
         remaining_population = culling(&initial_population);
-        
+
         let utilities: Vec<f64> = remaining_population.iter().map(|pop| pop.overall_utility).collect();
-        let probabilities: Vec<f64> = convert_utilities_to_probabilities(utilities); 
+        let probabilities: Vec<f64> = convert_utilities_to_probabilities(utilities);
 
         //While we still need to fill our generation, generate new individuals using cross over
         while new_generation.len() < POP_NUM {
@@ -190,7 +190,7 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
             }
 
             num_attempts = 0;
-            
+
             let mut index_of_state_2 = choose_index_from_distribution(&probabilities);
             //Need to make sure that we do not select the same index as crossing a state with itself produces nothing new
             while index_of_state_2 == index_of_state_1 || index_of_state_2 == probabilities.len(){
@@ -205,7 +205,7 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
                     }
                 }
             }
-            
+
             let new_individuals = crossover(&remaining_population[index_of_state_1], &remaining_population[index_of_state_2]);
 
             if new_generation.len() + 2 > POP_NUM {
@@ -219,7 +219,7 @@ pub fn genetic_algorithm(units: &HashMap<(u32, u32), Unit>, game_map: &mut GameM
         let num_to_mutate: usize = ((MUT_PROB * (new_generation.len() as f32)).round() as i32).try_into().unwrap();
         let mut states_to_mutate = new_generation.iter_mut().choose_multiple(&mut rng_thread, num_to_mutate); 
         for state in states_to_mutate.iter_mut() {
-            mutate(state, &succinct_units, &mut game_map.map_tiles, p2_castle, p1_castle, camp_coords, distance_map);
+            mutate(state, &succinct_units, &mut game_map.map_tiles, &game_map.pos_enemy_castle, &game_map.pos_player_castle, &game_map.pos_barbarian_camps, distance_map);
         }
 
         initial_population = new_generation.clone();

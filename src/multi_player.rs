@@ -7,6 +7,7 @@ use sdl2::render::Texture;
 
 use crate::net::client::Client;
 
+use crate::game_map::GameMap;
 use crate::{Drawable, GameState};
 use crate::SDLCore;
 
@@ -23,7 +24,9 @@ pub struct MultiPlayer<'i, 'r> {
     join_text_rects: Vec<Rect>,
 	join_text_anim_start: Instant,
     room_text: Texture<'i>,
-    room_text_rect: Rect,
+	room_text_rect: Rect,
+
+	game_map: GameMap<'i>,
 }
 
 impl MultiPlayer<'_, '_> {
@@ -63,6 +66,8 @@ impl MultiPlayer<'_, '_> {
 		).map_err(|e| e.to_string())?;
 		let room_text_rect = centered_rect!(core, _, 350, room_w, room_h);
 
+		let game_map = GameMap::new(core.texture_map);
+
 		Ok(MultiPlayer {
 			core,
 			client,
@@ -78,6 +83,8 @@ impl MultiPlayer<'_, '_> {
 
 			room_text,
 			room_text_rect,
+
+			game_map,
 		})
 	}
 
@@ -122,7 +129,9 @@ impl Drawable for MultiPlayer<'_, '_> {
 			return Ok(GameState::MultiPlayer);
 		}
 
-		// TODO: game rendering logic
+		// render the current game board
+		self.game_map.draw(self.core);
+
 		self.core.wincan.present();
 
 		Ok(GameState::MultiPlayer)
