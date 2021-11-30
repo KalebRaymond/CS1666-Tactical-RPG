@@ -1,12 +1,16 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::convert::TryInto;
 
 use sdl2::video::WindowContext;
 use sdl2::render::{Texture, TextureCreator};
 use sdl2::image::LoadTexture;
 use sdl2::rect::Rect;
 
+use crate::cursor::Cursor;
+use crate::input::Input;
+use crate::banner::Banner;
 use crate::damage_indicator::DamageIndicator;
 use crate::tile::{Tile, Structure};
 use crate::unit::{Team, Unit};
@@ -33,6 +37,10 @@ pub struct GameMap<'a> {
 
 	//Holds all damage indicators (the numbers that appear above a unit when attacked) that are visible
 	pub damage_indicators: Vec<DamageIndicator<'a>>,
+
+	// various UI elements
+	pub banner: Banner,
+	pub cursor: Cursor<'a>,
 }
 
 impl GameMap<'_> {
@@ -67,6 +75,8 @@ impl GameMap<'_> {
 			possible_attacks: Vec::new(),
 			actual_attacks: Vec::new(),
 			damage_indicators: Vec::new(),
+			banner: Banner::new(),
+			cursor: Cursor::new(textures.get("cursor").unwrap())
 		};
 
 		//Set up the HashMap of Tiles that can be interacted with
@@ -104,6 +114,42 @@ impl GameMap<'_> {
 	}
 
 	pub fn draw(&mut self, core: &mut SDLCore) {
+		//Camera controls should stay enabled even when it is not the player's turn,
+		//which is why this code block is not in player_turn.rs
+		if core.input.right_held && !self.banner.banner_visible {
+			let max_move = TILE_SIZE as i32;
+			core.cam.x = (core.cam.x - (core.input.mouse_x_old - core.input.mouse_x).clamp(-max_move, max_move)).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
+			core.cam.y = (core.cam.y - (core.input.mouse_y_old - core.input.mouse_y).clamp(-max_move, max_move)).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0);
+		}
+
+		let (i, j) = PixelCoordinates::matrix_indices_from_pixel(
+            core.input.mouse_x.try_into().unwrap(),
+            core.input.mouse_y.try_into().unwrap(),
+            (-1 * core.cam.x).try_into().unwrap(),
+            (-1 * core.cam.y).try_into().unwrap()
+        );
+
+		match self.player_units.get_mut(&(j,i)) {
+			Some(active_unit) => {
+				self.cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
+			},
+			_ => {
+				self.cursor.hide_cursor();
+			},
+		}
+		match self.enemy_units.get_mut(&(j,i)) {
+			Some(active_unit) => {
+				self.cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
+			},
+			_ => {},
+		}
+		match self.barbarian_units.get_mut(&(j,i)) {
+			Some(active_unit) => {
+				self.cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
+			},
+			_ => {},
+		}
+
 		//Draw tiles & sprites
 		for x in 0..self.map_size.0 {
 			for y in 0..self.map_size.1 {
@@ -140,12 +186,15 @@ impl GameMap<'_> {
 				}
 			}
 		}
+
+		// draw UI/banners
+		self.cursor.draw(core);
+		self.banner.draw(core);
 	}
 }
 
-pub fn load_textures<'r>(texture_creator: &'r TextureCreator<WindowContext>) -> Result<HashMap<&str, Texture<'r>>, String> {
-	//Load map textures
-	let mut textures: HashMap<&str, Texture> = HashMap::new();
+//Load map textures
+pub fn load_textures<'r>(textures: &mut HashMap<&str, Texture<'r>>, texture_creator: &'r TextureCreator<WindowContext>) -> Result<(), String> {
 	//Mountains
 	textures.insert("▉", texture_creator.load_texture("images/tiles/mountain_tile.png")?);
 	textures.insert("▒", texture_creator.load_texture("images/tiles/mountain2_tile.png")?);
@@ -184,5 +233,8 @@ pub fn load_textures<'r>(texture_creator: &'r TextureCreator<WindowContext>) -> 
 	textures.insert("bl", texture_creator.load_texture("images/units/barbarian_melee.png")?);
 	textures.insert("br", texture_creator.load_texture("images/units/barbarian_archer.png")?);
 
-	Ok(textures)
+	//Load UI textures
+	textures.insert("cursor", texture_creator.load_texture("images/interface/cursor.png")?);
+
+	Ok(())
 }

@@ -35,7 +35,7 @@ use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
 
 use crate::main_menu::MainMenu;
 use crate::multi_player::MultiPlayer;
-use crate::game_map::load_textures;
+use crate::input::Input;
 
 const TITLE: &str = "Castle Quest";
 const CAM_W: u32 = 1280;
@@ -65,6 +65,7 @@ pub struct SDLCore<'t> {
 	pub texture_map: &'t HashMap<&'t str, Texture<'t>>,
 	pub event_pump: sdl2::EventPump,
 	pub cam: Rect,
+	pub input: Input,
 }
 
 fn runner(vsync:bool) -> Result<(), String> {
@@ -93,6 +94,7 @@ fn runner(vsync:bool) -> Result<(), String> {
 		.map_err(|e| e.to_string())?;
 
 	let event_pump = sdl_ctx.event_pump()?;
+	let input = Input::new(&event_pump);
 
 	let cam = Rect::new(0, 0, CAM_W, CAM_H);
 
@@ -102,7 +104,10 @@ fn runner(vsync:bool) -> Result<(), String> {
 	let regular_font = ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 16)?; //From https://www.fontsquirrel.com/fonts/open-sans
 	let tiny_font = ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 12)?; //From https://www.fontsquirrel.com/fonts/open-sans
 
-	let texture_map = load_textures(&texture_creator)?;
+	let mut texture_map = HashMap::new();
+
+	crate::game_map::load_textures(&mut texture_map, &texture_creator)?;
+	crate::banner::load_textures(&mut texture_map, &texture_creator, &bold_font)?;
 
 	let mut core = SDLCore{
 		sdl_ctx,
@@ -114,6 +119,7 @@ fn runner(vsync:bool) -> Result<(), String> {
 		texture_map: &texture_map,
 		event_pump,
 		cam,
+		input,
 	};
 
 	// ----- Start the game loop in the menu -----

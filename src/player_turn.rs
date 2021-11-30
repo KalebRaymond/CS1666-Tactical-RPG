@@ -11,7 +11,6 @@ use crate::button::Button;
 use crate::cursor::Cursor;
 use crate::damage_indicator::DamageIndicator;
 use crate::game_map::GameMap;
-use crate::input::Input;
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::player_action::PlayerAction;
 use crate::player_state::PlayerState;
@@ -20,36 +19,36 @@ use crate::banner::Banner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
 
-pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState, game_map: &mut GameMap<'a>, input: &Input, turn_banner: &mut Banner, unit_interface: &mut Option<UnitInterface<'a>>, choose_unit_interface: &mut Option<UnitInterface<'a>>, unit_textures: &'a HashMap<&str, Texture<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
-    if !turn_banner.banner_visible {
+pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState, game_map: &mut GameMap<'a>, unit_interface: &mut Option<UnitInterface<'a>>, choose_unit_interface: &mut Option<UnitInterface<'a>>, unit_textures: &'a HashMap<&str, Texture<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, end_turn_button: &mut Button) -> Result<(), String> {
+    if !game_map.banner.banner_visible {
         //Check if player ended turn by pressing backspace
-        if input.keystate.contains(&Keycode::Backspace) && match player_state.current_player_action {
+        if core.input.keystate.contains(&Keycode::Backspace) && match player_state.current_player_action {
             PlayerAction::ChoosingNewUnit => false,
             _ => true,
         }{
-            end_player_turn(player_state, game_map, turn_banner, unit_interface, current_player, cursor);
+            end_player_turn(player_state, game_map, unit_interface, current_player);
             return Ok(());
         }
 
         //Check if user clicked the end turn button
-		if input.left_clicked && end_turn_button.is_mouse(core) && match player_state.current_player_action {
+		if core.input.left_clicked && end_turn_button.is_mouse(core) && match player_state.current_player_action {
             PlayerAction::ChoosingNewUnit => false,
             _ => true,
         }{
-			end_player_turn(player_state, game_map, turn_banner, unit_interface, current_player, cursor);
+			end_player_turn(player_state, game_map, unit_interface, current_player);
             return Ok(());
 		}
 
         //Get map matrix indices from mouse position
         let (i, j) = PixelCoordinates::matrix_indices_from_pixel(
-            input.mouse_state.x().try_into().unwrap(),
-            input.mouse_state.y().try_into().unwrap(),
+            core.input.mouse_state.x().try_into().unwrap(),
+            core.input.mouse_state.y().try_into().unwrap(),
             (-1 * core.cam.x).try_into().unwrap(),
             (-1 * core.cam.y).try_into().unwrap()
         );
         let (glob_x, glob_y) = PixelCoordinates::global_coordinates(
-            input.mouse_state.x().try_into().unwrap(),
-            input.mouse_state.y().try_into().unwrap(),
+            core.input.mouse_state.x().try_into().unwrap(),
+            core.input.mouse_state.y().try_into().unwrap(),
             (-1 * core.cam.x).try_into().unwrap(),
             (-1 * core.cam.y).try_into().unwrap()
         );
@@ -60,7 +59,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
                 match game_map.player_units.get_mut(&(j,i)) {
                     Some(active_unit) => {
                         //Now check if the player actually clicked on the unit they hovered over
-                        if input.left_clicked {
+                        if core.input.left_clicked {
                             player_state.active_unit_i = i as i32;
                             player_state.active_unit_j = j as i32;
 
@@ -73,7 +72,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
                 }
             },
             PlayerAction::ChoosingUnitAction => {
-                if input.left_clicked {
+                if core.input.left_clicked {
                     // Handle clicking based on unit interface
                     let active_unit = game_map.player_units.get(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)).unwrap();
                     player_state.current_player_action = unit_interface.as_ref().unwrap().get_click_selection(glob_x, glob_y);
@@ -102,13 +101,13 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
                 }
             },
             PlayerAction::MovingUnit => {
-                if input.right_clicked {
+                if core.input.right_clicked {
                     // Deselect the active unit
                     player_state.active_unit_i = -1;
                     player_state.active_unit_j = -1;
                     player_state.current_player_action = PlayerAction::Default;
                 }
-                else if input.left_clicked {
+                else if core.input.left_clicked {
                     // Ensure valid tile to move to
                     if game_map.possible_moves.contains(&(j,i)) {
                         // Move unit
@@ -132,12 +131,12 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
                 }
             },
             PlayerAction::AttackingUnit => {
-                if input.right_clicked {
+                if core.input.right_clicked {
                     // Deselect the active unit
                     player_state.active_unit_i = -1;
                     player_state.active_unit_j = -1;
                     player_state.current_player_action = PlayerAction::Default;
-                } else if input.left_clicked {
+                } else if core.input.left_clicked {
                     // Attack unit clicked on
                     // The player should only be able to attack if the tile they clicked on contains an opposing unit within their range
                     if game_map.actual_attacks.contains(&(j, i)) {
@@ -204,7 +203,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
             }
             PlayerAction::ChoosingNewUnit => {
                 let castle_coord = &game_map.pos_player_castle;
-                if input.left_clicked {
+                if core.input.left_clicked {
                     // Handle clicking based on unit interface
                     player_state.current_player_action = choose_unit_interface.as_ref().unwrap().get_choose_unit_click_selection(glob_x, glob_y);
                     match player_state.current_player_action {
@@ -270,13 +269,13 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
     Ok(())
 }
 
-pub fn end_player_turn<'a>(player_state: &mut PlayerState, game_map: &mut GameMap<'a>, turn_banner: &mut Banner, unit_interface: &mut Option<UnitInterface<'a>>, current_player: &mut Team, cursor: &mut Cursor) {
+pub fn end_player_turn<'a>(player_state: &mut PlayerState, game_map: &mut GameMap<'a>, unit_interface: &mut Option<UnitInterface<'a>>, current_player: &mut Team) {
     //End player's turn
     *current_player = Team::Enemy;
 
     //Clear the player UI if it is still visible
     *unit_interface = None;
-    cursor.hide_cursor();
+    game_map.cursor.hide_cursor();
 
     //Deselect the active unit
     player_state.active_unit_i = -1;
@@ -287,8 +286,5 @@ pub fn end_player_turn<'a>(player_state: &mut PlayerState, game_map: &mut GameMa
     crate::single_player::initialize_next_turn(&mut game_map.player_units);
 
     //Start displaying the enemy's banner
-    turn_banner.current_banner_transparency = 250;
-    turn_banner.banner_colors = Color::RGBA(207, 21, 24, turn_banner.current_banner_transparency);
-    turn_banner.banner_key = "p2_banner";
-    turn_banner.banner_visible = true;
+    game_map.banner.show("p2_banner");
 }

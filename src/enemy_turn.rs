@@ -9,8 +9,8 @@ use crate::unit::{Team, Unit};
 use crate::banner::Banner;
 use crate::SDLCore;
 
-pub fn handle_enemy_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, turn_banner: &mut Banner, current_player: &mut Team, distance_map: &DistanceMap, unit_textures: &'a HashMap<&str, Texture<'a>>,) -> Result<(), String> {
-    if !turn_banner.banner_visible {
+pub fn handle_enemy_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, current_player: &mut Team, distance_map: &DistanceMap, unit_textures: &'a HashMap<&str, Texture<'a>>,) -> Result<(), String> {
+    if !game_map.banner.banner_visible {
         let best_moves = genetics::genetic_algorithm(game_map, distance_map);
 
         //Currently just base movements off the best individual, will convert to minimax later...
@@ -21,10 +21,7 @@ pub fn handle_enemy_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, tur
         *current_player = Team::Barbarians;
 
         //Start displaying the barbarians' banner
-        turn_banner.current_banner_transparency = 250;
-        turn_banner.banner_colors = Color::RGBA(163,96,30, turn_banner.current_banner_transparency);
-        turn_banner.banner_key = "b_banner";
-        turn_banner.banner_visible = true;
+        game_map.banner.show("b_banner");
     }
     Ok(())
 }
