@@ -110,6 +110,8 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let unit_interface_texture = texture_creator.load_texture("images/interface/unit_interface.png")?;
 	let mut unit_interface: Option<UnitInterface> = None;
 
+	let mut choose_unit_interface: Option<UnitInterface> = None;
+
 	//Collection of variables useful for handling map interaction & tile overlays
 	let mut game_map = GameMap::new(core.texture_map);
 
@@ -228,7 +230,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			//Handle the current team's move
 			match current_player {
 				Team::Player => {
-					player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &unit_textures, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
+					player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &input, &mut turn_banner, &mut unit_interface, &mut choose_unit_interface, &unit_textures, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
 
 					// Checks to see if the player's units are on the opponent's castle tile
 					if next_team_check == Team::Player {
@@ -318,6 +320,16 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 			//Draw the scroll sprite UI
 			unit_interface = match unit_interface {
+				Some(mut ui) => {
+					match ui.draw(core, &texture_creator) {
+						Ok(_) => { Some(ui) },
+						_ => { None },
+					}
+				},
+				_ => { None },
+			};
+
+			choose_unit_interface = match choose_unit_interface {
 				Some(mut ui) => {
 					match ui.draw(core, &texture_creator) {
 						Ok(_) => { Some(ui) },
