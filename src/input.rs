@@ -34,7 +34,7 @@ impl Input {
         }
     }
 
-    pub fn update(&mut self, event_pump: &sdl2::EventPump) {		
+    pub fn update(&mut self, event_pump: &sdl2::EventPump) {
 		//Record key inputs
 		self.keystate = event_pump
 		.keyboard_state()

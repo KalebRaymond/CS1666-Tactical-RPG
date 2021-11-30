@@ -35,7 +35,6 @@ use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
 
 use crate::main_menu::MainMenu;
 use crate::multi_player::MultiPlayer;
-use crate::game_map::load_textures;
 use crate::input::Input;
 
 const TITLE: &str = "Castle Quest";
@@ -105,7 +104,10 @@ fn runner(vsync:bool) -> Result<(), String> {
 	let regular_font = ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 16)?; //From https://www.fontsquirrel.com/fonts/open-sans
 	let tiny_font = ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 12)?; //From https://www.fontsquirrel.com/fonts/open-sans
 
-	let texture_map = load_textures(&texture_creator)?;
+	let mut texture_map = HashMap::new();
+
+	crate::game_map::load_textures(&mut texture_map, &texture_creator)?;
+	crate::banner::load_textures(&mut texture_map, &texture_creator, &bold_font)?;
 
 	let mut core = SDLCore{
 		sdl_ctx,

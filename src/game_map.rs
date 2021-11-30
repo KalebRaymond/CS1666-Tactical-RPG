@@ -39,7 +39,7 @@ pub struct GameMap<'a> {
 	pub damage_indicators: Vec<DamageIndicator<'a>>,
 
 	// various UI elements
-	pub turn_banner: Banner<'a>,
+	pub banner: Banner,
 	pub cursor: Cursor<'a>,
 }
 
@@ -75,8 +75,8 @@ impl GameMap<'_> {
 			possible_attacks: Vec::new(),
 			actual_attacks: Vec::new(),
 			damage_indicators: Vec::new(),
-			turn_banner: Banner::new(),
-			cursor: Cursor::new(&textures.get("cursor").unwrap())
+			banner: Banner::new(),
+			cursor: Cursor::new(textures.get("cursor").unwrap())
 		};
 
 		//Set up the HashMap of Tiles that can be interacted with
@@ -187,12 +187,14 @@ impl GameMap<'_> {
 				}
 			}
 		}
+
+		// draw UI/banners
+		self.banner.draw(core);
 	}
 }
 
-pub fn load_textures<'r>(texture_creator: &'r TextureCreator<WindowContext>) -> Result<HashMap<&str, Texture<'r>>, String> {
-	//Load map textures
-	let mut textures: HashMap<&str, Texture> = HashMap::new();
+//Load map textures
+pub fn load_textures<'r>(textures: &mut HashMap<&str, Texture<'r>>, texture_creator: &'r TextureCreator<WindowContext>) -> Result<(), String> {
 	//Mountains
 	textures.insert("▉", texture_creator.load_texture("images/tiles/mountain_tile.png")?);
 	textures.insert("▒", texture_creator.load_texture("images/tiles/mountain2_tile.png")?);
@@ -234,5 +236,5 @@ pub fn load_textures<'r>(texture_creator: &'r TextureCreator<WindowContext>) -> 
 	//Load UI textures
 	textures.insert("cursor", texture_creator.load_texture("images/interface/cursor.png")?);
 
-	Ok(textures)
+	Ok(())
 }

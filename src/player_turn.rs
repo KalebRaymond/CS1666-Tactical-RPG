@@ -19,14 +19,14 @@ use crate::banner::Banner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
 
-pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState, game_map: &mut GameMap<'a>, turn_banner: &mut Banner, unit_interface: &mut Option<UnitInterface<'a>>, choose_unit_interface: &mut Option<UnitInterface<'a>>, unit_textures: &'a HashMap<&str, Texture<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
-    if !turn_banner.banner_visible {
+pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState, game_map: &mut GameMap<'a>, unit_interface: &mut Option<UnitInterface<'a>>, choose_unit_interface: &mut Option<UnitInterface<'a>>, unit_textures: &'a HashMap<&str, Texture<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
+    if !game_map.banner.banner_visible {
         //Check if player ended turn by pressing backspace
         if core.input.keystate.contains(&Keycode::Backspace) && match player_state.current_player_action {
             PlayerAction::ChoosingNewUnit => false,
             _ => true,
         }{
-            end_player_turn(player_state, game_map, turn_banner, unit_interface, current_player, cursor);
+            end_player_turn(player_state, game_map, unit_interface, current_player, cursor);
             return Ok(());
         }
 
@@ -35,7 +35,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
             PlayerAction::ChoosingNewUnit => false,
             _ => true,
         }{
-			end_player_turn(player_state, game_map, turn_banner, unit_interface, current_player, cursor);
+			end_player_turn(player_state, game_map, unit_interface, current_player, cursor);
             return Ok(());
 		}
 
@@ -269,7 +269,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
     Ok(())
 }
 
-pub fn end_player_turn<'a>(player_state: &mut PlayerState, game_map: &mut GameMap<'a>, turn_banner: &mut Banner, unit_interface: &mut Option<UnitInterface<'a>>, current_player: &mut Team, cursor: &mut Cursor) {
+pub fn end_player_turn<'a>(player_state: &mut PlayerState, game_map: &mut GameMap<'a>, unit_interface: &mut Option<UnitInterface<'a>>, current_player: &mut Team, cursor: &mut Cursor) {
     //End player's turn
     *current_player = Team::Enemy;
 
@@ -286,8 +286,5 @@ pub fn end_player_turn<'a>(player_state: &mut PlayerState, game_map: &mut GameMa
     crate::single_player::initialize_next_turn(&mut game_map.player_units);
 
     //Start displaying the enemy's banner
-    turn_banner.current_banner_transparency = 250;
-    turn_banner.banner_colors = Color::RGBA(207, 21, 24, turn_banner.current_banner_transparency);
-    turn_banner.banner_key = "p2_banner";
-    turn_banner.banner_visible = true;
+    game_map.banner.show("p2_banner");
 }

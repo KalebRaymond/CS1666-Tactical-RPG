@@ -129,9 +129,6 @@ impl Drawable for MultiPlayer<'_, '_> {
 			return Ok(GameState::MultiPlayer);
 		}
 
-		//Record user inputs
-		self.core.input.update(&self.core.event_pump);
-
 		// render the current game board
 		self.game_map.draw(self.core);
 

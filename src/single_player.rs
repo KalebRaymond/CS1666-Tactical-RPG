@@ -44,61 +44,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	unit_textures.insert("bl", texture_creator.load_texture("images/units/barbarian_melee.png")?);
 	unit_textures.insert("br", texture_creator.load_texture("images/units/barbarian_archer.png")?);
 
-	//Stuff for banner that appears at beginning of each turn
-	let mut turn_banner = Banner::new();
-	let mut turn_text_textures: HashMap<&str, Texture> = HashMap::new();
-	{
-		turn_text_textures.insert("p1_banner", {
-			let text_surface = core.bold_font.render("Player 1's Turn")
-					.blended_wrapped(Color::RGBA(0,0,0, turn_banner.current_banner_transparency), 320) //Black font
-					.map_err(|e| e.to_string())?;
-
-			texture_creator.create_texture_from_surface(&text_surface)
-					.map_err(|e| e.to_string())?
-		});
-
-		turn_text_textures.insert("p2_banner", {
-			let text_surface = core.bold_font.render("Player 2's Turn")
-					.blended_wrapped(Color::RGBA(0,0,0, turn_banner.current_banner_transparency), 320) //Black font
-					.map_err(|e| e.to_string())?;
-
-			texture_creator.create_texture_from_surface(&text_surface)
-					.map_err(|e| e.to_string())?
-		});
-
-		turn_text_textures.insert("b_banner", {
-			let text_surface = core.bold_font.render("Barbarians' Turn")
-					.blended_wrapped(Color::RGBA(0,0,0, turn_banner.current_banner_transparency), 320) //Black font
-					.map_err(|e| e.to_string())?;
-
-			texture_creator.create_texture_from_surface(&text_surface)
-					.map_err(|e| e.to_string())?
-		});
-	}
-
-	//Stuff for banner that appears when a team has won
-	let mut winner_banner = Banner::new();
-	let mut win_text_textures: HashMap<&str, Texture> = HashMap::new();
-	{
-		win_text_textures.insert("p1_banner", {
-			let text_surface = core.bold_font.render("Player 1 wins!")
-					.blended_wrapped(Color::RGBA(0,0,0, turn_banner.current_banner_transparency), 320) //Black font
-					.map_err(|e| e.to_string())?;
-
-			texture_creator.create_texture_from_surface(&text_surface)
-					.map_err(|e| e.to_string())?
-		});
-
-		win_text_textures.insert("p2_banner", {
-			let text_surface = core.bold_font.render("Player 2 wins!")
-					.blended_wrapped(Color::RGBA(0,0,0, turn_banner.current_banner_transparency), 320) //Black font
-					.map_err(|e| e.to_string())?;
-
-			texture_creator.create_texture_from_surface(&text_surface)
-					.map_err(|e| e.to_string())?
-		});
-	}
-
 	let unit_interface_texture = texture_creator.load_texture("images/interface/unit_interface.png")?;
 	let mut unit_interface: Option<UnitInterface> = None;
 
@@ -176,7 +121,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			//Handle the current team's move
 			match current_player {
 				Team::Player => {
-					player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &mut turn_banner, &mut unit_interface, &mut choose_unit_interface, &unit_textures, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
+					player_turn::handle_player_turn(&core, &mut player_state, &mut game_map, &mut unit_interface, &mut choose_unit_interface, &unit_textures, &unit_interface_texture, &mut current_player, &mut cursor, &mut end_turn_button)?;
 
 					// Checks to see if the player's units are on the opponent's castle tile
 					if next_team_check == Team::Player {
@@ -184,7 +129,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 							Some(_player1_unit) => {
 								player1_on_base += 1;
 								if player1_on_base >= TURNS_ON_BASE {
-									winning_team = set_winner(Team::Player, &mut winner_banner);
+									winning_team = set_winner(Team::Player, &mut game_map.banner);
 								}
 							},
 							_ => {
@@ -197,14 +142,14 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 					}
 				},
 				Team::Enemy => {
-					enemy_turn::handle_enemy_turn(&core, &mut game_map, &mut turn_banner, &mut current_player, &distance_map, &unit_textures)?;
+					enemy_turn::handle_enemy_turn(&core, &mut game_map, &mut current_player, &distance_map, &unit_textures)?;
 
 					if next_team_check == Team::Enemy {
 						match game_map.enemy_units.get_mut(&game_map.pos_player_castle) {
 							Some(_player2_unit) => {
 								player2_on_base += 1;
 								if player2_on_base >= TURNS_ON_BASE {
-									winning_team = set_winner(Team::Enemy, &mut winner_banner);
+									winning_team = set_winner(Team::Enemy, &mut game_map.banner);
 								}
 							},
 							_ => {
@@ -216,7 +161,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 					}
 				},
 				Team::Barbarians => {
-					barbarian_turn::handle_barbarian_turn(&core, &mut game_map, &mut turn_banner, &mut current_player)?;
+					barbarian_turn::handle_barbarian_turn(&core, &mut game_map, &mut current_player)?;
 				},
 			}
 
@@ -224,11 +169,11 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 			//Ideally you would check this whenever a unit on either team gets attacked, but this works
 			if game_map.player_units.len() == 0 {
 				println!("Enemy team won via Total Party Kill!");
-				winning_team = set_winner(Team::Enemy, &mut winner_banner);
+				winning_team = set_winner(Team::Enemy, &mut game_map.banner);
 			}
 			else if game_map.enemy_units.len() == 0 {
 				println!("Player team won via Total Party Kill!");
-				winning_team = set_winner(Team::Player, &mut winner_banner);
+				winning_team = set_winner(Team::Player, &mut game_map.banner);
 			}
 		}
 
@@ -290,50 +235,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 		}
 
 		//Draw banner that appears at beginning of turn
-		if winning_team.is_none() {
-			//As long as the banner isn't completely transparent, draw it
-			if turn_banner.current_banner_transparency != 0 {
-				turn_banner.banner_colors.a = turn_banner.current_banner_transparency;
-				draw_banner(core, &turn_text_textures, turn_banner.banner_key, turn_banner.banner_colors)?;
-			} else if turn_banner.banner_visible {
-				turn_banner.banner_visible = false;
-			}
-
-			//The first time we draw the banner we need to keep track of when it first appears
-			if turn_banner.current_banner_transparency == 250 {
-				turn_banner.initial_banner_output = Instant::now();
-				turn_banner.current_banner_transparency -= 25;
-			}
-
-			//After a set amount of seconds pass and if the banner is still visible, start to make the banner disappear
-			if turn_banner.initial_banner_output.elapsed() >= Duration::from_millis(BANNER_TIMEOUT) && turn_banner.current_banner_transparency != 0 {
-				turn_banner.current_banner_transparency -= 25;
-			}
-		}
-		else {
-			//Draw the winner's banner if someone has won
-			//As long as the banner isn't completely transparent, draw it
-			if winner_banner.current_banner_transparency != 0 {
-				winner_banner.banner_colors.a = winner_banner.current_banner_transparency;
-				draw_banner(core, &win_text_textures, winner_banner.banner_key, winner_banner.banner_colors)?;
-			} else if winner_banner.banner_visible {
-				winner_banner.banner_visible = false;
-
-				//End the game by returning to the main menu
-				return Ok(GameState::MainMenu);
-			}
-
-			//The first time we draw the banner we need to keep track of when it first appears
-			if winner_banner.current_banner_transparency == 250 {
-				winner_banner.initial_banner_output = Instant::now();
-				winner_banner.current_banner_transparency -= 25;
-			}
-
-			//After a set amount of seconds pass and if the banner is still visible, start to make the banner disappear
-			if winner_banner.initial_banner_output.elapsed() >= Duration::from_millis(BANNER_TIMEOUT) && winner_banner.current_banner_transparency != 0 {
-				winner_banner.current_banner_transparency -= 25;
-			}
-		}
 
 		core.wincan.set_viewport(core.cam);
 		core.wincan.present();
@@ -349,23 +250,6 @@ pub fn initialize_next_turn(team_units: &mut HashMap<(u32, u32), Unit>) {
 	for unit in &mut team_units.values_mut() {
 		unit.next_turn();
 	}
-}
-
-// Draws a banner at the center of the camera to signify whose turn it currently is
-fn draw_banner(core: &mut SDLCore, text_textures: &HashMap<&str, Texture>, text_index: &str, rect_color: Color) -> Result< (), String> {
-	let banner_rect = Rect::new(core.cam.x.abs(), core.cam.y.abs() + (360-64), CAM_W, 128);
-	let text_rect = Rect::new(core.cam.x.abs() + (640-107), core.cam.y.abs() + (360-64), CAM_W/6, 128);
-	core.wincan.set_blend_mode(BlendMode::Blend);
-	core.wincan.set_draw_color(rect_color);
-	core.wincan.draw_rect(banner_rect)?;
-	core.wincan.fill_rect(banner_rect)?;
-
-	match text_textures.get(text_index) {
-		Some(texture) => core.wincan.copy(&texture, None, text_rect)?,
-		None => {},
-	};
-
-	Ok(())
 }
 
 // Draws a rect of a certain color over all tiles contained within the vector
@@ -430,25 +314,17 @@ fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>
 
 //Sets up the winner's banner so it can start displaying, and returns an Option containing the Team corresponding to the winning team
 pub fn set_winner(winner: Team, winner_banner: &mut Banner) -> Option<Team> {
-	//Set up the winner's banner
-	winner_banner.current_banner_transparency = 250;
-	winner_banner.banner_visible = true;
-
 	match winner {
 		Team::Player => {
 			println!("Player 1 wins!");
-			winner_banner.banner_key = "p1_banner";
-			winner_banner.banner_colors = Color::RGBA(0, 89, 178, winner_banner.current_banner_transparency);
+			winner_banner.show("p1_win_banner");
 		},
 		Team::Enemy => {
 			println!("Enemy wins!");
-			winner_banner.banner_key = "p2_banner";
-			winner_banner.banner_colors = Color::RGBA(207, 21, 24, winner_banner.current_banner_transparency);
+			winner_banner.show("p2_win_banner");
 		},
 		Team::Barbarians => {
 			println!("Barbarians win!");
-			winner_banner.banner_key = "b_banner";
-			winner_banner.banner_colors = Color::RGBA(163, 96, 30, winner_banner.current_banner_transparency);
 		},
 	};
 
