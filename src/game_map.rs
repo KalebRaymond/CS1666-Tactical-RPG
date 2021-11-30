@@ -36,7 +36,7 @@ pub struct GameMap<'a> {
 }
 
 impl GameMap<'_> {
-	pub fn new<'a>(textures: &'a HashMap<&'a str, Texture<'a>>) -> GameMap<'a> {
+	pub fn new<'a>(textures: &'a HashMap<&str, Texture<'a>>) -> GameMap<'a> {
 		//Load map from file
 		let map_data = File::open("maps/map.txt").expect("Unable to open map file");
 		let mut map_data = BufReader::new(map_data);
@@ -75,23 +75,24 @@ impl GameMap<'_> {
 		for row in map_string.iter() {
 			for col in row.iter() {
 				let letter = &col[..];
+				let texture = textures.get(letter).unwrap();
 				match letter {
-					"║" | "^" | "v" | "<" | "=" | ">" | "t" => map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, None, textures.get(letter).unwrap())),
-					" " => map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, None, textures.get(letter).unwrap())),
+					"║" | "^" | "v" | "<" | "=" | ">" | "t" => map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, None, texture)),
+					" " => map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, None, texture)),
 					"b" =>  {
 						map.pos_barbarian_camps.push((y,x));
-						map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), textures.get(letter).unwrap()))
+						map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), texture))
 					},
-					"_" => map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), textures.get(letter).unwrap())),
+					"_" => map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), texture)),
 					"1" =>  {
 						map.pos_player_castle = (y, x);
-						map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::PCastle), textures.get(letter).unwrap()))
+						map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::PCastle), texture))
 					},
 					"2" =>  {
 						map.pos_enemy_castle = (y, x);
-						map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::ECastle), textures.get(letter).unwrap()))
+						map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::ECastle), texture))
 					},
-					_ => map.map_tiles.insert((x,y), Tile::new(x, y, false, false, None, None, textures.get(letter).unwrap())),
+					_ => map.map_tiles.insert((x,y), Tile::new(x, y, false, false, None, None, texture)),
 				};
 				y += 1;
 			}
@@ -142,7 +143,7 @@ impl GameMap<'_> {
 	}
 }
 
-pub fn load_textures<'r>(texture_creator: &'r TextureCreator<WindowContext>) -> Result<HashMap<&'r str, Texture<'r>>, String> {
+pub fn load_textures<'r>(texture_creator: &'r TextureCreator<WindowContext>) -> Result<HashMap<&str, Texture<'r>>, String> {
 	//Load map textures
 	let mut textures: HashMap<&str, Texture> = HashMap::new();
 	//Mountains

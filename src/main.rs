@@ -27,13 +27,15 @@ pub mod unit;
 
 use std::env;
 use std::path::Path;
+use std::collections::HashMap;
 
 use sdl2::rect::Rect;
-use sdl2::render::TextureCreator;
+use sdl2::render::{TextureCreator, Texture};
 use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
 
 use crate::main_menu::MainMenu;
 use crate::multi_player::MultiPlayer;
+use crate::game_map::load_textures;
 
 const TITLE: &str = "Castle Quest";
 const CAM_W: u32 = 1280;
@@ -60,6 +62,7 @@ pub struct SDLCore<'t> {
 	pub tiny_font: sdl2::ttf::Font<'t, 't>,
 	pub wincan: sdl2::render::WindowCanvas,
 	pub texture_creator: &'t TextureCreator<sdl2::video::WindowContext>,
+	pub texture_map: &'t HashMap<&'t str, Texture<'t>>,
 	pub event_pump: sdl2::EventPump,
 	pub cam: Rect,
 }
@@ -99,6 +102,8 @@ fn runner(vsync:bool) -> Result<(), String> {
 	let regular_font = ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 16)?; //From https://www.fontsquirrel.com/fonts/open-sans
 	let tiny_font = ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 12)?; //From https://www.fontsquirrel.com/fonts/open-sans
 
+	let texture_map = load_textures(&texture_creator)?;
+
 	let mut core = SDLCore{
 		sdl_ctx,
 		bold_font,
@@ -106,6 +111,7 @@ fn runner(vsync:bool) -> Result<(), String> {
 		tiny_font,
 		wincan,
 		texture_creator: &texture_creator,
+		texture_map: &texture_map,
 		event_pump,
 		cam,
 	};

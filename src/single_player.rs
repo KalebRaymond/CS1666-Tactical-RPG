@@ -12,7 +12,7 @@ use std::time::{Instant, Duration};
 use crate::AI::*;
 use crate::button::Button;
 use crate::cursor::Cursor;
-use crate::game_map::{GameMap, load_textures};
+use crate::game_map::GameMap;
 use crate::GameState;
 use crate::{CAM_H, CAM_W, TILE_SIZE};
 use crate::input::Input;
@@ -40,9 +40,6 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 
 	//User input
 	let mut input = Input::new(&core.event_pump);
-
-	//Load map textures
-	let textures = load_textures(&texture_creator)?;
 
 	//Load unit textures
 	let mut unit_textures: HashMap<&str, Texture> = HashMap::new();
@@ -114,7 +111,7 @@ pub fn single_player(core: &mut SDLCore) -> Result<GameState, String> {
 	let mut unit_interface: Option<UnitInterface> = None;
 
 	//Collection of variables useful for handling map interaction & tile overlays
-	let mut game_map = GameMap::new(&textures);
+	let mut game_map = GameMap::new(core.texture_map);
 
 	//Set camera size based on map size
 	core.cam.w = (game_map.map_size.0 as u32 * TILE_SIZE) as i32;
