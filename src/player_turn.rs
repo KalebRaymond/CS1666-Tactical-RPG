@@ -20,16 +20,22 @@ use crate::banner::Banner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
 
-pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState, game_map: &mut GameMap<'a>, input: &Input, turn_banner: &mut Banner, unit_interface: &mut Option<UnitInterface<'a>>, unit_textures: &'a HashMap<&str, Texture<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
+pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState, game_map: &mut GameMap<'a>, input: &Input, turn_banner: &mut Banner, unit_interface: &mut Option<UnitInterface<'a>>, choose_unit_interface: &mut Option<UnitInterface<'a>>, unit_textures: &'a HashMap<&str, Texture<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, cursor: &mut Cursor, end_turn_button: &mut Button) -> Result<(), String> {
     if !turn_banner.banner_visible {
         //Check if player ended turn by pressing backspace
-        if input.keystate.contains(&Keycode::Backspace) {
+        if input.keystate.contains(&Keycode::Backspace) && match player_state.current_player_action {
+            PlayerAction::ChoosingNewUnit => false,
+            _ => true,
+        }{
             end_player_turn(player_state, game_map, turn_banner, unit_interface, current_player, cursor);
             return Ok(());
         }
 
         //Check if user clicked the end turn button
-		if input.left_clicked && end_turn_button.is_mouse(core) {
+		if input.left_clicked && end_turn_button.is_mouse(core) && match player_state.current_player_action {
+            PlayerAction::ChoosingNewUnit => false,
+            _ => true,
+        }{
 			end_player_turn(player_state, game_map, turn_banner, unit_interface, current_player, cursor);
             return Ok(());
 		}
@@ -91,6 +97,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
                             // Close interface
                             unit_interface.as_mut().unwrap().animate_close();
                         },
+                        _ => {},
                     }
                 }
             },
@@ -176,32 +183,87 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
                             //Need to check and see if this barbarian was converted - currently a 40% chance
                             let chance = rand::thread_rng().gen_range(0..100);
                             if chance < 40 {
-                                println!("Barbarian has been converted. Defaulting respawn to melee.");
-                                //Create the new unit with default stats and update the position of it accordingly (might want to make it so stats are not at max after converting)
-                                let castle_coord = &game_map.pos_player_castle;
-                                let mut new_unit = Unit::new(castle_coord.0-5, castle_coord.1+5, Team::Player, 20, 7, 1, 95, 1, 5, unit_textures.get("pll").unwrap());
-                                let respawn_location = new_unit.respawn_loc(&mut game_map.map_tiles, *castle_coord);
-                                new_unit.update_pos(respawn_location.0, respawn_location.1);
-
-                                //The new unit should not be able to move immediately after being converted
-                                new_unit.has_moved = true;
-                                new_unit.has_attacked = true;
-                                println!("Unit spawned at {}, {}", respawn_location.0, respawn_location.1);
-
-                                //Don't forget to update the players units and the hash map
-                                game_map.player_units.insert(respawn_location, new_unit);
-                                if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(respawn_location.1, respawn_location.0)) {
-                                    new_map_tile.update_team(Some(Team::Player));
-                                }
+                                player_state.current_player_action = PlayerAction::ChoosePrimer;
+                            }
+                            else {
+                                println!("Failed to get new unit");
                             }
                         }
                     }
                     // After attack, deselect
                     player_state.active_unit_i = -1;
                     player_state.active_unit_j = -1;
-                    player_state.current_player_action = PlayerAction::Default;
+                    match player_state.current_player_action {
+                        PlayerAction::ChoosePrimer => {},
+                        _ => player_state.current_player_action = PlayerAction::Default,
+                    }                }
+            }
+            PlayerAction::ChoosePrimer => {
+                *choose_unit_interface = Some(UnitInterface::from_conversion(core, unit_interface_texture));
+                player_state.current_player_action = PlayerAction::ChoosingNewUnit;
+            }
+            PlayerAction::ChoosingNewUnit => {
+                let castle_coord = &game_map.pos_player_castle;
+                if input.left_clicked {
+                    // Handle clicking based on unit interface
+                    player_state.current_player_action = choose_unit_interface.as_ref().unwrap().get_choose_unit_click_selection(glob_x, glob_y);
+                    match player_state.current_player_action {
+                        PlayerAction::ChosenRanger => {
+                            let mut new_unit = Unit::new(castle_coord.0-5, castle_coord.1+5, Team::Player, 15, 5, 4, 85, 3, 7, unit_textures.get("plr").unwrap());
+                            let respawn_location = new_unit.respawn_loc(&mut game_map.map_tiles, *castle_coord);
+                            new_unit.update_pos(respawn_location.0, respawn_location.1);
+                            //The new unit should not be able to move immediately after being converted
+                            new_unit.has_moved = true;
+                            new_unit.has_attacked = true;
+                            println!("Unit spawned at {}, {}", respawn_location.0, respawn_location.1);
+
+                            //Don't forget to update the players units and the hash map
+                            game_map.player_units.insert(respawn_location, new_unit);
+                            if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(respawn_location.1, respawn_location.0)) {
+                                new_map_tile.update_team(Some(Team::Player));
+                            }
+                            choose_unit_interface.as_mut().unwrap().animate_close();
+                            player_state.current_player_action = PlayerAction::Default;
+                         },
+                         PlayerAction::ChosenMelee => {
+                            let mut new_unit = Unit::new(castle_coord.0-5, castle_coord.1+5, Team::Player, 20, 7, 1, 95, 1, 5, unit_textures.get("pll").unwrap());
+                            let respawn_location = new_unit.respawn_loc(&mut game_map.map_tiles, *castle_coord);
+                            new_unit.update_pos(respawn_location.0, respawn_location.1);
+                            //The new unit should not be able to move immediately after being converted
+                            new_unit.has_moved = true;
+                            new_unit.has_attacked = true;
+                            println!("Unit spawned at {}, {}", respawn_location.0, respawn_location.1);
+
+                            //Don't forget to update the players units and the hash map
+                            game_map.player_units.insert(respawn_location, new_unit);
+                            if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(respawn_location.1, respawn_location.0)) {
+                                new_map_tile.update_team(Some(Team::Player));
+                            }
+                            choose_unit_interface.as_mut().unwrap().animate_close();
+                            player_state.current_player_action = PlayerAction::Default;
+                        }
+                        PlayerAction::ChosenMage => {
+                            let mut new_unit = Unit::new(castle_coord.0-5, castle_coord.1+5, Team::Player, 10, 6, 3, 75,  5, 9, unit_textures.get("plm").unwrap());
+                            let respawn_location = new_unit.respawn_loc(&mut game_map.map_tiles, *castle_coord);
+                            new_unit.update_pos(respawn_location.0, respawn_location.1);
+                            //The new unit should not be able to move immediately after being converted
+                            new_unit.has_moved = true;
+                            new_unit.has_attacked = true;
+                            println!("Unit spawned at {}, {}", respawn_location.0, respawn_location.1);
+
+                            //Don't forget to update the players units and the hash map
+                            game_map.player_units.insert(respawn_location, new_unit);
+                            if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(respawn_location.1, respawn_location.0)) {
+                                new_map_tile.update_team(Some(Team::Player));
+                            }
+                            choose_unit_interface.as_mut().unwrap().animate_close();
+                            player_state.current_player_action = PlayerAction::Default;
+                        }
+                        _ => {},
+                    }
                 }
             }
+            _ => {}
         }
     }
 
