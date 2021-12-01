@@ -181,7 +181,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) ->
                         }
                         active_unit.has_attacked = true;
                         if dead_barb {
-                            //Need to check and see if this barbarian was converted - currently a 40% chance
+                            //Need to check and see if this barbarian was converted - currently a 45% chance
                             let chance = rand::thread_rng().gen_range(0..100);
                             if chance < 45 {
                                 player_state.current_player_action = PlayerAction::ChoosePrimer;
