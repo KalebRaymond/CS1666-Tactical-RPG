@@ -16,6 +16,7 @@ use crate::banner::Banner;
 use crate::button::Button;
 use crate::damage_indicator::DamageIndicator;
 use crate::unit_interface::UnitInterface;
+use crate::objectives::ObjectiveManager;
 use crate::player_action::PlayerAction;
 use crate::player_state::PlayerState;
 use crate::tile::{Tile, Structure};
@@ -29,9 +30,12 @@ pub struct GameMap<'a> {
 	pub map_size: (usize, usize),
 
 	//Stuff for enemy AI calculations
+	/*
 	pub pos_player_castle: (u32, u32),
 	pub pos_enemy_castle: (u32, u32),
 	pub pos_barbarian_camps: Vec<(u32, u32)>,
+	*/
+	pub objectives: ObjectiveManager,
 
 	pub player_units: HashMap<(u32, u32), Unit<'a>>,
 	pub enemy_units: HashMap<(u32, u32), Unit<'a>>,
@@ -79,9 +83,12 @@ impl GameMap<'_> {
 		let mut map: GameMap<'a> = GameMap {
 			map_tiles: HashMap::new(),
 			map_size: (map_width, map_height),
+			/*
 			pos_player_castle: (0, 0),
 			pos_enemy_castle: (0, 0),
 			pos_barbarian_camps: Vec::new(),
+			*/
+			objectives: ObjectiveManager::init_default(),
 			player_units: HashMap::new(),
 			enemy_units: HashMap::new(),
 			barbarian_units: HashMap::new(),
@@ -100,6 +107,9 @@ impl GameMap<'_> {
 		//Set up the HashMap of Tiles that can be interacted with
 		let mut x = 0;
 		let mut y = 0;
+		let mut pos_player_castle: (u32, u32) = (0, 0);
+		let mut pos_enemy_castle: (u32, u32) = (0, 0);
+		let mut pos_barbarian_camps: Vec<(u32, u32)> = Vec::new();
 		for row in map_string.iter() {
 			for col in row.iter() {
 				let letter = &col[..];
@@ -108,16 +118,16 @@ impl GameMap<'_> {
 					"║" | "^" | "v" | "<" | "=" | ">" | "t" => map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, None, texture)),
 					" " => map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, None, texture)),
 					"b" =>  {
-						map.pos_barbarian_camps.push((y,x));
+						pos_barbarian_camps.push((y,x));
 						map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), texture))
 					},
 					"_" => map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), texture)),
 					"1" =>  {
-						map.pos_player_castle = (y, x);
+						pos_player_castle = (y, x);
 						map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::PCastle), texture))
 					},
 					"2" =>  {
-						map.pos_enemy_castle = (y, x);
+						pos_enemy_castle = (y, x);
 						map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::ECastle), texture))
 					},
 					_ => map.map_tiles.insert((x,y), Tile::new(x, y, false, false, None, None, texture)),
@@ -127,6 +137,9 @@ impl GameMap<'_> {
 			x += 1;
 			y = 0;
 		}
+
+		//Now that the locations of the objectives have been found, update the ObjectiveManager
+		map.objectives = ObjectiveManager::new(pos_player_castle, pos_enemy_castle, pos_barbarian_camps);
 
 		let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (8,46)), ('l', (10,45)), ('l', (10,53)), ('l', (12,46)), ('l', (17,51)), ('l', (17,55)), ('l', (18,53)), ('r', (9,49)), ('r', (10,46)), ('r', (13,50)), ('r', (14,54)), ('r', (16,53)), ('m', (10,50)), ('m', (10,52)), ('m', (11,53)), ('m', (13,53)));
 		//let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (14, 40))); //Spawns a player unit right next to some barbarians

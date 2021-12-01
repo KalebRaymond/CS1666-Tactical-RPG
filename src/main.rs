@@ -4,22 +4,23 @@ extern crate sdl2;
 
 
 mod AI;
+mod banner;
+mod barbarian_turn;
 mod credits;
 mod cursor;
 mod damage_indicator;
+mod enemy_turn;
 mod game_map;
 mod input;
 mod main_menu;
+mod multi_player;
 mod net;
+mod objectives;
 mod pixel_coordinates;
 mod player_action;
 mod player_state;
 mod player_turn;
-mod enemy_turn;
-mod barbarian_turn;
 mod single_player;
-mod multi_player;
-mod banner;
 mod unit_interface;
 pub mod button;
 pub mod tile;
