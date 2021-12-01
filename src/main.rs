@@ -34,6 +34,7 @@ use sdl2::render::{TextureCreator, Texture};
 use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
 
 use crate::main_menu::MainMenu;
+use crate::single_player::SinglePlayer;
 use crate::multi_player::MultiPlayer;
 use crate::input::Input;
 
@@ -150,9 +151,7 @@ fn run_game_state<'i, 'r>(core: &'i mut SDLCore<'r>, game_state: &GameState) -> 
 
 			Box::new(MainMenu::new(core)?)
 		},
-		GameState::SinglePlayer => {
-			return Ok(single_player::single_player(core)?);
-		},
+		GameState::SinglePlayer => Box::new(SinglePlayer::new(core)?),
 		GameState::MultiPlayer => Box::new(MultiPlayer::new(core)?),
 		GameState::Credits => {
 			return Ok(credits::credits(core)?);
