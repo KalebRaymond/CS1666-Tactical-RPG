@@ -158,13 +158,24 @@ impl PopulationState {
             //Don't forget to reinsert the unit into the hashmap
             game_map.enemy_units.insert((newcoord.0, newcoord.1), active_unit);
             if dead_barb {
-                //Need to check and see if this barbarian was converted - currently a 40% chance
+                //Need to check and see if this barbarian was converted - currently a 45% chance
                 let chance = rand::thread_rng().gen_range(0..100);
-                if chance < 40 {
-                    println!("Barbarian has been converted. Defaulting respawn to melee.");
+                if chance < 45 {
+                    print!("Barbarian has been converted.");
                     //Create the new unit with default stats and update the position of it accordingly
                     let castle_coord = &game_map.pos_enemy_castle;
-                    let mut new_unit = Unit::new(castle_coord.0+5, castle_coord.1-5, Team::Enemy, 20, 7, 1, 95, 1, 5, unit_textures.get("pl2l").unwrap());
+                    //Since all the units are of relatively equal value at base stats, we can randomly choose among them similar to how a player would
+                    let mut new_unit = if chance < 15 { 
+                            println!(" Melee selected.");
+                            Unit::new(castle_coord.0+5, castle_coord.1-5, Team::Enemy, 20, 7, 1, 95, 1, 5, unit_textures.get("pl2l").unwrap())
+                        } else if chance < 30 {
+                            println!(" Ranged selected.");
+                            Unit::new(castle_coord.0+5, castle_coord.1-5, Team::Enemy, 15, 5, 4, 85, 3, 7, unit_textures.get("pl2r").unwrap())
+                        } else {
+                            println!(" Mage selected.");
+                            Unit::new(castle_coord.0+5, castle_coord.1-5, Team::Enemy, 10, 6, 3, 75,  5, 9, unit_textures.get("pl2m").unwrap())
+                        };
+
                     let respawn_location = new_unit.respawn_loc(&mut game_map.map_tiles, *castle_coord);
                     new_unit.update_pos(respawn_location.0, respawn_location.1);
                     println!("Unit spawned at {}, {}", respawn_location.0, respawn_location.1);
