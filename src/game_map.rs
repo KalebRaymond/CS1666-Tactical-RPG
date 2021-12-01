@@ -16,7 +16,7 @@ use crate::banner::Banner;
 use crate::button::Button;
 use crate::damage_indicator::DamageIndicator;
 use crate::unit_interface::UnitInterface;
-use crate::objectives::ObjectiveManager;
+use crate::objective_manager::ObjectiveManager;
 use crate::player_action::PlayerAction;
 use crate::player_state::PlayerState;
 use crate::tile::{Tile, Structure};
@@ -30,11 +30,6 @@ pub struct GameMap<'a> {
 	pub map_size: (usize, usize),
 
 	//Stuff for enemy AI calculations
-	/*
-	pub pos_player_castle: (u32, u32),
-	pub pos_enemy_castle: (u32, u32),
-	pub pos_barbarian_camps: Vec<(u32, u32)>,
-	*/
 	pub objectives: ObjectiveManager,
 
 	pub player_units: HashMap<(u32, u32), Unit<'a>>,
@@ -83,11 +78,6 @@ impl GameMap<'_> {
 		let mut map: GameMap<'a> = GameMap {
 			map_tiles: HashMap::new(),
 			map_size: (map_width, map_height),
-			/*
-			pos_player_castle: (0, 0),
-			pos_enemy_castle: (0, 0),
-			pos_barbarian_camps: Vec::new(),
-			*/
 			objectives: ObjectiveManager::init_default(),
 			player_units: HashMap::new(),
 			enemy_units: HashMap::new(),

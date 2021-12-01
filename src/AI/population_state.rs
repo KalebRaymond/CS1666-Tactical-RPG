@@ -163,7 +163,7 @@ impl PopulationState {
                 if chance < 40 {
                     println!("Barbarian has been converted. Defaulting respawn to melee.");
                     //Create the new unit with default stats and update the position of it accordingly
-                    let castle_coord = &game_map.pos_enemy_castle;
+                    let castle_coord = &game_map.objectives.p2_castle;
                     let mut new_unit = Unit::new(castle_coord.0+5, castle_coord.1-5, Team::Enemy, 20, 7, 1, 95, 1, 5, unit_textures.get("pl2l").unwrap());
                     let respawn_location = new_unit.respawn_loc(&mut game_map.map_tiles, *castle_coord);
                     new_unit.update_pos(respawn_location.0, respawn_location.1);

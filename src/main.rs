@@ -15,7 +15,7 @@ mod input;
 mod main_menu;
 mod multi_player;
 mod net;
-mod objectives;
+mod objective_manager;
 mod pixel_coordinates;
 mod player_action;
 mod player_state;

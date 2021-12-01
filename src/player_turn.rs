@@ -204,7 +204,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) ->
                 player_state.current_player_action = PlayerAction::ChoosingNewUnit;
             }
             PlayerAction::ChoosingNewUnit => {
-                let castle_coord = &game_map.pos_player_castle;
+                let castle_coord = &game_map.objectives.p1_castle;
                 if core.input.left_clicked {
                     // Handle clicking based on unit interface
                     player_state.current_player_action = game_map.choose_unit_interface.as_ref().unwrap().get_choose_unit_click_selection(glob_x, glob_y);
