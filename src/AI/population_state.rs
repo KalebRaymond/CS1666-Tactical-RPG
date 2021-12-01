@@ -163,7 +163,7 @@ impl PopulationState {
                 if chance < 45 {
                     print!("Barbarian has been converted.");
                     //Create the new unit with default stats and update the position of it accordingly
-                    let castle_coord = &game_map.pos_enemy_castle;
+                    let castle_coord = &game_map.objectives.p2_castle;
                     //Since all the units are of relatively equal value at base stats, we can randomly choose among them similar to how a player would
                     let mut new_unit = if chance < 15 { 
                             println!(" Melee selected.");

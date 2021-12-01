@@ -150,13 +150,13 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
     for unit in game_map.enemy_units.values() {
         let current_unit = SuccinctUnit::new(unit.get_tiles_in_movement_range(&mut game_map.map_tiles), unit.attack_range);
 
-        let move_value = current_unit_value(current_unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, &game_map.pos_enemy_castle, &game_map.pos_player_castle, &game_map.pos_barbarian_camps, distance_map);
+        let move_value = current_unit_value(current_unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
         original_unit_movements.push(((unit.x, unit.y), move_value));
 
         succinct_units.push(current_unit);
     }
 
-    let mut initial_population = generate_initial_population(&succinct_units, &mut game_map.map_tiles, &game_map.pos_enemy_castle, &game_map.pos_player_castle, &game_map.pos_barbarian_camps, distance_map);
+    let mut initial_population = generate_initial_population(&succinct_units, &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
     let mut original_state = PopulationState::new(original_unit_movements, 0.0);
     assign_value_to_state(&mut original_state);
     initial_population.push(original_state);
@@ -219,7 +219,7 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
         let num_to_mutate: usize = ((MUT_PROB * (new_generation.len() as f32)).round() as i32).try_into().unwrap();
         let mut states_to_mutate = new_generation.iter_mut().choose_multiple(&mut rng_thread, num_to_mutate); 
         for state in states_to_mutate.iter_mut() {
-            mutate(state, &succinct_units, &mut game_map.map_tiles, &game_map.pos_enemy_castle, &game_map.pos_player_castle, &game_map.pos_barbarian_camps, distance_map);
+            mutate(state, &succinct_units, &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
         }
 
         initial_population = new_generation.clone();

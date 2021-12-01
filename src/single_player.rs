@@ -92,18 +92,13 @@ impl Drawable for SinglePlayer<'_,'_> {
 
 					// Checks to see if the player's units are on the opponent's castle tile
 					if self.next_team_check == Team::Player {
-						match self.game_map.player_units.get_mut(&self.game_map.pos_enemy_castle) {
-							Some(_player1_unit) => {
-								self.player1_on_base += 1;
-								if self.player1_on_base >= TURNS_ON_BASE {
-									self.winning_team = self.game_map.set_winner(Team::Player);
-								}
-							},
-							_ => {
-								self.player1_on_base = 0;
-							},
+						self.game_map.objectives.check_objectives(Team::Player, &self.game_map.player_units);
+						
+						if self.game_map.objectives.has_won(Team::Player) {
+							self.winning_team = self.game_map.set_winner(Team::Player);
 						}
-						println!("Turns on enemy castle: {}/{}", self.player1_on_base, TURNS_ON_BASE);
+
+						println!("Turns on enemy castle: {}/{}", self.game_map.objectives.p2_castle_turns, TURNS_ON_BASE);
 						// Makes it so that this isn't checked every time it loops through
 						self.next_team_check = Team::Enemy;
 					}
@@ -112,18 +107,13 @@ impl Drawable for SinglePlayer<'_,'_> {
 					enemy_turn::handle_enemy_turn(&self.core, &mut self.game_map, &self.distance_map)?;
 
 					if self.next_team_check == Team::Enemy {
-						match self.game_map.enemy_units.get_mut(&self.game_map.pos_player_castle) {
-							Some(_player2_unit) => {
-								self.player2_on_base += 1;
-								if self.player2_on_base >= TURNS_ON_BASE {
-									self.winning_team = self.game_map.set_winner(Team::Enemy);
-								}
-							},
-							_ => {
-								self.player2_on_base = 0;
-							},
+						self.game_map.objectives.check_objectives(Team::Enemy, &self.game_map.player_units);
+						
+						if self.game_map.objectives.has_won(Team::Enemy) {
+							self.winning_team = self.game_map.set_winner(Team::Enemy);
 						}
-						println!("Turns on player castle: {}/{}", self.player2_on_base, TURNS_ON_BASE);
+
+						println!("Turns on player castle: {}/{}", self.game_map.objectives.p1_castle_turns, TURNS_ON_BASE);
 						self.next_team_check = Team::Player;
 					}
 				},
@@ -151,6 +141,12 @@ impl Drawable for SinglePlayer<'_,'_> {
 
 		self.core.wincan.set_viewport(self.core.cam);
 		self.core.wincan.present();
-		Ok(GameState::SinglePlayer)
+
+		if !self.winning_team.is_none() && !self.game_map.banner.banner_visible {
+			Ok(GameState::MainMenu)
+		}
+		else {
+			Ok(GameState::SinglePlayer)
+		}		
 	}
 }
