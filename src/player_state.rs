@@ -1,4 +1,5 @@
 use crate::player_action::PlayerAction;
+use crate::unit_interface::UnitInterface;
 use crate::unit::Team;
 
 pub struct PlayerState {
@@ -10,7 +11,7 @@ pub struct PlayerState {
     pub active_unit_j: i32,
 
     //Player action to handle inputs differently based on context
-    pub current_player_action: PlayerAction,
+    pub current_player_action: PlayerAction
 }
 
 impl PlayerState {

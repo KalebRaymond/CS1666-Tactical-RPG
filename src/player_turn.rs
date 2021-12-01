@@ -19,23 +19,25 @@ use crate::banner::Banner;
 use crate::unit_interface::UnitInterface;
 use crate::unit::{Team, Unit};
 
-pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState, game_map: &mut GameMap<'a>, unit_interface: &mut Option<UnitInterface<'a>>, choose_unit_interface: &mut Option<UnitInterface<'a>>, unit_textures: &'a HashMap<&str, Texture<'a>>, unit_interface_texture: &'a Texture<'a>, current_player: &mut Team, end_turn_button: &mut Button) -> Result<(), String> {
+pub fn handle_player_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) -> Result<(), String> {
+    let player_state = &mut game_map.player_state;
+
     if !game_map.banner.banner_visible {
         //Check if player ended turn by pressing backspace
         if core.input.keystate.contains(&Keycode::Backspace) && match player_state.current_player_action {
             PlayerAction::ChoosingNewUnit => false,
             _ => true,
         }{
-            end_player_turn(player_state, game_map, unit_interface, current_player);
+            end_player_turn(game_map);
             return Ok(());
         }
 
         //Check if user clicked the end turn button
-		if core.input.left_clicked && end_turn_button.is_mouse(core) && match player_state.current_player_action {
+		if core.input.left_clicked && game_map.end_turn_button.is_mouse(core) && match player_state.current_player_action {
             PlayerAction::ChoosingNewUnit => false,
             _ => true,
         }{
-			end_player_turn(player_state, game_map, unit_interface, current_player);
+			end_player_turn(game_map);
             return Ok(());
 		}
 
@@ -64,7 +66,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
                             player_state.active_unit_j = j as i32;
 
                             //If the user did click on a unit, allow the player to move the unit
-                            *unit_interface = Some(UnitInterface::from_unit(active_unit, unit_interface_texture));
+                            game_map.unit_interface = Some(UnitInterface::from_unit(active_unit, core.texture_map.get("unit_interface").unwrap()));
                             player_state.current_player_action = PlayerAction::ChoosingUnitAction;
                         }
                     },
@@ -75,26 +77,26 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
                 if core.input.left_clicked {
                     // Handle clicking based on unit interface
                     let active_unit = game_map.player_units.get(&(player_state.active_unit_j as u32, player_state.active_unit_i as u32)).unwrap();
-                    player_state.current_player_action = unit_interface.as_ref().unwrap().get_click_selection(glob_x, glob_y);
+                    player_state.current_player_action = game_map.unit_interface.as_ref().unwrap().get_click_selection(glob_x, glob_y);
                     match player_state.current_player_action {
                         PlayerAction::Default => {
                             // Deselect the active unit
                             player_state.active_unit_i = -1;
                             player_state.active_unit_j = -1;
                             // Close interface
-                            unit_interface.as_mut().unwrap().animate_close();
+                            game_map.unit_interface.as_mut().unwrap().animate_close();
                         },
                         PlayerAction::ChoosingUnitAction => {},
                         PlayerAction::MovingUnit => {
                             game_map.possible_moves = active_unit.get_tiles_in_movement_range(&mut game_map.map_tiles);
                             // Close interface
-                            unit_interface.as_mut().unwrap().animate_close();
+                            game_map.unit_interface.as_mut().unwrap().animate_close();
                         },
                         PlayerAction::AttackingUnit => {
                             game_map.possible_attacks = active_unit.get_tiles_in_attack_range(&mut game_map.map_tiles);
                             game_map.actual_attacks = active_unit.get_tiles_can_attack(&mut game_map.map_tiles);
                             // Close interface
-                            unit_interface.as_mut().unwrap().animate_close();
+                            game_map.unit_interface.as_mut().unwrap().animate_close();
                         },
                         _ => {},
                     }
@@ -198,17 +200,17 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
                     }                }
             }
             PlayerAction::ChoosePrimer => {
-                *choose_unit_interface = Some(UnitInterface::from_conversion(core, unit_interface_texture));
+                game_map.choose_unit_interface = Some(UnitInterface::from_conversion(core, core.texture_map.get("unit_interface").unwrap()));
                 player_state.current_player_action = PlayerAction::ChoosingNewUnit;
             }
             PlayerAction::ChoosingNewUnit => {
                 let castle_coord = &game_map.pos_player_castle;
                 if core.input.left_clicked {
                     // Handle clicking based on unit interface
-                    player_state.current_player_action = choose_unit_interface.as_ref().unwrap().get_choose_unit_click_selection(glob_x, glob_y);
+                    player_state.current_player_action = game_map.choose_unit_interface.as_ref().unwrap().get_choose_unit_click_selection(glob_x, glob_y);
                     match player_state.current_player_action {
                         PlayerAction::ChosenRanger => {
-                            let mut new_unit = Unit::new(castle_coord.0-5, castle_coord.1+5, Team::Player, 15, 5, 4, 85, 3, 7, unit_textures.get("plr").unwrap());
+                            let mut new_unit = Unit::new(castle_coord.0-5, castle_coord.1+5, Team::Player, 15, 5, 4, 85, 3, 7, core.texture_map.get("plr").unwrap());
                             let respawn_location = new_unit.respawn_loc(&mut game_map.map_tiles, *castle_coord);
                             new_unit.update_pos(respawn_location.0, respawn_location.1);
                             //The new unit should not be able to move immediately after being converted
@@ -221,11 +223,11 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
                             if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(respawn_location.1, respawn_location.0)) {
                                 new_map_tile.update_team(Some(Team::Player));
                             }
-                            choose_unit_interface.as_mut().unwrap().animate_close();
+                            game_map.choose_unit_interface.as_mut().unwrap().animate_close();
                             player_state.current_player_action = PlayerAction::Default;
                          },
                          PlayerAction::ChosenMelee => {
-                            let mut new_unit = Unit::new(castle_coord.0-5, castle_coord.1+5, Team::Player, 20, 7, 1, 95, 1, 5, unit_textures.get("pll").unwrap());
+                            let mut new_unit = Unit::new(castle_coord.0-5, castle_coord.1+5, Team::Player, 20, 7, 1, 95, 1, 5, core.texture_map.get("pll").unwrap());
                             let respawn_location = new_unit.respawn_loc(&mut game_map.map_tiles, *castle_coord);
                             new_unit.update_pos(respawn_location.0, respawn_location.1);
                             //The new unit should not be able to move immediately after being converted
@@ -238,11 +240,11 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
                             if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(respawn_location.1, respawn_location.0)) {
                                 new_map_tile.update_team(Some(Team::Player));
                             }
-                            choose_unit_interface.as_mut().unwrap().animate_close();
+                            game_map.choose_unit_interface.as_mut().unwrap().animate_close();
                             player_state.current_player_action = PlayerAction::Default;
                         }
                         PlayerAction::ChosenMage => {
-                            let mut new_unit = Unit::new(castle_coord.0-5, castle_coord.1+5, Team::Player, 10, 6, 3, 75,  5, 9, unit_textures.get("plm").unwrap());
+                            let mut new_unit = Unit::new(castle_coord.0-5, castle_coord.1+5, Team::Player, 10, 6, 3, 75,  5, 9, core.texture_map.get("plm").unwrap());
                             let respawn_location = new_unit.respawn_loc(&mut game_map.map_tiles, *castle_coord);
                             new_unit.update_pos(respawn_location.0, respawn_location.1);
                             //The new unit should not be able to move immediately after being converted
@@ -255,7 +257,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
                             if let Some(new_map_tile) = game_map.map_tiles.get_mut(&(respawn_location.1, respawn_location.0)) {
                                 new_map_tile.update_team(Some(Team::Player));
                             }
-                            choose_unit_interface.as_mut().unwrap().animate_close();
+                            game_map.choose_unit_interface.as_mut().unwrap().animate_close();
                             player_state.current_player_action = PlayerAction::Default;
                         }
                         _ => {},
@@ -269,21 +271,21 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, player_state: &mut PlayerState
     Ok(())
 }
 
-pub fn end_player_turn<'a>(player_state: &mut PlayerState, game_map: &mut GameMap<'a>, unit_interface: &mut Option<UnitInterface<'a>>, current_player: &mut Team) {
+pub fn end_player_turn<'a>(game_map: &mut GameMap<'a>) {
     //End player's turn
-    *current_player = Team::Enemy;
+    game_map.player_state.current_turn = Team::Enemy;
 
     //Clear the player UI if it is still visible
-    *unit_interface = None;
+    game_map.unit_interface = None;
     game_map.cursor.hide_cursor();
 
     //Deselect the active unit
-    player_state.active_unit_i = -1;
-    player_state.active_unit_j = -1;
-    player_state.current_player_action = PlayerAction::Default;
+    game_map.player_state.active_unit_i = -1;
+    game_map.player_state.active_unit_j = -1;
+    game_map.player_state.current_player_action = PlayerAction::Default;
 
     //Reactivate any grayed out player units
-    crate::single_player::initialize_next_turn(&mut game_map.player_units);
+    game_map.initialize_next_turn(Team::Player);
 
     //Start displaying the enemy's banner
     game_map.banner.show("p2_banner");

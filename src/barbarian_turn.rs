@@ -11,7 +11,7 @@ use crate::pixel_coordinates::PixelCoordinates;
 use crate::SDLCore;
 use crate::unit::{Team, Unit};
 
-pub fn handle_barbarian_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, current_player: &mut Team) -> Result<(), String> {
+pub fn handle_barbarian_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) -> Result<(), String> {
 	if !game_map.banner.banner_visible {
 		//RNG for making unaggroed barbarians roam
 		let mut rng_thread = thread_rng();
@@ -161,13 +161,13 @@ pub fn handle_barbarian_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>,
 		}
 
 		//End turn
-		*current_player = Team::Player;
+		game_map.player_state.current_turn = Team::Player;
 
 		//Start displaying Player 1's banner
 		game_map.banner.show("p1_banner");
 
 		//Reactivate any grayed out barbarian units
-		crate::single_player::initialize_next_turn(&mut game_map.barbarian_units);
+		game_map.initialize_next_turn(Team::Barbarians);
 	}
 
 	Ok(())
