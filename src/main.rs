@@ -27,15 +27,16 @@ pub mod unit;
 
 use std::env;
 use std::path::Path;
-use std::time::{Duration,Instant};
+use std::collections::HashMap;
 
 use sdl2::rect::Rect;
-use sdl2::render::TextureCreator;
+use sdl2::render::{TextureCreator, Texture};
 use sdl2::mixer::{InitFlag, AUDIO_S32SYS, DEFAULT_CHANNELS};
 
-use crate::net::client::Client;
 use crate::main_menu::MainMenu;
+use crate::single_player::SinglePlayer;
 use crate::multi_player::MultiPlayer;
+use crate::input::Input;
 
 const TITLE: &str = "Castle Quest";
 const CAM_W: u32 = 1280;
@@ -62,8 +63,10 @@ pub struct SDLCore<'t> {
 	pub tiny_font: sdl2::ttf::Font<'t, 't>,
 	pub wincan: sdl2::render::WindowCanvas,
 	pub texture_creator: &'t TextureCreator<sdl2::video::WindowContext>,
+	pub texture_map: &'t HashMap<&'t str, Texture<'t>>,
 	pub event_pump: sdl2::EventPump,
 	pub cam: Rect,
+	pub input: Input,
 }
 
 fn runner(vsync:bool) -> Result<(), String> {
@@ -92,6 +95,7 @@ fn runner(vsync:bool) -> Result<(), String> {
 		.map_err(|e| e.to_string())?;
 
 	let event_pump = sdl_ctx.event_pump()?;
+	let input = Input::new(&event_pump);
 
 	let cam = Rect::new(0, 0, CAM_W, CAM_H);
 
@@ -101,6 +105,11 @@ fn runner(vsync:bool) -> Result<(), String> {
 	let regular_font = ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 16)?; //From https://www.fontsquirrel.com/fonts/open-sans
 	let tiny_font = ttf_ctx.load_font("fonts/OpenSans-Regular.ttf", 12)?; //From https://www.fontsquirrel.com/fonts/open-sans
 
+	let mut texture_map = HashMap::new();
+
+	crate::game_map::load_textures(&mut texture_map, &texture_creator)?;
+	crate::banner::load_textures(&mut texture_map, &texture_creator, &bold_font)?;
+
 	let mut core = SDLCore{
 		sdl_ctx,
 		bold_font,
@@ -108,8 +117,10 @@ fn runner(vsync:bool) -> Result<(), String> {
 		tiny_font,
 		wincan,
 		texture_creator: &texture_creator,
+		texture_map: &texture_map,
 		event_pump,
 		cam,
+		input,
 	};
 
 	// ----- Start the game loop in the menu -----
@@ -140,9 +151,7 @@ fn run_game_state<'i, 'r>(core: &'i mut SDLCore<'r>, game_state: &GameState) -> 
 
 			Box::new(MainMenu::new(core)?)
 		},
-		GameState::SinglePlayer => {
-			return Ok(single_player::single_player(core)?);
-		},
+		GameState::SinglePlayer => Box::new(SinglePlayer::new(core)?),
 		GameState::MultiPlayer => Box::new(MultiPlayer::new(core)?),
 		GameState::Credits => {
 			return Ok(credits::credits(core)?);

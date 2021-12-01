@@ -92,10 +92,13 @@ impl MainMenu<'_, '_> {
 impl Drawable for MainMenu<'_, '_> {
 
 	fn draw(&mut self) -> Result<GameState, String> {
+		//Record user inputs
+		self.core.input.update(&self.core.event_pump);
+
 		let mouse_state: MouseState = self.core.event_pump.mouse_state();
 		let mouse_pos = (mouse_state.x(), mouse_state.y());
 
-		if mouse_state.left() && self.is_multiplayer_open {
+		if self.core.input.left_clicked && self.is_multiplayer_open {
 			if self.join_code_rect.contains_point(mouse_pos) {
 				self.join_code_selected = true;
 				self.join_code_selected_time = Instant::now();
@@ -114,7 +117,7 @@ impl Drawable for MainMenu<'_, '_> {
 			}
 		}
 
-		if mouse_state.left() && !self.is_multiplayer_open {
+		if self.core.input.left_clicked && !self.is_multiplayer_open {
 			if self.singleplayer_button.is_mouse(self.core) {
 				return Ok(GameState::SinglePlayer);
 			} else if self.multiplayer_button.is_mouse(self.core) {

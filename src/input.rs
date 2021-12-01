@@ -10,6 +10,11 @@ pub struct Input {
 	pub right_clicked: bool,
 	pub right_held: bool,
 
+	pub mouse_x: i32,
+	pub mouse_x_old: i32,
+	pub mouse_y: i32,
+	pub mouse_y_old: i32,
+
     pub keystate: HashSet<Keycode>,
 }
 
@@ -20,20 +25,33 @@ impl Input {
             left_clicked: false,
             left_held: false,
             right_clicked: false,
-            right_held: false,
+			right_held: false,
+			mouse_x: -1,
+			mouse_x_old: -1,
+			mouse_y: -1,
+			mouse_y_old: -1,
             keystate: HashSet::new(),
         }
     }
 
-    pub fn update(&mut self, event_pump: &sdl2::EventPump) {		
+    pub fn update(&mut self, event_pump: &sdl2::EventPump) {
 		//Record key inputs
 		self.keystate = event_pump
 		.keyboard_state()
 		.pressed_scancodes()
 		.filter_map(Keycode::from_scancode)
 		.collect();
-        
-        self.mouse_state = event_pump.mouse_state();
+
+		self.mouse_state = event_pump.mouse_state();
+		self.mouse_x_old = self.mouse_x;
+		self.mouse_y_old = self.mouse_y;
+		self.mouse_x = self.mouse_state.x();
+		self.mouse_y = self.mouse_state.y();
+
+		if self.mouse_x_old < 0 || self.mouse_y_old < 0 {
+			self.mouse_x_old = self.mouse_x;
+			self.mouse_y_old = self.mouse_y;
+		}
 
         //Check if left mouse button was pressed this frame
 		if self.mouse_state.left() {

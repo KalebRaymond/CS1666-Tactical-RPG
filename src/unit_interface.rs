@@ -8,6 +8,7 @@ use sdl2::video::WindowContext;
 use crate::SDLCore;
 use crate::player_action::PlayerAction;
 use crate::unit::Unit;
+use crate::{CAM_W, CAM_H};
 
 const ANIM_LENGTH: f32 = 0.15;
 
@@ -61,6 +62,23 @@ impl<'a> UnitInterface<'a> {
         }
     }
 
+    pub fn from_conversion(core: &SDLCore, tex: &'a Texture<'a>) -> UnitInterface<'a> {
+        //println!("{}", core.cam.x);
+        UnitInterface {
+            x: -core.cam.x + (CAM_W/2) as i32,
+            y: -core.cam.y + (CAM_H/2) as i32,
+            txt: vec! [
+                SelectOption {text:"Ranger", valid:true},
+                SelectOption {text:"Melee", valid:true},
+                SelectOption {text:"Mage", valid:true},
+            ],
+            texture: Some(tex),
+            anim_progress: 0.0,
+            anim_state: AnimState::Open,
+            last_drawn: Instant::now(),
+        }
+    }
+
     pub fn draw(&mut self, core: &mut SDLCore, texture_creator: &TextureCreator<WindowContext>) -> Result<(), String> {
         // Update animation
         let time_elapsed = self.last_drawn.elapsed().as_secs_f32();
@@ -93,6 +111,10 @@ impl<'a> UnitInterface<'a> {
                     core.wincan.copy(texture, Rect::new(0,16,64,16), Rect::new(self.x,self.y+32,64,16))?;
                 }
 
+                if self.txt.len() == 3 && self.anim_progress > 0.75 {
+                    core.wincan.copy(texture, Rect::new(0,16,64,16), Rect::new(self.x,self.y+48,64,16))?;
+                }
+
                 for (i, text) in self.txt.iter().enumerate() {
                     if i == 1 && self.anim_progress <= 0.5 {
                         continue;
@@ -108,8 +130,13 @@ impl<'a> UnitInterface<'a> {
                     core.wincan.copy(&text_texture, None, Rect::new(self.x+10, self.y+16*(i+1)as i32, text_w, text_h))?;
                 }
 
-                core.wincan.copy(texture, Rect::new(0,32,64,16), Rect::new(self.x,self.y+16+(32.0*self.anim_progress)as i32,64,16))?;
-
+                if self.txt.len() <= 2 {
+                    core.wincan.copy(texture, Rect::new(0,32,64,16), Rect::new(self.x,self.y+16+(32.0*self.anim_progress)as i32,64,16))?;
+                }
+                else {
+                    core.wincan.copy(texture, Rect::new(0,32,64,16), Rect::new(self.x, self.y+16*(self.txt.len() as i32-1)+(32.0*self.anim_progress) as i32, 64, 16))?;
+                }
+                
                 Ok(())
             },
             _ => { Err("Texture not defined.".to_string()) },
@@ -145,5 +172,27 @@ impl<'a> UnitInterface<'a> {
         }
         // Click on edges of scroll, don't change
         PlayerAction::ChoosingUnitAction
+    }
+
+    pub fn get_choose_unit_click_selection(&self, x: u32, y: u32) -> PlayerAction {
+        let ranger_rect = Rect::new(self.x+7, self.y+16, 55, 16);
+        let melee_rect = Rect::new(self.x+7, self.y+32, 55, 16);
+        let mage_rect = Rect::new(self.x+7, self.y+48, 55, 16);
+
+        if self.anim_progress < 1.0 {
+            return PlayerAction::ChoosingNewUnit;
+        }
+
+        let x = x as i32;
+        let y = y as i32;
+        if ranger_rect.contains_point((x, y)) {
+            return PlayerAction::ChosenRanger;
+        } else if melee_rect.contains_point((x, y)) {
+            return PlayerAction::ChosenMelee;
+        } else if mage_rect.contains_point((x, y)) {
+            return PlayerAction::ChosenMage;
+        }
+
+        PlayerAction::ChoosingNewUnit
     }
 }

@@ -146,6 +146,19 @@ impl Unit <'_>{
         self.has_moved = false;
     }
 
+    pub fn respawn_loc(&self, map: &mut HashMap<(u32, u32), Tile>, where_to_spawn: (u32,u32)) -> (u32, u32) {
+        if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((where_to_spawn.1, where_to_spawn.0)) {
+            //As long as a unit can move to this tile return it otherwise find closest available
+            if entry.get().unit_can_move_here() {
+                where_to_spawn
+            } else {
+                self.get_closest_move(where_to_spawn, map)
+            }
+        } else {
+            panic!("Trying to spawn unit off map")
+        }
+    }
+
     pub fn get_tiles_in_movement_range(&self, map: &mut HashMap<(u32, u32), Tile>,) -> Vec<(u32, u32)> {
         let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
         let mut visited: HashMap<(u32,u32), bool> = HashMap::new();
@@ -241,7 +254,7 @@ impl Unit <'_>{
             }
             current_x += x_increment;
             current_y += y_increment;
-            if(current_x == self.x as i32 && current_y == self.y as i32) {
+            if current_x == self.x as i32 && current_y == self.y as i32 {
                 break;
             }
         }
@@ -400,7 +413,7 @@ impl Unit <'_>{
         let src = if self.has_attacked && self.has_moved {
             //Draw the darkened sprite
             self.gray_sprite_src
-        } 
+        }
         else if self.is_attacked {
             self.time_since_damaged += self.last_damaged_drawn.elapsed().as_secs_f32();
             self.last_damaged_drawn = Instant::now();
@@ -418,7 +431,7 @@ impl Unit <'_>{
             //Draw the default sprite
             self.default_sprite_src
         };
-        
+
         //Draw the sprite
         core.wincan.copy(self.texture, src, *dest)?;
 
