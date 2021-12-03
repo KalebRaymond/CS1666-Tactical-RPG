@@ -111,7 +111,7 @@ impl ObjectiveManager {
             for camp_to_remove in self.taken_over_camps.iter() {
                 self.barbarian_camps_turns.remove(&camp_to_remove.0);
                 self.barbarian_camps_teams.remove(&camp_to_remove.0);
-                self.barbarian_camps.retain(|camp| camp.0 != camp_to_remove.0.0 && camp.1 != camp_to_remove.0.1);
+                self.barbarian_camps.retain(|camp| camp.0 != camp_to_remove.0.0 || camp.1 != camp_to_remove.0.1);
 
                 println!("Camp ({}, {}) removed from ObjectiveManager", camp_to_remove.0.0, camp_to_remove.0.1);
             }
