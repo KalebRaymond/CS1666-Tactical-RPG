@@ -12,8 +12,8 @@ use crate::unit::*;
 use crate::tile::Tile;
 
 //Genetic Algorithm Constants (instead of a struct to make things easier to modify and less things to pass around)
-const POP_NUM: usize = 100; //Population size
-const GEN_NUM: u32 = 50; //Number of generations to run
+const POP_NUM: usize = 120; //Population size
+const GEN_NUM: u32 = 60; //Number of generations to run
 const MUT_PROB: f32 = 0.3; //Probability of an individual being mutated
 const MUT_NUM: usize = 5; //How many units should be changed on mutation
 const C_PERC: f32 = 0.2; //Percentage of the least fit individuals to be removed
