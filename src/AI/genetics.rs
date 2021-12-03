@@ -272,8 +272,8 @@ fn assign_value_to_state (current_state: &mut PopulationState) {
 // Order of values in return 
 // 0: value of state
 // 1: near_own_castle
-// 2: near_enemy_castle
-// 3: near_camp
+// 2: sieging
+// 3: capturing_camp
 // 4: able_to_attack
 // Minus "being able to attack" all other values will be calculated using heuristics (relative manhattan distance)
 // Additionally not calculating closest unit to save time since based on the distance from objectives and the ability to attack this distance should be implied
@@ -301,7 +301,7 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
                                         100000
                                     };
 
-    let sieging: bool =   if distance_from_enemy_castle <= MIN_DISTANCE {
+    let sieging: bool =   if distance_from_enemy_castle == 0 {
                         true
                     } else {
                         false
@@ -320,7 +320,12 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
         }
         if let Some(hash_map) = distance_map.to_barbarian_camps.get(&camp_coords.get(min_distance_index).unwrap()) {
             if let Some(dist) = hash_map.get(&unit_pos) {
-                *dist as i32
+                let min_camp = camp_coords.get(min_distance_index).unwrap();
+                if unit_pos == (min_camp.0+1, min_camp.1) || unit_pos == (min_camp.0, min_camp.1+1) || unit_pos == (min_camp.0+1, min_camp.1+1) {
+                    0
+                } else {
+                    *dist as i32
+                }
             } else {
                 panic!();
                 100000
@@ -332,7 +337,7 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
         -1
     };
 
-    let near_camp: bool = if distance_from_nearest_camp <= MIN_DISTANCE as i32 && distance_from_nearest_camp >= 0{
+    let capturing_camp: bool = if distance_from_nearest_camp == 0 {
                         true
                     } else {
                         false
@@ -365,7 +370,7 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
 
     //println!("Unit at {}, {}\nValue: {}, D(own_castle): {}, D(enemy_castle): {}, D(camp): {}, can_attack: {}\n", unit_pos.0, unit_pos.1, value, distance_from_own_castle, distance_from_enemy_castle, distance_from_nearest_camp, able_to_attack);
 
-    (value, defending, sieging, near_camp, able_to_attack)
+    (value, defending, sieging, capturing_camp, able_to_attack)
 }
 
 //In order to convert utilities into probabilities, we are using the Boltzman distribution (slightly flipped since we are aiming for max instead of min)
