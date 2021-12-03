@@ -203,7 +203,7 @@ impl GameMap<'_> {
 			if pos_to_change.1 == Team::Player {
 				if pos_to_change.0 == fort_locations.0 || pos_to_change.0 == fort_locations.1 {
 					let texture = self.camp_textures[1].0;
-					self.map_tiles.insert((pos_to_change.0.0,pos_to_change.0.1), Tile::new(pos_to_change.0.0, pos_to_change.0.1, true, true, None, Some(Structure::Camp), texture));
+					self.map_tiles.insert((pos_to_change.0.1,pos_to_change.0.0), Tile::new(pos_to_change.0.1, pos_to_change.0.0, true, true, None, Some(Structure::Camp), texture));
 				}
 				else {
 					let texture = self.camp_textures[0].0;
@@ -214,7 +214,7 @@ impl GameMap<'_> {
 			else {
 				if pos_to_change.0 == fort_locations.0 || pos_to_change.0 == fort_locations.1 {
 					let texture = self.camp_textures[1].1;
-					self.map_tiles.insert((pos_to_change.0.0,pos_to_change.0.1), Tile::new(pos_to_change.0.0, pos_to_change.0.1, true, true, None, Some(Structure::Camp), texture));
+					self.map_tiles.insert((pos_to_change.0.1,pos_to_change.0.0), Tile::new(pos_to_change.0.1, pos_to_change.0.0, true, true, None, Some(Structure::Camp), texture));
 				}
 				else {
 					let texture = self.camp_textures[0].1;
@@ -382,7 +382,7 @@ pub fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit
 					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 7, 1, 95, 1, 3, unit_textures.get(melee).unwrap()));
 				}
 				else {
-					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 7, 1, 95, 1, 5, unit_textures.get(melee).unwrap()));
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 100, 1, 95, 1, 5, unit_textures.get(melee).unwrap()));
 				}
 			},
 			'r' => {
