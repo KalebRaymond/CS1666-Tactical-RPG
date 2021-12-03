@@ -152,10 +152,15 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
     println!("Genetic Algorithm Constants:\nPopulation Size: {}, Number of Generations: {}, Mutation Probability: {}, Number of Units Changed on Mutate: {}, Elite Percentage: {}, Culling Percentage: {}\n", POP_NUM, GEN_NUM, MUT_PROB, MUT_NUM, E_PERC, C_PERC);
 
     for unit in game_map.enemy_units.values() {
-        let current_unit = SuccinctUnit::new(unit.get_tiles_in_movement_range(&mut game_map.map_tiles), unit.attack_range);
-
-        let move_value = current_unit_value(current_unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
+        let move_value = current_unit_value(unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
         original_unit_movements.push(((unit.x, unit.y), move_value));
+        
+        //If a unit is currently in the process of capturing, it should not consider other moves
+        let current_unit = if move_value.2 || move_value.3 {
+            SuccinctUnit::new(vec![(unit.x, unit.y)], unit.attack_range)
+        } else {
+            SuccinctUnit::new(unit.get_tiles_in_movement_range(&mut game_map.map_tiles), unit.attack_range)
+        };
 
         succinct_units.push(current_unit);
     }
