@@ -15,7 +15,7 @@ use crate::tile::Tile;
 const POP_NUM: usize = 120; //Population size
 const GEN_NUM: u32 = 60; //Number of generations to run
 const MUT_PROB: f32 = 0.3; //Probability of an individual being mutated
-const MUT_NUM: usize = 5; //How many units should be changed on mutation
+const MUT_NUM: usize = 6; //How many units should be changed on mutation
 const C_PERC: f32 = 0.2; //Percentage of the least fit individuals to be removed
 const E_PERC: f32 = 0.1; //Proportion of best individuals to carry over from one generation to the next
 
