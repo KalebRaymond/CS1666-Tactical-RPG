@@ -307,7 +307,7 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
                         false
                     };
 
-    let distance_from_nearest_camp = {
+    let distance_from_nearest_camp: i32 = if camp_coords.len() > 0 {
         let mut min_distance_index = 0;
         let mut min_distance = 1000;
         for index in 0..camp_coords.len() {
@@ -320,7 +320,7 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
         }
         if let Some(hash_map) = distance_map.to_barbarian_camps.get(&camp_coords.get(min_distance_index).unwrap()) {
             if let Some(dist) = hash_map.get(&unit_pos) {
-                *dist
+                *dist as i32
             } else {
                 panic!();
                 100000
@@ -328,9 +328,11 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
         } else {
             panic!();
         }
+    } else {
+        -1
     };
 
-    let near_camp: bool = if distance_from_nearest_camp <= MIN_DISTANCE {
+    let near_camp: bool = if distance_from_nearest_camp <= MIN_DISTANCE as i32 && distance_from_nearest_camp >= 0{
                         true
                     } else {
                         false
@@ -351,11 +353,12 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
     } else {
         value += SIEGING_WEIGHT*2.0;
     }
-    if distance_from_nearest_camp != 0 {
+    if distance_from_nearest_camp > 0 {
         value += CAMP_WEIGHT/(distance_from_nearest_camp as f64);
-    } else {
+    } else if distance_from_nearest_camp == 0 {
         value += CAMP_WEIGHT*2.0;
     }
+
     if able_to_attack == true {
         value += ATTACK_VALUE * (*tiles_to_attack.iter().min().unwrap() as f64); //Should favor moves that allows unit to attack from further away
     }
