@@ -107,7 +107,7 @@ impl Drawable for SinglePlayer<'_,'_> {
 					enemy_turn::handle_enemy_turn(&self.core, &mut self.game_map, &self.distance_map)?;
 
 					if self.next_team_check == Team::Enemy {
-						self.game_map.objectives.check_objectives(Team::Enemy, &self.game_map.player_units);
+						self.game_map.objectives.check_objectives(Team::Enemy, &self.game_map.enemy_units);
 						
 						if self.game_map.objectives.has_won(Team::Enemy) {
 							self.winning_team = self.game_map.set_winner(Team::Enemy);

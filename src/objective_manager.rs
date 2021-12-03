@@ -12,7 +12,8 @@ pub struct ObjectiveManager {
     pub p2_castle_turns: u32,
 
     pub barbarian_camps: Vec<(u32, u32)>,
-    pub barbarian_camps_turns: Vec<u32>,
+    pub barbarian_camps_turns: Vec<u32>, //Keeps track of how many consecutive turns each camp has been occupied
+    pub barbarian_camps_teams: Vec<Option<Team>>, //Keeps track of which team is occupying each camp
 }
 
 impl ObjectiveManager {
@@ -29,13 +30,17 @@ impl ObjectiveManager {
             p2_castle_turns: 0,
             barbarian_camps: Vec::new(),
             barbarian_camps_turns: Vec::new(),
+            barbarian_camps_teams: Vec::new(),
         }
     }
 
     pub fn new(p1_castle_location: (u32, u32), p2_castle_location: (u32, u32), barb_camp_locations: Vec<(u32, u32)>) -> ObjectiveManager {
         let mut barbarian_camps_turns: Vec<u32> = Vec::new();
+        let mut barbarian_camps_teams: Vec<Option<Team>> = Vec::new();
+
         for _camp in barb_camp_locations.iter() {
             barbarian_camps_turns.push(0);
+            barbarian_camps_teams.push(None);
         }
 
         return ObjectiveManager {
@@ -45,6 +50,7 @@ impl ObjectiveManager {
             p2_castle_turns: 0,
             barbarian_camps: barb_camp_locations,
             barbarian_camps_turns,
+            barbarian_camps_teams,
         };
     }
 
@@ -74,11 +80,28 @@ impl ObjectiveManager {
         }
 
         //Check barbarian camps
-        /*
-        if team != barbarian
-            for each camp in camps
-                if team has a unit in this camp
-        */
+        if team != Team::Barbarians {
+            for i in 0..self.barbarian_camps.len() {
+                if ObjectiveManager::camp_is_occupied_by_team(self.barbarian_camps.get(i).unwrap(), &team_units) {
+                    self.barbarian_camps_turns[i] += 1;
+                    
+                    //If this is the first turn the team is occupying the camp, set the camp's team
+                    if self.barbarian_camps_teams.get(i).is_none() {
+                        self.barbarian_camps_teams[i] = Some(team);
+                    }
+                }
+                else {
+                    self.barbarian_camps_turns[i] = 0;
+                    self.barbarian_camps_teams[i] = None;
+                }
+            }
+        }
+            
+
+    }
+
+    fn camp_is_occupied_by_team<'a>(camp: &(u32, u32), team_units: &HashMap<(u32, u32), Unit<'a>>) -> bool {
+        return false;
     }
 
     //Returns true if the given team has captured their opponent's castle
@@ -92,5 +115,9 @@ impl ObjectiveManager {
         else {
             return false;
         }
+    }
+
+    fn remove_camp() {
+
     }
 }
