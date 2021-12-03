@@ -12,10 +12,10 @@ use crate::unit::*;
 use crate::tile::Tile;
 
 //Genetic Algorithm Constants (instead of a struct to make things easier to modify and less things to pass around)
-const POP_NUM: usize = 100; //Population size
-const GEN_NUM: u32 = 50; //Number of generations to run
+const POP_NUM: usize = 120; //Population size
+const GEN_NUM: u32 = 60; //Number of generations to run
 const MUT_PROB: f32 = 0.3; //Probability of an individual being mutated
-const MUT_NUM: usize = 5; //How many units should be changed on mutation
+const MUT_NUM: usize = 6; //How many units should be changed on mutation
 const C_PERC: f32 = 0.2; //Percentage of the least fit individuals to be removed
 const E_PERC: f32 = 0.1; //Proportion of best individuals to carry over from one generation to the next
 
@@ -60,6 +60,10 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
     for index in index_of_units_to_mutate {
         //If the unit only has 1 move to choose from, nothing will change. So move on to next unit to mutate... 
         if succinct_units[index].possible_moves.len() == 1 {
+            continue;
+        }
+        //If the unit is currently capturing a camp or the enemy castle, it should not move
+        if state.units_and_utility[index].1.2 || state.units_and_utility[index].1.2 {
             continue;
         }
         let mut index_of_new_move: usize = (0..succinct_units[index].possible_moves.len() as usize).choose(&mut rng_thread).unwrap();
@@ -148,10 +152,15 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
     println!("Genetic Algorithm Constants:\nPopulation Size: {}, Number of Generations: {}, Mutation Probability: {}, Number of Units Changed on Mutate: {}, Elite Percentage: {}, Culling Percentage: {}\n", POP_NUM, GEN_NUM, MUT_PROB, MUT_NUM, E_PERC, C_PERC);
 
     for unit in game_map.enemy_units.values() {
-        let current_unit = SuccinctUnit::new(unit.get_tiles_in_movement_range(&mut game_map.map_tiles), unit.attack_range);
-
-        let move_value = current_unit_value(current_unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
+        let move_value = current_unit_value(unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
         original_unit_movements.push(((unit.x, unit.y), move_value));
+        
+        //If a unit is currently in the process of capturing, it should not consider other moves
+        let current_unit = if move_value.2 || move_value.3 {
+            SuccinctUnit::new(vec![(unit.x, unit.y)], unit.attack_range)
+        } else {
+            SuccinctUnit::new(unit.get_tiles_in_movement_range(&mut game_map.map_tiles), unit.attack_range)
+        };
 
         succinct_units.push(current_unit);
     }
@@ -272,8 +281,8 @@ fn assign_value_to_state (current_state: &mut PopulationState) {
 // Order of values in return 
 // 0: value of state
 // 1: near_own_castle
-// 2: near_enemy_castle
-// 3: near_camp
+// 2: sieging
+// 3: capturing_camp
 // 4: able_to_attack
 // Minus "being able to attack" all other values will be calculated using heuristics (relative manhattan distance)
 // Additionally not calculating closest unit to save time since based on the distance from objectives and the ability to attack this distance should be implied
@@ -301,13 +310,13 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
                                         100000
                                     };
 
-    let sieging: bool =   if distance_from_enemy_castle <= MIN_DISTANCE {
+    let sieging: bool =   if distance_from_enemy_castle == 0 {
                         true
                     } else {
                         false
                     };
 
-    let distance_from_nearest_camp = {
+    let distance_from_nearest_camp: i32 = if camp_coords.len() > 0 {
         let mut min_distance_index = 0;
         let mut min_distance = 1000;
         for index in 0..camp_coords.len() {
@@ -320,7 +329,12 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
         }
         if let Some(hash_map) = distance_map.to_barbarian_camps.get(&camp_coords.get(min_distance_index).unwrap()) {
             if let Some(dist) = hash_map.get(&unit_pos) {
-                *dist
+                let min_camp = camp_coords.get(min_distance_index).unwrap();
+                if unit_pos == (min_camp.0+1, min_camp.1) || unit_pos == (min_camp.0, min_camp.1+1) || unit_pos == (min_camp.0+1, min_camp.1+1) {
+                    0
+                } else {
+                    *dist as i32
+                }
             } else {
                 panic!();
                 100000
@@ -328,9 +342,11 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
         } else {
             panic!();
         }
+    } else {
+        -1
     };
 
-    let near_camp: bool = if distance_from_nearest_camp <= MIN_DISTANCE {
+    let capturing_camp: bool = if distance_from_nearest_camp == 0 {
                         true
                     } else {
                         false
@@ -351,18 +367,19 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
     } else {
         value += SIEGING_WEIGHT*2.0;
     }
-    if distance_from_nearest_camp != 0 {
+    if distance_from_nearest_camp > 0 {
         value += CAMP_WEIGHT/(distance_from_nearest_camp as f64);
-    } else {
-        value += CAMP_WEIGHT*2.0;
+    } else if distance_from_nearest_camp == 0 {
+        value += CAMP_WEIGHT*3.0;
     }
+
     if able_to_attack == true {
         value += ATTACK_VALUE * (*tiles_to_attack.iter().min().unwrap() as f64); //Should favor moves that allows unit to attack from further away
     }
 
     //println!("Unit at {}, {}\nValue: {}, D(own_castle): {}, D(enemy_castle): {}, D(camp): {}, can_attack: {}\n", unit_pos.0, unit_pos.1, value, distance_from_own_castle, distance_from_enemy_castle, distance_from_nearest_camp, able_to_attack);
 
-    (value, defending, sieging, near_camp, able_to_attack)
+    (value, defending, sieging, capturing_camp, able_to_attack)
 }
 
 //In order to convert utilities into probabilities, we are using the Boltzman distribution (slightly flipped since we are aiming for max instead of min)
