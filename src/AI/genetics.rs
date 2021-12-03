@@ -62,6 +62,10 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
         if succinct_units[index].possible_moves.len() == 1 {
             continue;
         }
+        //If the unit is currently capturing a camp or the enemy castle, it should not move
+        if state.units_and_utility[index].1.2 || state.units_and_utility[index].1.2 {
+            continue;
+        }
         let mut index_of_new_move: usize = (0..succinct_units[index].possible_moves.len() as usize).choose(&mut rng_thread).unwrap();
         let mut new_move = succinct_units[index].possible_moves.get(index_of_new_move).unwrap();
         let mut attempts: u32 = 0;
@@ -361,7 +365,7 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
     if distance_from_nearest_camp > 0 {
         value += CAMP_WEIGHT/(distance_from_nearest_camp as f64);
     } else if distance_from_nearest_camp == 0 {
-        value += CAMP_WEIGHT*2.0;
+        value += CAMP_WEIGHT*3.0;
     }
 
     if able_to_attack == true {
