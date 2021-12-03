@@ -52,6 +52,7 @@ pub struct GameMap<'a> {
 	pub banner: Banner,
 	pub cursor: Cursor<'a>,
 	pub end_turn_button: Button<'a>,
+	pub camp_textures: Vec<(&'a Texture<'a>, &'a Texture<'a>)>,
 }
 
 impl GameMap<'_> {
@@ -92,6 +93,7 @@ impl GameMap<'_> {
 			banner: Banner::new(),
 			cursor: Cursor::new(core.texture_map.get("cursor").unwrap()),
 			end_turn_button,
+			camp_textures: Vec::new(),
 		};
 
 		//Set up the HashMap of Tiles that can be interacted with
@@ -111,6 +113,10 @@ impl GameMap<'_> {
 						pos_barbarian_camps.push((y,x));
 						map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), texture))
 					},
+					"f" => {
+						pos_barbarian_camps.push((y,x));
+						map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), texture))
+					}
 					"_" => map.map_tiles.insert((x,y), Tile::new(x, y, true, true, None, Some(Structure::Camp), texture)),
 					"1" =>  {
 						pos_player_castle = (y, x);
@@ -127,6 +133,9 @@ impl GameMap<'_> {
 			x += 1;
 			y = 0;
 		}
+		map.camp_textures.push((core.texture_map.get("pc").unwrap(), core.texture_map.get("ec").unwrap()));
+		map.camp_textures.push((core.texture_map.get("pf").unwrap(), core.texture_map.get("ef").unwrap()));
+
 
 		//Now that the locations of the objectives have been found, update the ObjectiveManager
 		map.objectives = ObjectiveManager::new(pos_player_castle, pos_enemy_castle, pos_barbarian_camps);
@@ -184,6 +193,34 @@ impl GameMap<'_> {
 				self.cursor.set_cursor(&PixelCoordinates::from_matrix_indices(i, j), &active_unit);
 			},
 			_ => {},
+		}
+
+		while self.objectives.taken_over_camps.len() > 0 {
+			let pos_to_change = self.objectives.taken_over_camps.pop().unwrap();
+			let fort_locations: ((u32, u32), (u32, u32)) = ((31, 10), (31, 52));
+			
+
+			if pos_to_change.1 == Team::Player {
+				if pos_to_change.0 == fort_locations.0 || pos_to_change.0 == fort_locations.1 {
+					let texture = self.camp_textures[1].0;
+					self.map_tiles.insert((pos_to_change.0.0,pos_to_change.0.1), Tile::new(pos_to_change.0.0, pos_to_change.0.1, true, true, None, Some(Structure::Camp), texture));
+				}
+				else {
+					let texture = self.camp_textures[0].0;
+					self.map_tiles.insert((pos_to_change.0.0,pos_to_change.0.1), Tile::new(pos_to_change.0.0, pos_to_change.0.1, true, true, None, Some(Structure::Camp), texture));
+				}
+				
+			}
+			else {
+				if pos_to_change.0 == fort_locations.0 || pos_to_change.0 == fort_locations.1 {
+					let texture = self.camp_textures[1].1;
+					self.map_tiles.insert((pos_to_change.0.0,pos_to_change.0.1), Tile::new(pos_to_change.0.0, pos_to_change.0.1, true, true, None, Some(Structure::Camp), texture));
+				}
+				else {
+					let texture = self.camp_textures[0].1;
+					self.map_tiles.insert((pos_to_change.0.0,pos_to_change.0.1), Tile::new(pos_to_change.0.0, pos_to_change.0.1, true, true, None, Some(Structure::Camp), texture));
+				}
+			}
 		}
 
 		//Draw tiles & sprites
@@ -405,6 +442,11 @@ pub fn load_textures<'r>(textures: &mut HashMap<&str, Texture<'r>>, texture_crea
 	textures.insert("<", texture_creator.load_texture("images/tiles/river_end_left.png")?);
 	//Bases
 	textures.insert("b", texture_creator.load_texture("images/tiles/barbarian_camp.png")?);
+	textures.insert("pc", texture_creator.load_texture("images/tiles/player_camp.png")?);
+	textures.insert("ec", texture_creator.load_texture("images/tiles/enemy_camp.png")?);
+	textures.insert("f", texture_creator.load_texture("images/tiles/barbarian_fort.png")?);
+	textures.insert("pf", texture_creator.load_texture("images/tiles/player_fort.png")?);
+	textures.insert("ef", texture_creator.load_texture("images/tiles/enemy_fort.png")?);
 	textures.insert("1", texture_creator.load_texture("images/tiles/blue_castle.png")?);
 	textures.insert("2", texture_creator.load_texture("images/tiles/red_castle.png")?);
 	//Tree
