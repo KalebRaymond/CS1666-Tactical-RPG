@@ -49,6 +49,7 @@ impl Tile <'_>{
             None => self.is_traversable,
         }
     }
+
 }
 
 impl fmt::Display for Tile<'_> {
