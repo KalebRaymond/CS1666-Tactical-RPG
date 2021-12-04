@@ -23,11 +23,13 @@ macro_rules! set_range {
 	};
 }
 
+#[derive(Copy, Clone)]
 pub struct Event {
 	pub action: u8,
 	pub id: u8,
 	pub from_pos: (u32, u32),
 	pub to_pos: (u32, u32),
+	pub value: u8,
 }
 
 impl Event {
@@ -37,19 +39,21 @@ impl Event {
 			id: 0,
 			from_pos: (0, 0),
 			to_pos: (0, 0),
+			value: 0,
 		}
 	}
 
-	pub fn create(action: u8, id: u8, from_pos: (u32, u32), to_pos: (u32, u32)) -> Event {
+	pub fn create(action: u8, id: u8, from_pos: (u32, u32), to_pos: (u32, u32), value: u8) -> Event {
 		Event {
 			action,
 			id,
 			from_pos,
 			to_pos,
+			value,
 		}
 	}
 
-	pub fn from_bytes(arr: &[u8; 18]) -> Event {
+	pub fn from_bytes(arr: &[u8; 19]) -> Event {
 		Event {
 			action: arr[0],
 			id: arr[1],
@@ -61,11 +65,12 @@ impl Event {
 				from_u32_bytes(&arr[10..14]),
 				from_u32_bytes(&arr[14..18]),
 			),
+			value: arr[18],
 		}
 	}
 
-	pub fn to_bytes(&self) -> [u8; 18] {
-		let mut arr = [0; 18];
+	pub fn to_bytes(&self) -> [u8; 19] {
+		let mut arr = [0; 19];
 		arr[0] = self.action;
 		arr[1] = self.id;
 
@@ -75,6 +80,7 @@ impl Event {
 		set_range!(arr[10..14] = to_u32_bytes(self.to_pos.0));
 		set_range!(arr[14..18] = to_u32_bytes(self.to_pos.1));
 
+		arr[18] = self.value;
 		arr
 	}
 }
