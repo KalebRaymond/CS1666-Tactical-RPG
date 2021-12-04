@@ -414,13 +414,16 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
     let mut init_heap = BinaryHeap::new();
     let mut goal_heap = BinaryHeap::new();
 
-    //If current approach proves to be too inefficient implement smart state additions rather than adding all cardinal directions
-    let goal_is_above = unit_pos.1 > goal_pos.1;
-    let goal_is_left = unit_pos.0 > goal_pos.0;
+    //Base case
+    if unit_pos == goal_pos {
+        return 0;
+    }
 
     init_heap.push(Reverse(QueueObject{coords: (unit_pos.0, unit_pos.1), cost: 0}));
+    visited_init.insert((unit_pos.0, unit_pos.1), 0);
     goal_heap.push(Reverse(QueueObject{coords: (goal_pos.0, goal_pos.1), cost: 0}));
-    
+    visited_goal.insert((goal_pos.0, goal_pos.1), 0);
+
     while !init_heap.is_empty() && !goal_heap.is_empty() {
         //If the init_heap is further along, then we should work on expanding goal
         if init_heap.peek().unwrap() < goal_heap.peek().unwrap() {
@@ -429,12 +432,12 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0-1 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_init.get(&(coords.0-1, coords.1)) {
-                            return num + cost;
+                            return num + cost+1;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
                         if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0-1, coords.1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0-1, coords.1), cost:cost+1}));
-                            visited_goal.insert((coords.0-1, coords.1), cost);
+                            visited_goal.insert((coords.0-1, coords.1), cost+1);
                         }
                     }
                 }
@@ -442,12 +445,12 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0+1 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_init.get(&(coords.0+1, coords.1)) {
-                            return num + cost;
+                            return num + cost+1;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
                         if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0+1, coords.1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0+1, coords.1), cost:cost+1}));
-                            visited_goal.insert((coords.0+1, coords.1), cost);
+                            visited_goal.insert((coords.0+1, coords.1), cost+1);
                         }
                     }
                 }
@@ -455,12 +458,12 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1-1 as u32, coords.0 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_init.get(&(coords.0, coords.1-1)) {
-                            return num + cost;
+                            return num + cost+1;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
                         if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0, coords.1-1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1-1), cost:cost+1}));
-                            visited_goal.insert((coords.0, coords.1-1), cost);
+                            visited_goal.insert((coords.0, coords.1-1), cost+1);
                         }
                     }
                 }
@@ -468,12 +471,12 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1+1 as u32, coords.0 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_init.get(&(coords.0, coords.1+1)) {
-                            return num + cost;
+                            return num + cost+1;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
                         if entry.get().is_traversable && !visited_goal.contains_key(&(coords.0, coords.1+1)){
                             goal_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost+1}));
-                            visited_goal.insert((coords.0, coords.1+1), cost);
+                            visited_goal.insert((coords.0, coords.1+1), cost+1);
                         }
                     }
                 }
@@ -484,12 +487,12 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0-1 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_goal.get(&(coords.0-1, coords.1)) {
-                            return num + cost;
+                            return num + cost+1;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
                         if entry.get().is_traversable && !visited_init.contains_key(&(coords.0-1, coords.1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0-1, coords.1), cost:cost+1}));
-                            visited_init.insert((coords.0-1, coords.1), cost);
+                            visited_init.insert((coords.0-1, coords.1), cost+1);
                         }
                     }
                 }
@@ -497,12 +500,12 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0+1 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_goal.get(&(coords.0+1, coords.1)) {
-                            return num + cost;
+                            return num + cost+1;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
                         if entry.get().is_traversable && !visited_init.contains_key(&(coords.0+1, coords.1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0+1, coords.1), cost:cost+1}));
-                            visited_init.insert((coords.0+1, coords.1), cost);
+                            visited_init.insert((coords.0+1, coords.1), cost+1);
                         }
                     }
                 }
@@ -510,12 +513,12 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1-1 as u32, coords.0 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_goal.get(&(coords.0, coords.1-1)) {
-                            return num + cost;
+                            return num + cost+1;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
                         if entry.get().is_traversable && !visited_init.contains_key(&(coords.0, coords.1-1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1-1), cost:cost+1}));
-                            visited_init.insert((coords.0, coords.1-1), cost);
+                            visited_init.insert((coords.0, coords.1-1), cost+1);
                         }
                     }
                 }
@@ -523,12 +526,12 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1+1 as u32, coords.0 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_goal.get(&(coords.0, coords.1+1)) {
-                            return num + cost;
+                            return num + cost+1;
                         }
                         //As long as a unit can move to this tile and we have not already visited this tile
                         if entry.get().is_traversable && !visited_init.contains_key(&(coords.0, coords.1+1)){
                             init_heap.push(Reverse(QueueObject { coords: (coords.0, coords.1+1), cost:cost+1}));
-                            visited_init.insert((coords.0, coords.1+1), cost);
+                            visited_init.insert((coords.0, coords.1+1), cost+1);
                         }
                     }
                 }
