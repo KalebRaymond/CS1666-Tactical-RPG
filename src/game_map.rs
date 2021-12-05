@@ -478,12 +478,11 @@ pub fn apply_events<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) -> Resul
 	// process any new events in the event_list
 	for i in game_map.event_list_index..game_map.event_list.len() {
 		if let Some(event) = game_map.event_list.get(i).map(|e| e.clone()) {
-			apply_event(core, game_map, event);
+			println!("Applying event #{}: {}", i, event);
+			apply_event(core, game_map, event)?;
 		}
 	}
-	if game_map.event_list.len() > 0 {
-		game_map.event_list_index = game_map.event_list.len()-1;
-	}
+	game_map.event_list_index = game_map.event_list.len();
 
 	// remove any (dead) units that have reached 0 hp
 	game_map.player_units.retain(|_, u| u.hp > 0);
@@ -511,6 +510,12 @@ pub fn apply_event<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, event: Ev
 					return Err("No specified unit on event 'from' tile".to_string());
 				}
 			};
+
+			if from_tile == to_tile {
+				// moving unit to the same tile; no action required
+				unit_map.get_mut(&event.from_pos).map(|u| u.has_moved = true);
+				return Ok(());
+			}
 
 			if to_team != None {
 				return Err("Could not apply event: 'to' tile already contains another unit".to_string());
@@ -572,13 +577,8 @@ pub fn apply_event<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, event: Ev
 		EVENT_OBJ_CAPTURE => {
 			
 		},
-		EVENT_UNIT_SPAWN => {
-			let unit_team = match event.id {
-				EVENT_ID_PLAYER => Team::Player,
-				EVENT_ID_ENEMY => Team::Enemy,
-				EVENT_ID_BARBARIAN => Team::Barbarians,
-				_ => return Err("Invalid event id for unit spawning".to_string())
-			};
+		EVENT_SPAWN_UNIT => {
+			let unit_team = if event.from_self { Team::Player } else { Team::Enemy };
 
 			let unit_map = match unit_team {
 				Team::Player => &mut game_map.player_units,
@@ -620,10 +620,10 @@ pub fn apply_event<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, event: Ev
 // Method for preparing the HashMap of player units whilst also properly marking them in the map
 // l melee r ranged m mage
 pub fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>>, player_team: Team, units: &Vec<(char, (u32, u32))>, unit_textures: &'a HashMap<String, Texture<'a>>, map: &'b mut HashMap<(u32, u32), Tile>) {
-	let (melee, range, mage)  = match player_team {
-		Team::Player => ("pll", "plr", "plm"),
-		Team::Enemy =>  ("pl2l", "pl2r", "pl2m"),
-		Team::Barbarians => ("bl", "br", ""),
+	let (melee, range, mage, guard, scout)  = match player_team {
+		Team::Player => ("pll", "plr", "plm", "plg", "pls"),
+		Team::Enemy =>  ("pl2l", "pl2r", "pl2m", "pl2g", "pl2s"),
+		Team::Barbarians => ("bl", "br", "", "", ""),
 	};
 
 	for unit in units {
@@ -654,18 +654,18 @@ pub fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit
 			},
 			'g' => {
 				if player_team == Team::Barbarians {
-					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 16, 4, 1, 90, 1, 5, unit_textures.get(range).unwrap(), true));
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 16, 4, 1, 90, 1, 5, unit_textures.get(guard).unwrap(), false));
 				}
 				else {
-					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 25, 4, 1, 90, 1, 5, unit_textures.get(range).unwrap(), true));
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 25, 4, 1, 90, 1, 5, unit_textures.get(guard).unwrap(), false));
 				}
 			}
 			's' => {
 				if player_team == Team::Barbarians {
-					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 6, 9, 2, 100, 4, 4, unit_textures.get(range).unwrap(), true));
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 6, 9, 2, 100, 4, 4, unit_textures.get(scout).unwrap(), false));
 				}
 				else {
-					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 9, 9, 2, 100, 4, 4, unit_textures.get(range).unwrap(), true));
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 9, 9, 2, 100, 4, 4, unit_textures.get(scout).unwrap(), false));
 				}
 			}
 			_ => {

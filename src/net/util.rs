@@ -10,7 +10,7 @@ pub const EVENT_ATTACK: u8 = 3;
 pub const EVENT_END_TURN: u8 = 4;
 pub const EVENT_END_GAME: u8 = 5;
 pub const EVENT_OBJ_CAPTURE: u8 = 6;
-pub const EVENT_UNIT_SPAWN: u8 = 7;
+pub const EVENT_SPAWN_UNIT: u8 = 7;
 
 pub const EVENT_ID_ENEMY: u8 = 0;
 pub const EVENT_ID_PLAYER: u8 = 1;
@@ -99,6 +99,24 @@ impl Event {
 		arr[18] = self.value;
 		arr
 	}
+}
+
+impl std::fmt::Display for Event {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		let action = match self.action {
+			EVENT_NONE => "none",
+			EVENT_JOIN => "join",
+			EVENT_MOVE => "move",
+			EVENT_ATTACK => "attack",
+			EVENT_END_TURN => "end turn",
+			EVENT_END_GAME => "end game",
+			EVENT_OBJ_CAPTURE => "objective capture",
+			EVENT_SPAWN_UNIT => "spawn unit",
+			_ => "unknown",
+		};
+
+        write!(f, "Event(action:{}, from:{:?}, to:{:?}, value:{})", action, self.from_pos, self.to_pos, self.value)
+    }
 }
 
 pub fn to_u32_bytes(num: u32) -> [u8; 4] {

@@ -39,7 +39,7 @@ pub fn handle_barbarian_turn<'a>(_core: &SDLCore<'a>, game_map: &mut GameMap<'a>
 	}
 
 	//If the barbarian did not find a unit to attack, make it move randomly by 1 tile in an available direction
-	let mut directions = vec![0, 1, 2, 3];
+	let mut directions = vec![0, 1, 2, 3, 4];
 	let mut potential_move = (original_x, original_y);
 
 	while directions.len() > 0 {

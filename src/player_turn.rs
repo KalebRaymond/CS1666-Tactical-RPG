@@ -172,7 +172,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) ->
                     };
 
                     if unit_id != 100 {
-                        game_map.event_list.push(Event::create(EVENT_UNIT_SPAWN, unit_id, (0,0), respawn_location, 0));
+                        game_map.event_list.push(Event::create(EVENT_SPAWN_UNIT, unit_id, (0,0), respawn_location, unit_id));
 
                         game_map.choose_unit_interface.as_mut().unwrap().animate_close();
                         game_map.player_state.current_player_action = PlayerAction::Default;
