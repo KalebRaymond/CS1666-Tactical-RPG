@@ -92,24 +92,32 @@ impl Client {
 	}
 
 	pub fn poll(&mut self) -> Result<Option<Event>, String> {
-		// don't send polls if <1s since last call
+		// don't send polls if <1s since last (empty) call
 		if Instant::now().duration_since(self.last_poll).as_secs() < 1 {
 			return Ok(None);
 		}
 
-		self.last_poll = Instant::now();
 		let mut stream = self.connect(MSG_POLL)?;
 
 		let mut buffer = [0; 19];
 		stream.read(&mut buffer).map_err(|_e| "Could not read poll response")?;
 
-		match Event::from_bytes(&buffer) {
+		let ret = match Event::from_bytes(&buffer) {
 			Event{action: EVENT_NONE, ..} => Ok(None),
 			Event{action: EVENT_JOIN, ..} => {
 				self.is_joined = true;
 				Ok(None)
 			},
 			e => Ok(Some(e))
+		};
+
+		// only update last_poll once an empty poll is received
+		if let Ok(Some(e)) = ret {
+			if e.action == EVENT_NONE {
+				self.last_poll = Instant::now();
+			}
 		}
+
+		ret
 	}
 }
