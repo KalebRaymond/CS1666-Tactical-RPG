@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use std::time::Instant;
 
 use sdl2::image::LoadTexture;
@@ -11,10 +10,8 @@ use crate::net::util::*;
 
 use crate::game_map::GameMap;
 use crate::{Drawable, GameState};
-use crate::player_state::PlayerState;
 use crate::unit::Team;
-use crate::button::Button;
-use crate::{SDLCore, CAM_W, CAM_H, TILE_SIZE};
+use crate::{SDLCore, TILE_SIZE};
 
 pub struct MultiPlayer<'i, 'r> {
 	core: &'i mut SDLCore<'r>,
@@ -157,7 +154,7 @@ impl Drawable for MultiPlayer<'_, '_> {
 		self.core.input.update(&self.core.event_pump);
 
 		// render the current game board
-		self.game_map.draw(self.core);
+		self.game_map.draw(self.core)?;
 
 		// handle the current player's turn
 		if self.game_map.player_state.is_turn() {

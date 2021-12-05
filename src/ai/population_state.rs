@@ -166,7 +166,7 @@ impl PopulationState {
                     //Create the new unit with default stats and update the position of it accordingly
                     let castle_coord = &game_map.objectives.p2_castle;
                     //Since all the units are of relatively equal value at base stats, we can randomly choose among them similar to how a player would
-                    let mut new_unit = if chance < 15 { 
+                    let mut new_unit = if chance < 15 {
                             println!(" Melee selected.");
                             Unit::new(castle_coord.0+5, castle_coord.1-5, Team::Enemy, 20, 7, 1, 95, 1, 5, unit_textures.get("pl2l").unwrap(), false)
                         } else if chance < 30 {
@@ -197,22 +197,22 @@ impl Ord for PopulationState {
     fn cmp(&self, other: &Self) -> Ordering {
         self.overall_utility.partial_cmp(&other.overall_utility).unwrap()
     }
-} 
+}
 
 impl PartialOrd for PopulationState {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
-} 
+}
 
 impl PartialEq for PopulationState {
     fn eq(&self, other: &Self) -> bool {
         self.overall_utility == other.overall_utility
     }
-} 
+}
 
 impl Eq for PopulationState {
-} 
+}
 
 //A succinct way to represent units since we will only be concerned with possible_moves and attack_range
 pub struct SuccinctUnit {

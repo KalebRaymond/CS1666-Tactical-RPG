@@ -9,7 +9,6 @@ use crate::pixel_coordinates::PixelCoordinates;
 use crate::player_action::PlayerAction;
 use crate::SDLCore;
 use crate::unit_interface::UnitInterface;
-use crate::unit::Team;
 use crate::net::util::*;
 
 pub fn handle_player_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) -> Result<(), String> {
@@ -22,7 +21,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) ->
         PlayerAction::ChoosingNewUnit => false,
         _ => true,
     }{
-        game_map.event_list.push(Event::create(EVENT_END_TURN, EVENT_ID_PLAYER, (0, 0), (0, 0), 0));
+        end_player_turn(game_map);
         return Ok(());
     }
 
@@ -31,7 +30,7 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) ->
         PlayerAction::ChoosingNewUnit => false,
         _ => true,
     }{
-        game_map.event_list.push(Event::create(EVENT_END_TURN, EVENT_ID_PLAYER, (0, 0), (0, 0), 0));
+        end_player_turn(game_map);
         return Ok(());
     }
 
@@ -128,7 +127,6 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) ->
                     let active_unit = game_map.get_unit(&(game_map.player_state.active_unit_j as u32, game_map.player_state.active_unit_i as u32))?;
                     let atk_unit = game_map.get_unit(&(j, i))?;
                     let atk_damage = active_unit.get_attack_damage(atk_unit);
-                    let atk_team = atk_unit.team;
                     let atk_kill = atk_unit.hp <= atk_damage;
                     println!("Player: Attacking unit at {:?} with {} damage.", (j, i), atk_damage);
 
@@ -186,9 +184,6 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) ->
     }
 
     pub fn end_player_turn<'a>(game_map: &mut GameMap<'a>) {
-        //End player's turn
-        game_map.player_state.current_turn = Team::Enemy;
-
         //Clear the player UI if it is still visible
         game_map.unit_interface = None;
         game_map.cursor.hide_cursor();

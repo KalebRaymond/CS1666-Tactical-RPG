@@ -8,8 +8,7 @@ use sdl2::pixels::Color;
 use sdl2::ttf::Font;
 use sdl2::rect::Rect;
 
-use crate::SDLCore;
-use crate::{CAM_H, CAM_W};
+use crate::{CAM_W, SDLCore};
 use crate::unit::Team;
 
 const BANNER_TIMEOUT: u64 = 1500;
@@ -100,7 +99,7 @@ impl Banner {
 
 pub fn load_textures<'r>(textures: &mut HashMap<String, Texture<'r>>, texture_creator: &'r TextureCreator<WindowContext>, bold_font: &Font<'r, 'r>) -> Result<(), String> {
 	textures.insert(BANNER_TURN_P1.to_string(), {
-		let text_surface = bold_font.render("Player 1's Turn")
+		let text_surface = bold_font.render("Your Turn")
 			.blended_wrapped(Color::RGBA(0,0,0,BANNER_ALPHA), 320) //Black font
 			.map_err(|e| e.to_string())?;
 
@@ -109,7 +108,7 @@ pub fn load_textures<'r>(textures: &mut HashMap<String, Texture<'r>>, texture_cr
 	});
 
 	textures.insert(BANNER_TURN_P2.to_string(), {
-		let text_surface = bold_font.render("Player 2's Turn")
+		let text_surface = bold_font.render("Enemy's Turn")
 			.blended_wrapped(Color::RGBA(0,0,0,BANNER_ALPHA), 320) //Black font
 			.map_err(|e| e.to_string())?;
 
@@ -127,7 +126,7 @@ pub fn load_textures<'r>(textures: &mut HashMap<String, Texture<'r>>, texture_cr
 	});
 
 	textures.insert(BANNER_WIN_P1.to_string(), {
-		let text_surface = bold_font.render("Player 1 wins!")
+		let text_surface = bold_font.render("You win!")
 			.blended_wrapped(Color::RGBA(0,0,0,BANNER_ALPHA), 320) //Black font
 			.map_err(|e| e.to_string())?;
 
@@ -136,7 +135,7 @@ pub fn load_textures<'r>(textures: &mut HashMap<String, Texture<'r>>, texture_cr
 	});
 
 	textures.insert(BANNER_WIN_P2.to_string(), {
-		let text_surface = bold_font.render("Player 2 wins!")
+		let text_surface = bold_font.render("You lost!")
 			.blended_wrapped(Color::RGBA(0,0,0,BANNER_ALPHA), 320) //Black font
 			.map_err(|e| e.to_string())?;
 

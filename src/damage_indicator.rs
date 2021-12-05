@@ -15,8 +15,6 @@ pub struct DamageIndicator {
     pub damage: u32,
     pub x: u32,
     pub y: u32,
-    width: u32,
-    height: u32,
     pub is_visible: bool,
 
     last_drawn: Instant,
@@ -35,8 +33,6 @@ impl DamageIndicator {
             damage: damage,
             x: position.x,
             y: position.y,
-            width: 64,
-            height: 32,
             is_visible: true,
 
             last_drawn: Instant::now(),

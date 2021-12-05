@@ -88,7 +88,7 @@ impl ObjectiveManager {
                 if ObjectiveManager::camp_is_occupied_by_team(camp, &team_units) {
                     //Increment camp's turn count
                     self.barbarian_camps_turns.insert(*camp, *self.barbarian_camps_turns.get(camp).unwrap() + 1);
-                    
+
                     //If this is the first turn the team is occupying the camp, set the camp's team
                     if self.barbarian_camps_teams.get(camp).is_none() {
                         self.barbarian_camps_teams.insert(*camp, Some(team));

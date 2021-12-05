@@ -57,6 +57,8 @@ pub struct GameMap<'a> {
 
 	pub event_list: Vec<Event>,
 	pub event_list_index: usize,
+
+	pub winning_team: Option<Team>,
 }
 
 impl GameMap<'_> {
@@ -100,6 +102,7 @@ impl GameMap<'_> {
 			camp_textures: Vec::new(),
 			event_list: Vec::new(),
 			event_list_index: 0,
+			winning_team: None,
 		};
 
 		//Set up the HashMap of Tiles that can be interacted with
@@ -176,7 +179,7 @@ impl GameMap<'_> {
 		map
 	}
 
-	pub fn draw(&mut self, core: &mut SDLCore) {
+	pub fn draw(&mut self, core: &mut SDLCore) -> Result<(), String> {
 		//Camera controls should stay enabled even when it is not the player's turn,
 		//which is why this code block is not in player_turn.rs
 		if core.input.right_held && !self.banner.banner_visible {
@@ -253,43 +256,43 @@ impl GameMap<'_> {
 
 				//Draw map tile at this coordinate
 				if let Some(map_tile) = self.map_tiles.get(&(y as u32, x as u32)) {
-					core.wincan.copy(map_tile.texture, None, dest);
+					core.wincan.copy(map_tile.texture, None, dest)?;
 				}
 
 				//Use default sprite size for all non-map sprites
 				let dest = Rect::new(pixel_location.x as i32, pixel_location.y as i32, TILE_SIZE, TILE_SIZE);
 
 				//Draw player unit at this coordinate (Don't forget row is y and col is x because 2d arrays)
-				if let Some(mut unit) = self.player_units.get_mut(&(x as u32, y as u32)) {
-					unit.draw(core, &dest);
+				if let Some(unit) = self.player_units.get_mut(&(x as u32, y as u32)) {
+					unit.draw(core, &dest)?;
 				}
 
 				//Draw enemy unit at this coordinate (Don't forget row is y and col is x because 2d arrays)
-				if let Some(mut enemy) = self.enemy_units.get_mut(&(x as u32, y as u32)) {
-					enemy.draw(core, &dest);
+				if let Some(enemy) = self.enemy_units.get_mut(&(x as u32, y as u32)) {
+					enemy.draw(core, &dest)?;
 				}
 
 				//Draw barbarian unit at this coordinate (Don't forget row is y and col is x because 2d arrays)
-				if let Some(mut barbarian) = self.barbarian_units.get_mut(&(x as u32, y as u32)) {
-					barbarian.draw(core, &dest);
+				if let Some(barbarian) = self.barbarian_units.get_mut(&(x as u32, y as u32)) {
+					barbarian.draw(core, &dest)?;
 				}
 			}
 		}
 
 		// draw UI/banners
-		self.cursor.draw(core);
-		self.banner.draw(core);
+		self.cursor.draw(core)?;
+		self.banner.draw(core)?;
 
 		// draw possible move grid
 		match self.player_units.get(&(self.player_state.active_unit_j as u32, self.player_state.active_unit_i as u32)) {
 			Some(_) => {
 				match self.player_state.current_player_action {
 					PlayerAction::MovingUnit => {
-						draw_possible_moves(core, &self.possible_moves, Color::RGBA(0, 89, 178, 50));
+						draw_possible_moves(core, &self.possible_moves, Color::RGBA(0, 89, 178, 50))?;
 					},
 					PlayerAction::AttackingUnit => {
-						draw_possible_moves(core, &self.possible_attacks, Color::RGBA(178, 89, 0, 100));
-						draw_possible_moves(core, &self.actual_attacks, Color::RGBA(128, 0, 128, 100));
+						draw_possible_moves(core, &self.possible_attacks, Color::RGBA(178, 89, 0, 100))?;
+						draw_possible_moves(core, &self.actual_attacks, Color::RGBA(128, 0, 128, 100))?;
 					},
 					_ => {},
 				}
@@ -299,7 +302,7 @@ impl GameMap<'_> {
 
 		//Draw the damage indicators that appear above the units that have received damage
 		for damage_indicator in self.damage_indicators.iter_mut() {
-			damage_indicator.draw(core);
+			damage_indicator.draw(core)?;
 		}
 		//Remove the damage indicators that have expired
 		self.damage_indicators.retain(|damage_indicator| {
@@ -329,12 +332,42 @@ impl GameMap<'_> {
 			}
 
 			//Draw the button for the player to end their turn, relative to the camera
-			self.end_turn_button.draw_relative(core);
+			self.end_turn_button.draw_relative(core)?;
 		}
+
+		Ok(())
 	}
 
 	// Function that takes a HashMap of units and sets all has_attacked and has_moved to false so that they can move again
 	pub fn initialize_next_turn(&mut self, team: Team) {
+		let previous_team = match team {
+			Team::Player => Team::Barbarians,
+			Team::Enemy => Team::Player,
+			Team::Barbarians => Team::Enemy,
+		};
+
+		//Fix glitch where castle tile says it's occupied when it's not
+		self.correct_map_errors();
+		// Checks to see if the player's units are on the opponent's castle tile
+		self.objectives.check_objectives(previous_team, match previous_team {
+			Team::Player => &self.player_units,
+			Team::Enemy => &self.enemy_units,
+			Team::Barbarians => &self.barbarian_units,
+		});
+
+		if self.objectives.has_won(previous_team) {
+			self.winning_team = self.set_winner(previous_team);
+
+		//Check for total party kill and set the other team as the winner
+		//Ideally you would check this whenever a unit on either team gets attacked, but this works
+		} else if self.player_units.len() == 0 {
+			println!("Enemy team won via Total Party Kill!");
+			self.winning_team = self.set_winner(Team::Enemy);
+		} else if self.enemy_units.len() == 0 {
+			println!("Player team won via Total Party Kill!");
+			self.winning_team = self.set_winner(Team::Player);
+		}
+
 		match team {
 			Team::Player => {
 				for unit in &mut self.player_units.values_mut() {
@@ -358,11 +391,11 @@ impl GameMap<'_> {
 	pub fn set_winner(&mut self, winner: Team) -> Option<Team> {
 		match winner {
 			Team::Player => {
-				println!("Player 1 wins!");
+				println!("You win!");
 				self.banner.show("p1_win_banner");
 			},
 			Team::Enemy => {
-				println!("Enemy wins!");
+				println!("You Lose!");
 				self.banner.show("p2_win_banner");
 			},
 			Team::Barbarians => {
@@ -526,7 +559,7 @@ pub fn apply_event<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, event: Ev
 				return Err("Could not apply event: selected unit has already been moved in this turn".to_string());
 			}
 
-			let mut unit = unit_map.remove(&event.from_pos).ok_or("Could not remove selected unit for event")?;;
+			let mut unit = unit_map.remove(&event.from_pos).ok_or("Could not remove selected unit for event")?;
 			unit.update_pos(event.to_pos.0, event.to_pos.1);
 			unit.has_moved = true;
 			unit_map.insert((event.to_pos.0, event.to_pos.1), unit);
@@ -558,24 +591,15 @@ pub fn apply_event<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, event: Ev
 			game_map.damage_indicators.push(DamageIndicator::new(core, event.value as u32, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
 		},
 		EVENT_END_TURN => {
-			// event.id == 0..1: signals the end of the opposing player's turn
-			if (event.id == EVENT_ID_PLAYER || event.id == EVENT_ID_ENEMY) && game_map.player_state.current_turn != Team::Barbarians {
-				let next_team = game_map.player_state.advance_turn();
-				game_map.banner.show_turn(next_team);
-				match event.id {
-					EVENT_ID_PLAYER => { game_map.initialize_next_turn(Team::Player); }
-					_ => { game_map.initialize_next_turn(Team::Enemy); }
-				}
-			}
-			// event.id == 2: signals the end of the barbarian turn by the host
-			else if event.id == EVENT_ID_BARBARIAN && game_map.player_state.current_turn == Team::Barbarians {
-				let next_team = game_map.player_state.advance_turn();
-				game_map.banner.show_turn(next_team);
-				game_map.initialize_next_turn(Team::Barbarians);
-			}
-		},
-		EVENT_OBJ_CAPTURE => {
-			
+			let next_team = game_map.player_state.advance_turn();
+			println!("Ending turn: preparing turn for {}", match next_team {
+				Team::Player => "player",
+				Team::Enemy => "enemy",
+				Team::Barbarians => "barbarians",
+			});
+
+			game_map.banner.show_turn(next_team);
+			game_map.initialize_next_turn(next_team);
 		},
 		EVENT_SPAWN_UNIT => {
 			let unit_team = if event.from_self { Team::Player } else { Team::Enemy };
@@ -584,7 +608,6 @@ pub fn apply_event<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, event: Ev
 				Team::Player => &mut game_map.player_units,
 				Team::Enemy => &mut game_map.enemy_units,
 				Team::Barbarians => &mut game_map.barbarian_units,
-				_ => return Err("Invalid event id for unit spawning".to_string()),
 			};
 
 			let (melee, range, mage)  = match unit_team {

@@ -5,8 +5,8 @@ use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
-use crate::AI::population_state::*;
-use crate::AI::distance_map::*;
+use crate::ai::population_state::*;
+use crate::ai::distance_map::*;
 use crate::game_map::GameMap;
 use crate::unit::*;
 use crate::tile::Tile;
@@ -34,7 +34,7 @@ const MAP_HEIGHT: u32 = 64;
 fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> Vec<PopulationState> {
     let mut rng_thread = thread_rng();
     let mut population: Vec<PopulationState> = Vec::new();
-    
+
     //Generate 1 less state so we can add the initial population
     for i in 1..POP_NUM {
         let mut unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
@@ -56,9 +56,9 @@ fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut Has
 //After we mutate a state we also need to be able to update its value
 fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) {
     let mut rng_thread = thread_rng();
-    let index_of_units_to_mutate = (0..state.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, MUT_NUM); 
+    let index_of_units_to_mutate = (0..state.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, MUT_NUM);
     for index in index_of_units_to_mutate {
-        //If the unit only has 1 move to choose from, nothing will change. So move on to next unit to mutate... 
+        //If the unit only has 1 move to choose from, nothing will change. So move on to next unit to mutate...
         if succinct_units[index].possible_moves.len() == 1 {
             continue;
         }
@@ -90,19 +90,19 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
         state.units_and_utility[index] = (*new_move, move_value);
 	}
     //Don't forget to update the overall value of the state (can't just substract the difference in values from the state as we are also checking overall conditions)
-    assign_value_to_state(state); 
+    assign_value_to_state(state);
 }
 
 // Produces 2 new states by randomly selecting 2 endpoints within the units and joining the two states at these end points
 // No easy way to check for duplicates here, so we will need to do so when actually processing the move
 fn crossover(state_1: &PopulationState, state_2: &PopulationState) -> (PopulationState, PopulationState) {
     let mut rng_thread = thread_rng();
-    let endpoints = (0..state_1.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, 2); 
+    let endpoints = (0..state_1.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, 2);
     let upper_endpoint = *endpoints.iter().max().unwrap();
     let lower_endpoint = *endpoints.iter().min().unwrap();
     let mut state_1_copy = state_1.clone();
     let mut state_2_copy = state_2.clone();
-    
+
     let mut new_state_1_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
     let mut new_state_2_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
 
@@ -114,12 +114,12 @@ fn crossover(state_1: &PopulationState, state_2: &PopulationState) -> (Populatio
     new_state_2_unit_movements.append(&mut state_1_copy.units_and_utility[0..lower_endpoint].to_vec());
     new_state_2_unit_movements.append(&mut state_2_copy.units_and_utility[lower_endpoint..upper_endpoint].to_vec());
     new_state_2_unit_movements.append(&mut state_1_copy.units_and_utility[upper_endpoint..state_1.units_and_utility.len() as usize].to_vec());
-    
+
     let mut new_state_1 = PopulationState::new(new_state_1_unit_movements, 0.0);
     let mut new_state_2 = PopulationState::new(new_state_2_unit_movements, 0.0);
 
     //println!("len of state_1:{}, len of state_2: {}", state_1.units_and_utility.len(), state_2.units_and_utility.len());
-    
+
     assign_value_to_state(&mut new_state_1);
     assign_value_to_state(&mut new_state_2);
 
@@ -128,15 +128,15 @@ fn crossover(state_1: &PopulationState, state_2: &PopulationState) -> (Populatio
 
 fn elite_selection(current_population: &Vec<PopulationState>) -> Vec<PopulationState> {
 	let num_to_keep: usize = ((E_PERC * (current_population.len() as f32)).round() as i32).try_into().unwrap();
-	
-    //Assuming current_population is in descending order 
+
+    //Assuming current_population is in descending order
 	return current_population[0..num_to_keep].to_vec();
 }
 
 fn culling(current_population: &Vec<PopulationState>) -> Vec<PopulationState> {
 	let num_to_drop: usize = ((C_PERC * (current_population.len() as f32)).round() as i32).try_into().unwrap();
-	
-    //Assuming current_population is in descending order 
+
+    //Assuming current_population is in descending order
 	return current_population[0..(current_population.len() - num_to_drop)].to_vec();
 }
 
@@ -154,7 +154,7 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
     for unit in game_map.enemy_units.values() {
         let move_value = current_unit_value(unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
         original_unit_movements.push(((unit.x, unit.y), move_value));
-        
+
         //If a unit is currently in the process of capturing, it should not consider other moves
         let current_unit = if move_value.2 || move_value.3 {
             SuccinctUnit::new(vec![(unit.x, unit.y)], unit.attack_range)
@@ -226,7 +226,7 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
         }
         //In order to mutate the states we need to calculate how many to mutate and then randomly select them as mutable
         let num_to_mutate: usize = ((MUT_PROB * (new_generation.len() as f32)).round() as i32).try_into().unwrap();
-        let mut states_to_mutate = new_generation.iter_mut().choose_multiple(&mut rng_thread, num_to_mutate); 
+        let mut states_to_mutate = new_generation.iter_mut().choose_multiple(&mut rng_thread, num_to_mutate);
         for state in states_to_mutate.iter_mut() {
             mutate(state, &succinct_units, &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
         }
@@ -245,14 +245,14 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
         remaining_population = Vec::new();
     }
 
-    //init_population now generally represents the best possible states that have been found and we can use these to form the considered moves of our minimax and we can repeat this for the enemy to get their "best" move and make the decision from there   
+    //init_population now generally represents the best possible states that have been found and we can use these to form the considered moves of our minimax and we can repeat this for the enemy to get their "best" move and make the decision from there
     initial_population
 }
 
 //Evaluation/Utility function related
 fn assign_value_to_state (current_state: &mut PopulationState) {
     let mut total_value: f64 = 0.0;
-    let mut units_defending: u32 = 0; //Units near own castle 
+    let mut units_defending: u32 = 0; //Units near own castle
     let mut units_sieging: u32 = 0; //Units near enemy castle
     let mut units_near_camp: u32 = 0;
     let mut units_able_to_attack: u32 = 0;
@@ -267,7 +267,7 @@ fn assign_value_to_state (current_state: &mut PopulationState) {
         units_able_to_attack += value.1.4 as u32;
     }
 
-    // Calculations for state as a whole (not individual units) 
+    // Calculations for state as a whole (not individual units)
     if units_defending < MIN_DEFENSE {
         total_value = total_value/DEFENSE_PENALTY;
     }
@@ -278,7 +278,7 @@ fn assign_value_to_state (current_state: &mut PopulationState) {
     current_state.overall_utility = total_value;
 }
 
-// Order of values in return 
+// Order of values in return
 // 0: value of state
 // 1: near_own_castle
 // 2: sieging
@@ -286,7 +286,7 @@ fn assign_value_to_state (current_state: &mut PopulationState) {
 // 4: able_to_attack
 // Minus "being able to attack" all other values will be calculated using heuristics (relative manhattan distance)
 // Additionally not calculating closest unit to save time since based on the distance from objectives and the ability to attack this distance should be implied
-fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> (f64, bool, bool, bool, bool) {    
+fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> (f64, bool, bool, bool, bool) {
     let mut value: f64 = 0.0;
 
     //let distance_from_own_castle = (unit_pos.0 as i32 - p2_castle.0 as i32).abs() + (unit_pos.1 as i32 - p2_castle.1 as i32).abs();
@@ -351,7 +351,7 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
                     } else {
                         false
                     };
-    
+
     let tiles_to_attack = generalized_tiles_can_attack(map, unit_pos, unit_attack_range);
     let able_to_attack: bool =  if tiles_to_attack.is_empty() {
                                     false
@@ -361,7 +361,7 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
     //Currently commenting this out for now, I don't know if we don't want to punish units for not defending or just if there isn't enough defending
     // if defending == false {
     //     value += distance_from_own_castle as f64 * DEFENDING_WEIGHT;
-    // } 
+    // }
     if distance_from_enemy_castle != 0 {
         value += SIEGING_WEIGHT/(distance_from_enemy_castle as f64);
     } else {
@@ -402,7 +402,7 @@ fn choose_index_from_distribution(probabilities: &Vec<f64>) -> usize {
         sum += probabilities[index];
         if rand_num <= sum {
             return index;
-        } 
+        }
     }
     return probabilities.len();
 }

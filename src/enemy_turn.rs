@@ -1,5 +1,5 @@
-use crate::AI::*;
-use crate::AI::distance_map::*;
+use crate::ai::*;
+use crate::ai::distance_map::*;
 use crate::game_map::GameMap;
 use crate::SDLCore;
 use crate::net::util::*;

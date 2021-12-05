@@ -3,7 +3,7 @@ extern crate sdl2;
 #[macro_use] mod sdl_macros;
 
 
-mod AI;
+mod ai;
 mod banner;
 mod barbarian_turn;
 mod credits;
