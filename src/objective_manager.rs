@@ -68,6 +68,10 @@ impl ObjectiveManager {
                     self.p1_castle_turns = 0;
                 },
             }
+
+            if self.p1_castle_turns > 0 {
+                println!("Player castle occupied: {}/{}", self.p1_castle_turns, TURNS_TO_CAPTURE);
+            }
         }
 
         //Check if player is occupying enemy castle
@@ -79,6 +83,10 @@ impl ObjectiveManager {
                 _ => {
                     self.p2_castle_turns = 0;
                 },
+            }
+
+            if self.p2_castle_turns > 0 {
+                println!("Enemy castle occupied: {}/{}", self.p2_castle_turns, TURNS_TO_CAPTURE);
             }
         }
 

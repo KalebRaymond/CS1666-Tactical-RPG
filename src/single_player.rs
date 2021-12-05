@@ -75,7 +75,7 @@ impl Drawable for SinglePlayer<'_,'_> {
 		self.core.wincan.set_viewport(self.core.cam);
 		self.core.wincan.present();
 
-		if !self.game_map.winning_team.is_none() && !self.game_map.banner.banner_visible {
+		if !self.game_map.winning_team.is_none() && !self.game_map.banner.banner_visible && self.core.input.left_clicked {
 			Ok(GameState::MainMenu)
 		} else {
 			Ok(GameState::SinglePlayer)

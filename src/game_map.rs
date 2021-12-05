@@ -19,7 +19,7 @@ use crate::objective_manager::ObjectiveManager;
 use crate::player_action::PlayerAction;
 use crate::player_state::PlayerState;
 use crate::tile::{Tile, Structure};
-use crate::unit::{Team, Unit};
+use crate::unit::{Team, Unit, GUARD_HEALTH_ID, SCOUT_HEALTH_ID};
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::{CAM_H, CAM_W, TILE_SIZE};
 use crate::SDLCore;
@@ -113,7 +113,14 @@ impl GameMap<'_> {
 		let mut pos_barbarian_camps: Vec<(u32, u32)> = Vec::new();
 		for row in map_string.iter() {
 			for col in row.iter() {
-				let letter = &col[..];
+				let letter = if player_team == Team::Enemy {
+					match col.as_ref() {
+						"1" => "2",
+						"2" => "1",
+						_ => &col[..],
+					}
+				} else { &col[..] };
+
 				let texture = core.texture_map.get(letter).unwrap();
 				match letter {
 					"║" | "^" | "v" | "<" | "=" | ">" | "t" => map.map_tiles.insert((x,y), Tile::new(x, y, false, true, None, None, texture)),
@@ -166,7 +173,7 @@ impl GameMap<'_> {
 			('s', (52,10)), ('s', (53,11)),
 		);
 		//let p2_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (16,44))); //Spawns a single enemy near the player
-		let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (4,6)), ('l', (6,8)), ('l', (7,7)), ('r', (8,5)), ('l', (59,56)), ('l', (56,56)), ('l', (54,57)), ('r', (56,59)), ('l', (28,15)), ('l', (29,10)), ('l', (32,11)), ('l', (35,15)), ('r', (30,8)), ('r', (36,10)), ('l', (28,52)), ('l', (28,48)), ('l', (33,51)), ('l', (35,48)), ('r', (32,53)), ('r', (33,56)), ('l', (17,38)), ('l', (16,37)), ('r', (23,36)), ('r', (18,30)), ('l', (46,25)), ('l', (47,26)), ('r', (40,27)), ('r', (45,33)),);
+		let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(); //vec!(('l', (4,6)), ('l', (6,8)), ('l', (7,7)), ('r', (8,5)), ('l', (59,56)), ('l', (56,56)), ('l', (54,57)), ('r', (56,59)), ('l', (28,15)), ('l', (29,10)), ('l', (32,11)), ('l', (35,15)), ('r', (30,8)), ('r', (36,10)), ('l', (28,52)), ('l', (28,48)), ('l', (33,51)), ('l', (35,48)), ('r', (32,53)), ('r', (33,56)), ('l', (17,38)), ('l', (16,37)), ('r', (23,36)), ('r', (18,30)), ('l', (46,25)), ('l', (47,26)), ('r', (40,27)), ('r', (45,33)),);
 		//let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (32, 60))); //Spawns a single barbarian near the bottom of the map
 		//let barb_units_abrev: Vec<(char, (u32,u32))> = Vec::new(); //No barbarians
 
@@ -224,18 +231,15 @@ impl GameMap<'_> {
 				if pos_to_change.0 == fort_locations.0 || pos_to_change.0 == fort_locations.1 {
 					let texture = self.camp_textures[1].0;
 					self.map_tiles.insert((pos_to_change.0.1,pos_to_change.0.0), Tile::new(pos_to_change.0.1, pos_to_change.0.0, true, true, None, Some(Structure::Camp), texture));
-				}
-				else {
+				} else {
 					let texture = self.camp_textures[0].0;
 					self.map_tiles.insert((pos_to_change.0.0,pos_to_change.0.1), Tile::new(pos_to_change.0.0, pos_to_change.0.1, true, true, None, Some(Structure::Camp), texture));
 				}
-			}
-			else {
+			} else {
 				if pos_to_change.0 == fort_locations.0 || pos_to_change.0 == fort_locations.1 {
 					let texture = self.camp_textures[1].1;
 					self.map_tiles.insert((pos_to_change.0.1,pos_to_change.0.0), Tile::new(pos_to_change.0.1, pos_to_change.0.0, true, true, None, Some(Structure::Camp), texture));
-				}
-				else {
+				} else {
 					let texture = self.camp_textures[0].1;
 					self.map_tiles.insert((pos_to_change.0.0,pos_to_change.0.1), Tile::new(pos_to_change.0.0, pos_to_change.0.1, true, true, None, Some(Structure::Camp), texture));
 				}
@@ -340,32 +344,29 @@ impl GameMap<'_> {
 
 	// Function that takes a HashMap of units and sets all has_attacked and has_moved to false so that they can move again
 	pub fn initialize_next_turn(&mut self, team: Team) {
-		let previous_team = match team {
-			Team::Player => Team::Barbarians,
-			Team::Enemy => Team::Player,
-			Team::Barbarians => Team::Enemy,
-		};
+		let client_team = team.as_client(&self.player_state);
+		self.banner.show_turn(client_team);
 
 		//Fix glitch where castle tile says it's occupied when it's not
 		self.correct_map_errors();
 		// Checks to see if the player's units are on the opponent's castle tile
-		self.objectives.check_objectives(previous_team, match previous_team {
+		self.objectives.check_objectives(client_team, match client_team {
 			Team::Player => &self.player_units,
 			Team::Enemy => &self.enemy_units,
 			Team::Barbarians => &self.barbarian_units,
 		});
 
-		if self.objectives.has_won(previous_team) {
-			self.winning_team = self.set_winner(previous_team);
+		if self.objectives.has_won(client_team) {
+			self.set_winner(client_team);
 
 		//Check for total party kill and set the other team as the winner
 		//Ideally you would check this whenever a unit on either team gets attacked, but this works
 		} else if self.player_units.len() == 0 {
 			println!("Enemy team won via Total Party Kill!");
-			self.winning_team = self.set_winner(Team::Enemy);
+			self.set_winner(Team::Enemy);
 		} else if self.enemy_units.len() == 0 {
 			println!("Player team won via Total Party Kill!");
-			self.winning_team = self.set_winner(Team::Player);
+			self.set_winner(Team::Player);
 		}
 
 		match team {
@@ -388,7 +389,7 @@ impl GameMap<'_> {
 	}
 
 	//Sets up the winner's banner so it can start displaying, and returns an Option containing the Team corresponding to the winning team
-	pub fn set_winner(&mut self, winner: Team) -> Option<Team> {
+	pub fn set_winner(&mut self, winner: Team) {
 		match winner {
 			Team::Player => {
 				println!("You win!");
@@ -403,7 +404,9 @@ impl GameMap<'_> {
 			},
 		};
 
-		return Some(winner);
+		// send an END_GAME event to the other client
+		self.event_list.push(Event::create(EVENT_END_GAME, winner.as_client(&self.player_state).to_id(), (0,0), (0,0), 0));
+		self.winning_team = Some(winner);
 	}
 
 	/* For some reason there's a glitch where sometimes the spaces where the enemy units spawn are
@@ -511,14 +514,15 @@ pub fn apply_events<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) -> Resul
 	let mut ret: Vec<Event> = Vec::new();
 
 	// process any new events in the event_list
-	for i in game_map.event_list_index..game_map.event_list.len() {
+	let new_index = game_map.event_list.len();
+	for i in game_map.event_list_index..new_index {
 		if let Some(event) = game_map.event_list.get(i).map(|e| e.clone()) {
 			println!("Applying event #{}: {}", i, event);
 			apply_event(core, game_map, event)?;
 			ret.push(event.clone());
 		}
 	}
-	game_map.event_list_index = game_map.event_list.len();
+	game_map.event_list_index = new_index;
 
 	// remove any (dead) units that have reached 0 hp
 	game_map.player_units.retain(|_, u| u.hp > 0);
@@ -595,13 +599,7 @@ pub fn apply_event<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, event: Ev
 		},
 		EVENT_END_TURN => {
 			let next_team = game_map.player_state.advance_turn();
-			println!("Ending turn: preparing turn for {}", match next_team {
-				Team::Player => "player",
-				Team::Enemy => "enemy",
-				Team::Barbarians => "barbarians",
-			});
-
-			game_map.banner.show_turn(next_team);
+			println!("Ending turn: preparing turn for {}", next_team.to_string());
 			game_map.initialize_next_turn(next_team);
 		},
 		EVENT_SPAWN_UNIT => {
@@ -634,6 +632,12 @@ pub fn apply_event<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, event: Ev
 
 			unit_map.insert((x, y), new_unit);
 			println!("Unit spawned at {:?}", (x, y));
+		},
+		EVENT_END_GAME => {
+			if game_map.winning_team == None {
+				let team = Team::from_id(event.id)?;
+				game_map.set_winner(team.as_client(&game_map.player_state));
+			}
 		},
 		_ => {
 
@@ -683,7 +687,7 @@ pub fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit
 					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 16, 4, 1, 90, 1, 5, unit_textures.get(guard).unwrap(), false));
 				}
 				else {
-					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 25, 4, 1, 90, 1, 5, unit_textures.get(guard).unwrap(), false));
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, GUARD_HEALTH_ID, 4, 1, 90, 1, 5, unit_textures.get(guard).unwrap(), false));
 				}
 			}
 			's' => {
@@ -691,7 +695,7 @@ pub fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit
 					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 6, 9, 2, 100, 4, 4, unit_textures.get(scout).unwrap(), false));
 				}
 				else {
-					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 9, 9, 2, 100, 4, 4, unit_textures.get(scout).unwrap(), false));
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, SCOUT_HEALTH_ID, 9, 2, 100, 4, 4, unit_textures.get(scout).unwrap(), false));
 				}
 			}
 			_ => {
