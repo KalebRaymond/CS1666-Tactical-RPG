@@ -522,7 +522,7 @@ pub fn apply_event<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, event: Ev
 			}
 
 			let mut unit = unit_map.remove(&event.from_pos).ok_or("Could not remove selected unit for event")?;;
-			unit.update_pos(event.from_pos.0, event.from_pos.1);
+			unit.update_pos(event.to_pos.0, event.to_pos.1);
 			unit.has_moved = true;
 			unit_map.insert((event.to_pos.0, event.to_pos.1), unit);
 
