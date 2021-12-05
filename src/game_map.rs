@@ -393,8 +393,8 @@ impl GameMap<'_> {
 
 				//If the tile says it contains a Player, but the hashmap of units does not,
 				//the tile needs to be corrected
-				if tile_contains_unit && !hashmap_contains_unit {
-					if let Some(mut tile) = self.map_tiles.get(&(i, j)) {
+				if tile_contains_unit == 1 && !(hashmap_contains_unit == 1) {
+					if let Some(mut tile) = self.map_tiles.get_mut(&(i, j)) {
 						tile.contained_unit_team = None;
 					}
 				}
@@ -434,8 +434,8 @@ impl GameMap<'_> {
 
 				//If the tile says it contains an Enemy, but the hashmap of units does not,
 				//the tile needs to be corrected
-				if tile_contains_unit && !hashmap_contains_unit {
-					if let Some(mut tile) = self.map_tiles.get(&(i, j)) {
+				if tile_contains_unit == 1 && !(hashmap_contains_unit == 1) {
+					if let Some(mut tile) = self.map_tiles.get_mut(&(i, j)) {
 						tile.contained_unit_team = None;
 					}
 				}
