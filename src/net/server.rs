@@ -205,7 +205,8 @@ pub fn run() {
 		String::from(SERVER_ADDR)
 	};
 
-	let mut server = Server::new(&addr);
+	let port = *(addr.split(":").collect::<Vec<&str>>().last().unwrap());
+	let mut server = Server::new(format!("127.0.0.1:{}", port).as_ref());
 
 	println!("Listening at {}", &addr);
 	server.listen();
