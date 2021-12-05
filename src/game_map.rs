@@ -356,6 +356,95 @@ impl GameMap<'_> {
 
 		return Some(winner);
 	}
+
+	/* For some reason there's a glitch where sometimes the spaces where the enemy units spawn are
+	 * marked as occupied even when they aren't, which prevents the player from being able to occupy
+	 * the enemy's castle. This function checks the spaces around both castles and fixes any disparities
+	 * between the units and the tiles' contained unit.
+	 */
+	pub fn correct_map_errors(&mut self) {
+		//Check the player castle
+		println!("Player castle:");
+		for i in (self.objectives.p1_castle.1 - 1)..=(self.objectives.p1_castle.1 + 1) {
+			for j in (self.objectives.p1_castle.0 - 1)..=(self.objectives.p1_castle.0 + 1) {
+				let tile_contains_unit = if let Some(tile) = self.map_tiles.get(&(i, j)) {
+					if let Some(team) = tile.contained_unit_team {
+						if team == Team::Player {
+							1
+						}
+						else {
+							0 //Team is not Player
+						}
+					}
+					else {
+						2 //Team is None
+					}
+				}
+				else {
+					3 //Tile not found
+				};
+
+				let hashmap_contains_unit = if let Some(_unit) = self.player_units.get(&(j, i)) {
+					1
+				}
+				else {
+					0
+				};
+
+				//If the tile says it contains a Player, but the hashmap of units does not,
+				//the tile needs to be corrected
+				if tile_contains_unit && !hashmap_contains_unit {
+					if let Some(mut tile) = self.map_tiles.get(&(i, j)) {
+						tile.contained_unit_team = None;
+					}
+				}
+
+				print!("[{}, {}] ", tile_contains_unit, hashmap_contains_unit);
+			}
+			println!();
+		}
+
+		//Check the enemy castle
+		println!("Enemy castle:");
+		for i in (self.objectives.p2_castle.1 - 1)..=(self.objectives.p2_castle.1 + 1) {
+			for j in (self.objectives.p2_castle.0 - 1)..=(self.objectives.p2_castle.0 + 1) {
+				let tile_contains_unit = if let Some(tile) = self.map_tiles.get(&(i, j)) {
+					if let Some(team) = tile.contained_unit_team {
+						if team == Team::Enemy {
+							1
+						}
+						else {
+							0 //Team is not Enemy
+						}
+					}
+					else {
+						2 //Team is None
+					}
+				}
+				else {
+					3 //Tile not found
+				};
+
+				let hashmap_contains_unit = if let Some(_unit) = self.enemy_units.get(&(j, i)) {
+					1
+				}
+				else {
+					0
+				};
+
+				//If the tile says it contains an Enemy, but the hashmap of units does not,
+				//the tile needs to be corrected
+				if tile_contains_unit && !hashmap_contains_unit {
+					if let Some(mut tile) = self.map_tiles.get(&(i, j)) {
+						tile.contained_unit_team = None;
+					}
+				}
+
+				print!("[{}, {}] ", tile_contains_unit, hashmap_contains_unit);
+			}
+			println!();
+		}
+	}
 }
 
 // Method for preparing the HashMap of player units whilst also properly marking them in the map

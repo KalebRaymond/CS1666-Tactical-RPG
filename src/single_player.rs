@@ -92,6 +92,9 @@ impl Drawable for SinglePlayer<'_,'_> {
 
 					// Checks to see if the player's units are on the opponent's castle tile
 					if self.next_team_check == Team::Player {
+						//Fix glitch where castle tile says it's occupied when it's not
+						self.game_map.correct_map_errors();
+
 						self.game_map.objectives.check_objectives(Team::Player, &self.game_map.player_units);
 						
 						if self.game_map.objectives.has_won(Team::Player) {
@@ -107,6 +110,9 @@ impl Drawable for SinglePlayer<'_,'_> {
 					enemy_turn::handle_enemy_turn(&self.core, &mut self.game_map, &self.distance_map)?;
 
 					if self.next_team_check == Team::Enemy {
+						//Fix glitch where castle tile says it's occupied when it's not
+						self.game_map.correct_map_errors();
+						
 						self.game_map.objectives.check_objectives(Team::Enemy, &self.game_map.enemy_units);
 						
 						if self.game_map.objectives.has_won(Team::Enemy) {
