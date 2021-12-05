@@ -38,7 +38,6 @@ impl Server {
 
 		// listen for any new connections
 		for mut stream in incoming {
-			println!("New connection");
 			match self.handle_request(&mut stream) {
 				Err(e) => println!("Request error: {}", e),
 				_ => {},
@@ -209,7 +208,8 @@ pub fn run() {
 		String::from(SERVER_ADDR)
 	};
 
-	let mut server = Server::new(addr.as_ref());
+	let port = *(addr.split(":").collect::<Vec<&str>>().last().unwrap());
+	let mut server = Server::new(format!("0.0.0.0:{}", port).as_ref());
 
 	println!("Listening at {}", &addr);
 	server.listen();
