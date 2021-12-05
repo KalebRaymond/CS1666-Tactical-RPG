@@ -7,9 +7,11 @@ const TURNS_TO_CAPTURE: u32 = 3;
 pub struct ObjectiveManager {
     pub p1_castle: (u32, u32),
     pub p1_castle_turns: u32,
+    pub p1_takeovers: (u32, u32),
 
     pub p2_castle: (u32, u32),
     pub p2_castle_turns: u32,
+    pub p2_takeovers: (u32, u32),
 
     pub barbarian_camps: Vec<(u32, u32)>,
     pub taken_over_camps: Vec<((u32, u32), Team)>,
@@ -27,8 +29,10 @@ impl ObjectiveManager {
         ObjectiveManager {
             p1_castle: (0, 0),
             p1_castle_turns: 0,
+            p1_takeovers: (0, 0),
             p2_castle: (0, 0),
             p2_castle_turns: 0,
+            p2_takeovers: (0, 0),
             barbarian_camps: Vec::new(),
             taken_over_camps: Vec::new(),
             barbarian_camps_turns: HashMap::new(),
@@ -48,8 +52,10 @@ impl ObjectiveManager {
         return ObjectiveManager {
             p1_castle: p1_castle_location,
             p1_castle_turns: 0,
+            p1_takeovers: (0, 0),
             p2_castle: p2_castle_location,
             p2_castle_turns: 0,
+            p2_takeovers: (0, 0),
             barbarian_camps: barb_camp_locations,
             taken_over_camps: Vec::new(),
             barbarian_camps_turns,

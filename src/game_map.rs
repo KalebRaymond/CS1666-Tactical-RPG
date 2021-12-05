@@ -231,17 +231,21 @@ impl GameMap<'_> {
 				if pos_to_change.0 == fort_locations.0 || pos_to_change.0 == fort_locations.1 {
 					let texture = self.camp_textures[1].0;
 					self.map_tiles.insert((pos_to_change.0.1,pos_to_change.0.0), Tile::new(pos_to_change.0.1, pos_to_change.0.0, true, true, None, Some(Structure::Camp), texture));
+					self.objectives.p1_takeovers.1 += 1;
 				} else {
 					let texture = self.camp_textures[0].0;
 					self.map_tiles.insert((pos_to_change.0.0,pos_to_change.0.1), Tile::new(pos_to_change.0.0, pos_to_change.0.1, true, true, None, Some(Structure::Camp), texture));
+					self.objectives.p1_takeovers.0 += 1;
 				}
 			} else {
 				if pos_to_change.0 == fort_locations.0 || pos_to_change.0 == fort_locations.1 {
 					let texture = self.camp_textures[1].1;
 					self.map_tiles.insert((pos_to_change.0.1,pos_to_change.0.0), Tile::new(pos_to_change.0.1, pos_to_change.0.0, true, true, None, Some(Structure::Camp), texture));
+					self.objectives.p2_takeovers.1 += 1;
 				} else {
 					let texture = self.camp_textures[0].1;
 					self.map_tiles.insert((pos_to_change.0.0,pos_to_change.0.1), Tile::new(pos_to_change.0.0, pos_to_change.0.1, true, true, None, Some(Structure::Camp), texture));
+					self.objectives.p2_takeovers.0 += 1;
 				}
 			}
 		}
@@ -371,11 +375,17 @@ impl GameMap<'_> {
 
 		match team {
 			Team::Player => {
+				if self.objectives.p1_takeovers.0 > 0 || self.objectives.p1_takeovers.1 > 0 {
+					self.heal_units(team);
+				}
 				for unit in &mut self.player_units.values_mut() {
 					unit.next_turn();
 				}
 			}
 			Team::Enemy => {
+				if self.objectives.p2_takeovers.0 > 0 || self.objectives.p2_takeovers.1 > 0 {
+					self.heal_units(team);
+				}
 				for unit in &mut self.enemy_units.values_mut() {
 					unit.next_turn();
 				}
@@ -407,6 +417,24 @@ impl GameMap<'_> {
 		// send an END_GAME event to the other client
 		self.event_list.push(Event::create(EVENT_END_GAME, winner.as_client(&self.player_state).to_id(), (0,0), (0,0), 0));
 		self.winning_team = Some(winner);
+	}
+
+	pub fn heal_units(&mut self, team: Team) {
+		if team == Team::Player {
+			let mut total_heal = self.objectives.p1_takeovers.0 * 2 + self.objectives.p1_takeovers.1 * 4;
+			println!("Total heals for Player = {}", total_heal);
+			for (pos, unit) in &mut self.player_units {
+				total_heal = unit.heal(total_heal);
+				println!("Player unit at {}, {} healed, {} remaining", pos.0, pos.1, total_heal);
+			}
+		} else {
+			let mut total_heal = self.objectives.p2_takeovers.0 * 2 + self.objectives.p2_takeovers.1 * 4;
+			println!("Total heals for Enemy = {}", total_heal);
+			for (pos, unit) in &mut self.enemy_units {
+				total_heal = unit.heal(total_heal);
+				println!("Player unit at {}, {} healed, {} remaining", pos.0, pos.1, total_heal);
+			}
+		}
 	}
 
 	/* For some reason there's a glitch where sometimes the spaces where the enemy units spawn are
