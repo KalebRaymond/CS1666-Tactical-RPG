@@ -8,3 +8,4 @@ services:
     image: castlequest
     ports:
       - "26000:26000"
+    restart: always
