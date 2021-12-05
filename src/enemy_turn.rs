@@ -1,13 +1,8 @@
-use sdl2::pixels::Color;
-use sdl2::render::Texture;
-use std::collections::HashMap;
-
 use crate::AI::*;
 use crate::AI::distance_map::*;
 use crate::game_map::GameMap;
-use crate::unit::{Team, Unit};
-use crate::banner::Banner;
 use crate::SDLCore;
+use crate::net::util::*;
 
 pub fn handle_enemy_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, distance_map: &DistanceMap) -> Result<(), String> {
     if !game_map.banner.banner_visible {
@@ -18,10 +13,7 @@ pub fn handle_enemy_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, dis
         best_individual.convert_state_to_action(core, core.texture_map, game_map)?;
 
         //End turn
-        game_map.player_state.current_turn = Team::Barbarians;
-
-        //Start displaying the barbarians' banner
-        game_map.banner.show("b_banner");
+        game_map.event_list.push(Event::create(EVENT_END_TURN, EVENT_ID_ENEMY, (0,0), (0,0), 0));
     }
     Ok(())
 }

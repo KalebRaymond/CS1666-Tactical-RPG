@@ -55,7 +55,7 @@ impl PopulationState {
     }
 
     // Currently just returns the movements for each unit (will eventually also handle attacks)
-    pub fn convert_state_to_action<'a> (&self, core: &SDLCore<'a>, unit_textures: &'a HashMap<&str, Texture<'a>>, game_map: &mut GameMap<'a>) -> Result<(), String> {
+    pub fn convert_state_to_action<'a> (&self, core: &SDLCore<'a>, unit_textures: &'a HashMap<String, Texture<'a>>, game_map: &mut GameMap<'a>) -> Result<(), String> {
         let mut actual_units_mut = game_map.enemy_units.values_mut();
         let mut actual_moves: Vec<((u32, u32), (u32, u32))> = Vec::new();  //Original coordinates followed by new coordinates
         //println!("{} == {}", actual_units_mut.len(), self.units_and_utility.len()); //Check to make sure same size
@@ -94,7 +94,6 @@ impl PopulationState {
             let enemies_to_attack = active_unit.get_tiles_can_attack(&mut game_map.map_tiles);
             let mut dead_barb: bool = false;
             if !enemies_to_attack.is_empty() {
-                let damage_done = active_unit.get_attack_damage();
                 //The enemy should attack the unit with the least health
                 let mut tile_with_least_health: (u32, u32) = enemies_to_attack[0];
                 let mut least_health: u32 = 1000;
@@ -124,13 +123,14 @@ impl PopulationState {
                     match tile_under_attack.contained_unit_team {
                         Some(Team::Player) => {
                             if let Some(unit) = game_map.player_units.get_mut(&(tile_with_least_health.0, tile_with_least_health.1)) {
+                                let damage_done = active_unit.get_attack_damage(unit);
                                 println!("Unit starting at {} hp.", unit.hp);
                                 if unit.hp <= damage_done {
                                     game_map.player_units.remove(&(tile_with_least_health.0, tile_with_least_health.1));
                                     println!("Player unit at {}, {} is dead after taking {} damage.", tile_with_least_health.0, tile_with_least_health.1, damage_done);
                                     tile_under_attack.update_team(None);
                                 } else {
-                                    unit.receive_damage(damage_done);
+                                    unit.receive_damage(damage_done, &active_unit);
                                     game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
                                     println!("Enemy at {}, {} attacking player unit at {}, {} for {} damage. Unit now has {} hp.", active_unit.x, active_unit.y, tile_with_least_health.0, tile_with_least_health.1, damage_done, unit.hp);
                                 }
@@ -138,6 +138,7 @@ impl PopulationState {
                         },
                         _ => {
                             if let Some(unit) = game_map.barbarian_units.get_mut(&(tile_with_least_health.0, tile_with_least_health.1)) {
+                                let damage_done = active_unit.get_attack_damage(unit);
                                 println!("Barbarian unit starting at {} hp.", unit.hp);
                                 if unit.hp <= damage_done {
                                     game_map.barbarian_units.remove(&(tile_with_least_health.0, tile_with_least_health.1));
@@ -145,7 +146,7 @@ impl PopulationState {
                                     tile_under_attack.update_team(None);
                                     dead_barb = true;
                                 } else {
-                                    unit.receive_damage(damage_done);
+                                    unit.receive_damage(damage_done, &active_unit);
                                     game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
                                     println!("Enemy at {}, {} attacking barbarian unit at {}, {} for {} damage. Unit now has {} hp.", active_unit.x, active_unit.y, tile_with_least_health.0, tile_with_least_health.1, damage_done, unit.hp);
                                 }
@@ -167,13 +168,13 @@ impl PopulationState {
                     //Since all the units are of relatively equal value at base stats, we can randomly choose among them similar to how a player would
                     let mut new_unit = if chance < 15 { 
                             println!(" Melee selected.");
-                            Unit::new(castle_coord.0+5, castle_coord.1-5, Team::Enemy, 20, 7, 1, 95, 1, 5, unit_textures.get("pl2l").unwrap())
+                            Unit::new(castle_coord.0+5, castle_coord.1-5, Team::Enemy, 20, 7, 1, 95, 1, 5, unit_textures.get("pl2l").unwrap(), false)
                         } else if chance < 30 {
                             println!(" Ranged selected.");
-                            Unit::new(castle_coord.0+5, castle_coord.1-5, Team::Enemy, 15, 5, 4, 85, 3, 7, unit_textures.get("pl2r").unwrap())
+                            Unit::new(castle_coord.0+5, castle_coord.1-5, Team::Enemy, 15, 5, 4, 85, 3, 7, unit_textures.get("pl2r").unwrap(), true)
                         } else {
                             println!(" Mage selected.");
-                            Unit::new(castle_coord.0+5, castle_coord.1-5, Team::Enemy, 10, 6, 3, 75,  5, 9, unit_textures.get("pl2m").unwrap())
+                            Unit::new(castle_coord.0+5, castle_coord.1-5, Team::Enemy, 10, 6, 3, 75,  5, 9, unit_textures.get("pl2m").unwrap(), true)
                         };
 
                     let respawn_location = new_unit.respawn_loc(&mut game_map.map_tiles, *castle_coord);

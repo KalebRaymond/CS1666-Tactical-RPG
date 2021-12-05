@@ -1,30 +1,15 @@
 use sdl2::event::Event;
-use sdl2::image::LoadTexture;
-use sdl2::pixels::Color;
-use sdl2::render::BlendMode;
 use sdl2::keyboard::Keycode;
-use sdl2::rect::Rect;
-use sdl2::render::Texture;
 
-use std::collections::HashMap;
-use std::convert::TryInto;
 use crate::AI::*;
-use crate::button::Button;
-use crate::cursor::Cursor;
 use crate::game_map::GameMap;
 use crate::{Drawable, GameState};
-use crate::{CAM_H, CAM_W, TILE_SIZE};
-use crate::pixel_coordinates::PixelCoordinates;
-use crate::player_action::PlayerAction;
-use crate::player_state::PlayerState;
+use crate::TILE_SIZE;
 use crate::player_turn;
 use crate::enemy_turn;
 use crate::barbarian_turn;
 use crate::SDLCore;
-use crate::tile::Tile;
-use crate::banner::Banner;
-use crate::unit_interface::UnitInterface;
-use crate::unit::{Team, Unit};
+use crate::unit::Team;
 
 const TURNS_ON_BASE: u32 = 3;
 
@@ -96,7 +81,7 @@ impl Drawable for SinglePlayer<'_,'_> {
 						self.game_map.correct_map_errors();
 
 						self.game_map.objectives.check_objectives(Team::Player, &self.game_map.player_units);
-						
+
 						if self.game_map.objectives.has_won(Team::Player) {
 							self.winning_team = self.game_map.set_winner(Team::Player);
 						}
@@ -114,7 +99,7 @@ impl Drawable for SinglePlayer<'_,'_> {
 						self.game_map.correct_map_errors();
 						
 						self.game_map.objectives.check_objectives(Team::Enemy, &self.game_map.enemy_units);
-						
+
 						if self.game_map.objectives.has_won(Team::Enemy) {
 							self.winning_team = self.game_map.set_winner(Team::Enemy);
 						}
@@ -143,6 +128,8 @@ impl Drawable for SinglePlayer<'_,'_> {
 		//Record user inputs
 		self.core.input.update(&self.core.event_pump);
 
+		crate::game_map::apply_events(&self.core, &mut self.game_map)?;
+
 		self.game_map.draw(self.core);
 
 		self.core.wincan.set_viewport(self.core.cam);
@@ -153,6 +140,6 @@ impl Drawable for SinglePlayer<'_,'_> {
 		}
 		else {
 			Ok(GameState::SinglePlayer)
-		}		
+		}
 	}
 }

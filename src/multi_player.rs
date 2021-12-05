@@ -122,8 +122,8 @@ impl Drawable for MultiPlayer<'_, '_> {
 						let next_team = self.game_map.player_state.advance_turn();
 						self.game_map.banner.show_turn(next_team);
 					}
-					// event.id == 1: signals the end of the barbarian turn by the host
-					else if event.id == 1 && !self.client.is_host && self.game_map.player_state.current_turn == Team::Barbarians {
+					// event.id == 2: signals the end of the barbarian turn by the host
+					else if event.id == 2 && !self.client.is_host && self.game_map.player_state.current_turn == Team::Barbarians {
 						let next_team = self.game_map.player_state.advance_turn();
 						self.game_map.banner.show_turn(next_team);
 					}
@@ -163,7 +163,7 @@ impl Drawable for MultiPlayer<'_, '_> {
 		if self.game_map.player_state.is_turn() {
 			if self.core.input.left_clicked && self.game_map.end_turn_button.is_mouse(self.core) {
 				// end the player turn
-				self.client.send(Event::create(EVENT_END_TURN, 0, (0,0), (0,0)))?;
+				self.client.send(Event::create(EVENT_END_TURN, 0, (0,0), (0,0), 0))?;
 				let next_team = self.game_map.player_state.advance_turn();
 				self.game_map.banner.show_turn(next_team);
 			}
@@ -173,7 +173,7 @@ impl Drawable for MultiPlayer<'_, '_> {
 		if self.client.is_host && self.game_map.player_state.current_turn == Team::Barbarians {
 			if !self.game_map.banner.banner_visible {
 				// end the barbarians turn
-				self.client.send(Event::create(EVENT_END_TURN, 1, (0,0), (0,0)))?;
+				self.client.send(Event::create(EVENT_END_TURN, 2, (0,0), (0,0), 0))?;
 				let next_team = self.game_map.player_state.advance_turn();
 				self.game_map.banner.show_turn(next_team);
 			}

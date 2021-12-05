@@ -11,7 +11,6 @@ use sdl2::pixels::Color;
 use sdl2::render::BlendMode;
 
 use crate::cursor::Cursor;
-use crate::input::Input;
 use crate::banner::Banner;
 use crate::button::Button;
 use crate::damage_indicator::DamageIndicator;
@@ -24,6 +23,7 @@ use crate::unit::{Team, Unit};
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::{CAM_H, CAM_W, TILE_SIZE};
 use crate::SDLCore;
+use crate::net::util::*;
 
 pub struct GameMap<'a> {
 	pub map_tiles: HashMap<(u32, u32), Tile<'a>>,
@@ -46,13 +46,17 @@ pub struct GameMap<'a> {
 	pub player_state: PlayerState,
 
 	//Holds all damage indicators (the numbers that appear above a unit when attacked) that are visible
-	pub damage_indicators: Vec<DamageIndicator<'a>>,
+	pub damage_indicators: Vec<DamageIndicator>,
 
 	// various UI elements
 	pub banner: Banner,
 	pub cursor: Cursor<'a>,
 	pub end_turn_button: Button<'a>,
+
 	pub camp_textures: Vec<(&'a Texture<'a>, &'a Texture<'a>)>,
+
+	pub event_list: Vec<Event>,
+	pub event_list_index: usize,
 }
 
 impl GameMap<'_> {
@@ -94,6 +98,8 @@ impl GameMap<'_> {
 			cursor: Cursor::new(core.texture_map.get("cursor").unwrap()),
 			end_turn_button,
 			camp_textures: Vec::new(),
+			event_list: Vec::new(),
+			event_list_index: 0,
 		};
 
 		//Set up the HashMap of Tiles that can be interacted with
@@ -140,10 +146,22 @@ impl GameMap<'_> {
 		//Now that the locations of the objectives have been found, update the ObjectiveManager
 		map.objectives = ObjectiveManager::new(pos_player_castle, pos_enemy_castle, pos_barbarian_camps);
 
-		let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (8,46)), ('l', (10,45)), ('l', (10,53)), ('l', (12,46)), ('l', (17,51)), ('l', (17,55)), ('l', (18,53)), ('r', (9,49)), ('r', (10,46)), ('r', (13,50)), ('r', (14,54)), ('r', (16,53)), ('m', (10,50)), ('m', (10,52)), ('m', (11,53)), ('m', (13,53)));
+		let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(
+			('l', (8,46)), ('l', (10,45)), ('l', (12,46)), ('l', (17,51)), ('l', (17,55)), ('l', (18,53)),
+			('r', (9,49)), ('r', (10,47)), ('r', (14,54)), ('r', (16,53)),
+			('m', (10,50)), ('m', (13,53)), ('m', (12,48)),
+			('g', (10,53)),
+			('s', (10,52)), ('s', (11,53)),
+		);
 		//let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (14, 40))); //Spawns a player unit right next to some barbarians
 		//let p1_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (54, 8))); //Spawns a player unit right next to the enemy's castle
-		let p2_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (46,8)), ('l', (45,10)), ('l', (53,10)), ('l', (46,12)), ('l', (51,17)), ('l', (55,17)), ('l', (53,18)), ('r', (49,9)), ('r', (47,10)), ('r', (50,13)), ('r', (54,14)), ('r', (53,16)), ('m', (50,10)), ('m', (52,10)), ('m', (53,11)), ('m', (53,13)));
+		let p2_units_abrev: Vec<(char, (u32,u32))> = vec!(
+			('l', (46,8)), ('l', (45,10)), ('l', (46,12)), ('l', (51,17)), ('l', (55,17)), ('l', (53,18)),
+			('r', (49,9)), ('r', (47,10)), ('r', (54,14)), ('r', (53,16)),
+			('m', (50,10)), ('m', (53,13)), ('m', (48,12)),
+			('g', (53,10)),
+			('s', (52,10)), ('s', (53,11)),
+		);
 		//let p2_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (16,44))); //Spawns a single enemy near the player
 		let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (4,6)), ('l', (6,8)), ('l', (7,7)), ('r', (8,5)), ('l', (59,56)), ('l', (56,56)), ('l', (54,57)), ('r', (56,59)), ('l', (28,15)), ('l', (29,10)), ('l', (32,11)), ('l', (35,15)), ('r', (30,8)), ('r', (36,10)), ('l', (28,52)), ('l', (28,48)), ('l', (33,51)), ('l', (35,48)), ('r', (32,53)), ('r', (33,56)), ('l', (17,38)), ('l', (16,37)), ('r', (23,36)), ('r', (18,30)), ('l', (46,25)), ('l', (47,26)), ('r', (40,27)), ('r', (45,33)),);
 		//let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (32, 60))); //Spawns a single barbarian near the bottom of the map
@@ -198,7 +216,6 @@ impl GameMap<'_> {
 		while self.objectives.taken_over_camps.len() > 0 {
 			let pos_to_change = self.objectives.taken_over_camps.pop().unwrap();
 			let fort_locations: ((u32, u32), (u32, u32)) = ((31, 10), (31, 52));
-			
 
 			if pos_to_change.1 == Team::Player {
 				if pos_to_change.0 == fort_locations.0 || pos_to_change.0 == fort_locations.1 {
@@ -209,7 +226,6 @@ impl GameMap<'_> {
 					let texture = self.camp_textures[0].0;
 					self.map_tiles.insert((pos_to_change.0.0,pos_to_change.0.1), Tile::new(pos_to_change.0.0, pos_to_change.0.1, true, true, None, Some(Structure::Camp), texture));
 				}
-				
 			}
 			else {
 				if pos_to_change.0 == fort_locations.0 || pos_to_change.0 == fort_locations.1 {
@@ -445,11 +461,165 @@ impl GameMap<'_> {
 			println!();
 		}
 	}
+	pub fn get_unit(&self, pos: &(u32, u32)) -> Result<&Unit, String> {
+		// for whatever reason, all the event positions are inverted as (y,x), so they need to be flipped to (x,y) to get the map tile
+		let unit_tile = self.map_tiles.get(&(pos.1, pos.0)).ok_or("Could not get map tile at unit position")?;
+
+		match unit_tile.contained_unit_team {
+			Some(Team::Player) => self.player_units.get(pos),
+			Some(Team::Enemy) => self.enemy_units.get(pos),
+			Some(Team::Barbarians) => self.barbarian_units.get(pos),
+			None => return Err("No unit in the specified tile position".to_string())
+		}.ok_or("Could not get unit at position".to_string())
+	}
+}
+
+pub fn apply_events<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) -> Result<(), String> {
+	// process any new events in the event_list
+	for i in game_map.event_list_index..game_map.event_list.len() {
+		if let Some(event) = game_map.event_list.get(i).map(|e| e.clone()) {
+			apply_event(core, game_map, event);
+		}
+	}
+	if game_map.event_list.len() > 0 {
+		game_map.event_list_index = game_map.event_list.len()-1;
+	}
+
+	// remove any (dead) units that have reached 0 hp
+	game_map.player_units.retain(|_, u| u.hp > 0);
+	game_map.enemy_units.retain(|_, u| u.hp > 0);
+	game_map.barbarian_units.retain(|_, u| u.hp > 0);
+
+	Ok(())
+}
+
+pub fn apply_event<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, event: Event) -> Result<(), String> {
+	// for whatever reason, all the event positions are inverted as (y,x), so they need to be flipped to (x,y) to get the map tile
+	let from_tile = (event.from_pos.1, event.from_pos.0);
+	let to_tile = (event.to_pos.1, event.to_pos.0);
+
+	let from_team = game_map.map_tiles.get_mut(&from_tile).ok_or("Could not obtain 'from' tile")?.contained_unit_team;
+	let to_team = game_map.map_tiles.get_mut(&to_tile).ok_or("Could not obtain 'from' tile")?.contained_unit_team;
+
+	match event.action {
+		EVENT_MOVE => {
+			let unit_map = match from_team {
+				Some(Team::Player) => &mut game_map.player_units,
+				Some(Team::Enemy) => &mut game_map.enemy_units,
+				Some(Team::Barbarians) => &mut game_map.barbarian_units,
+				None => {
+					return Err("No specified unit on event 'from' tile".to_string());
+				}
+			};
+
+			if to_team != None {
+				return Err("Could not apply event: 'to' tile already contains another unit".to_string());
+			}
+
+			let unit_ref = unit_map.get(&event.from_pos).ok_or("Could not get selected unit for event")?;
+			if unit_ref.has_moved {
+				return Err("Could not apply event: selected unit has already been moved in this turn".to_string());
+			}
+
+			let mut unit = unit_map.remove(&event.from_pos).ok_or("Could not remove selected unit for event")?;;
+			unit.update_pos(event.from_pos.0, event.from_pos.1);
+			unit.has_moved = true;
+			unit_map.insert((event.to_pos.0, event.to_pos.1), unit);
+
+			// Update map tiles
+			game_map.map_tiles.get_mut(&from_tile).map(|t| t.update_team(None));
+			game_map.map_tiles.get_mut(&to_tile).map(|t| t.update_team(from_team));
+		},
+		EVENT_ATTACK => {
+			let (attacking_unit_map, defending_unit_map) = match (from_team, to_team) {
+				(Some(Team::Player), Some(Team::Enemy)) => (&mut game_map.player_units, &mut game_map.enemy_units),
+				(Some(Team::Player), Some(Team::Barbarians)) => (&mut game_map.player_units, &mut game_map.barbarian_units),
+				(Some(Team::Enemy), Some(Team::Player)) => (&mut game_map.enemy_units, &mut game_map.player_units),
+				(Some(Team::Enemy), Some(Team::Barbarians)) => (&mut game_map.enemy_units, &mut game_map.barbarian_units),
+				(Some(Team::Barbarians), Some(Team::Player)) => (&mut game_map.barbarian_units, &mut game_map.player_units),
+				(Some(Team::Barbarians), Some(Team::Enemy)) => (&mut game_map.barbarian_units, &mut game_map.enemy_units),
+				_ => {
+					return Err("No specified attacking unit on event 'from' tile".to_string());
+				},
+			};
+
+			let attacking_unit = attacking_unit_map.get_mut(&event.from_pos).ok_or("Could not get selected attacker unit for event")?;
+			let unit = defending_unit_map.get_mut(&event.to_pos).ok_or("Could not get selected defender unit for event")?;
+
+			attacking_unit.has_attacked = true;
+			attacking_unit.starting_x = attacking_unit.x;
+			attacking_unit.starting_y = attacking_unit.y;
+			unit.receive_damage(event.value as u32, &attacking_unit);
+			game_map.damage_indicators.push(DamageIndicator::new(core, event.value as u32, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
+		},
+		EVENT_END_TURN => {
+			// event.id == 0..1: signals the end of the opposing player's turn
+			if (event.id == EVENT_ID_PLAYER || event.id == EVENT_ID_ENEMY) && game_map.player_state.current_turn != Team::Barbarians {
+				let next_team = game_map.player_state.advance_turn();
+				game_map.banner.show_turn(next_team);
+				match event.id {
+					EVENT_ID_PLAYER => { game_map.initialize_next_turn(Team::Player); }
+					_ => { game_map.initialize_next_turn(Team::Enemy); }
+				}
+			}
+			// event.id == 2: signals the end of the barbarian turn by the host
+			else if event.id == EVENT_ID_BARBARIAN && game_map.player_state.current_turn == Team::Barbarians {
+				let next_team = game_map.player_state.advance_turn();
+				game_map.banner.show_turn(next_team);
+				game_map.initialize_next_turn(Team::Barbarians);
+			}
+		},
+		EVENT_OBJ_CAPTURE => {
+			
+		},
+		EVENT_UNIT_SPAWN => {
+			let unit_team = match event.id {
+				EVENT_ID_PLAYER => Team::Player,
+				EVENT_ID_ENEMY => Team::Enemy,
+				EVENT_ID_BARBARIAN => Team::Barbarians,
+				_ => return Err("Invalid event id for unit spawning".to_string())
+			};
+
+			let unit_map = match unit_team {
+				Team::Player => &mut game_map.player_units,
+				Team::Enemy => &mut game_map.enemy_units,
+				Team::Barbarians => &mut game_map.barbarian_units,
+				_ => return Err("Invalid event id for unit spawning".to_string()),
+			};
+
+			let (melee, range, mage)  = match unit_team {
+				Team::Player => ("pll", "plr", "plm"),
+				Team::Enemy =>  ("pl2l", "pl2r", "pl2m"),
+				Team::Barbarians => ("bl", "br", ""),
+			};
+
+			let (x, y) = event.to_pos;
+			// update unit team on map tile
+			game_map.map_tiles.get_mut(&(y, x)).unwrap().update_team(Some(unit_team));
+
+			let mut new_unit = match event.value {
+				EVENT_UNIT_MELEE =>  Unit::new(x, y, unit_team, 20, 7, 1, 95, 1, 5, core.texture_map.get(melee).unwrap(), false),
+				EVENT_UNIT_ARCHER => Unit::new(x, y, unit_team, 15, 5, 4, 85, 3, 7, core.texture_map.get(range).unwrap(), true),
+				_ =>                 Unit::new(x, y, unit_team, 10, 6, 3, 75, 5, 9, core.texture_map.get(mage).unwrap(), true),
+			};
+
+			new_unit.has_moved = true;
+			new_unit.has_attacked = true;
+
+			unit_map.insert((x, y), new_unit);
+			println!("Unit spawned at {:?}", (x, y));
+		},
+		_ => {
+
+		},
+	}
+
+	Ok(())
 }
 
 // Method for preparing the HashMap of player units whilst also properly marking them in the map
 // l melee r ranged m mage
-pub fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>>, player_team: Team, units: &Vec<(char, (u32, u32))>, unit_textures: &'a HashMap<&str, Texture<'a>>, map: &'b mut HashMap<(u32, u32), Tile>) {
+pub fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit<'a>>, player_team: Team, units: &Vec<(char, (u32, u32))>, unit_textures: &'a HashMap<String, Texture<'a>>, map: &'b mut HashMap<(u32, u32), Tile>) {
 	let (melee, range, mage)  = match player_team {
 		Team::Player => ("pll", "plr", "plm"),
 		Team::Enemy =>  ("pl2l", "pl2r", "pl2m"),
@@ -468,26 +638,42 @@ pub fn prepare_player_units<'a, 'b> (player_units: &mut HashMap<(u32, u32), Unit
 		match unit.0 {
 			'l' => {
 				if player_team == Team::Barbarians {
-					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 7, 1, 95, 1, 3, unit_textures.get(melee).unwrap()));
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 7, 1, 95, 1, 3, unit_textures.get(melee).unwrap(), false));
 				}
 				else {
-					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 7, 1, 95, 1, 5, unit_textures.get(melee).unwrap()));
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 20, 7, 1, 95, 1, 5, unit_textures.get(melee).unwrap(), false));
 				}
 			},
 			'r' => {
 				if player_team == Team::Barbarians {
-					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 8, 5, 4, 85, 2, 4, unit_textures.get(range).unwrap()));
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 8, 5, 4, 85, 2, 4, unit_textures.get(range).unwrap(), true));
 				}
 				else {
-					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 5, 4, 85, 3, 7, unit_textures.get(range).unwrap()));
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 15, 5, 4, 85, 3, 7, unit_textures.get(range).unwrap(), true));
 				}
 			},
-			_ => {
+			'g' => {
 				if player_team == Team::Barbarians {
-					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 5, 6, 3, 75,  3, 6, unit_textures.get(mage).unwrap()));
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 16, 4, 1, 90, 1, 5, unit_textures.get(range).unwrap(), true));
 				}
 				else {
-					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 6, 3, 75,  5, 9, unit_textures.get(mage).unwrap()));
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 25, 4, 1, 90, 1, 5, unit_textures.get(range).unwrap(), true));
+				}
+			}
+			's' => {
+				if player_team == Team::Barbarians {
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 6, 9, 2, 100, 4, 4, unit_textures.get(range).unwrap(), true));
+				}
+				else {
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 9, 9, 2, 100, 4, 4, unit_textures.get(range).unwrap(), true));
+				}
+			}
+			_ => {
+				if player_team == Team::Barbarians {
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 5, 6, 3, 75,  3, 6, unit_textures.get(mage).unwrap(), true));
+				}
+				else {
+					player_units.insert((unit.1.0, unit.1.1), Unit::new(unit.1.0, unit.1.1, player_team, 10, 6, 3, 75,  5, 9, unit_textures.get(mage).unwrap(), true));
 				}
 			},
 		};
@@ -507,53 +693,57 @@ pub fn draw_possible_moves(core: &mut SDLCore, tiles: &Vec<(u32, u32)>, color:Co
 }
 
 //Load map textures
-pub fn load_textures<'r>(textures: &mut HashMap<&str, Texture<'r>>, texture_creator: &'r TextureCreator<WindowContext>) -> Result<(), String> {
+pub fn load_textures<'r>(textures: &mut HashMap<String, Texture<'r>>, texture_creator: &'r TextureCreator<WindowContext>) -> Result<(), String> {
 	//Mountains
-	textures.insert("▉", texture_creator.load_texture("images/tiles/mountain_tile.png")?);
-	textures.insert("▒", texture_creator.load_texture("images/tiles/mountain2_tile.png")?);
-	textures.insert("▀", texture_creator.load_texture("images/tiles/mountain_side_top.png")?);
-	textures.insert("▐", texture_creator.load_texture("images/tiles/mountain_side_vertical_right.png")?);
-	textures.insert("▃", texture_creator.load_texture("images/tiles/mountain_side_bottom.png")?);
-	textures.insert("▍", texture_creator.load_texture("images/tiles/mountain_side_vertical_left.png")?);
-	textures.insert("▛", texture_creator.load_texture("images/tiles/mountain_top_left.png")?);
-	textures.insert("▜", texture_creator.load_texture("images/tiles/mountain_top_right.png")?);
-	textures.insert("▙", texture_creator.load_texture("images/tiles/mountain_bottom_left.png")?);
-	textures.insert("▟", texture_creator.load_texture("images/tiles/mountain_bottom_right.png")?);
+	textures.insert("▉".to_string(), texture_creator.load_texture("images/tiles/mountain_tile.png")?);
+	textures.insert("▒".to_string(), texture_creator.load_texture("images/tiles/mountain2_tile.png")?);
+	textures.insert("▀".to_string(), texture_creator.load_texture("images/tiles/mountain_side_top.png")?);
+	textures.insert("▐".to_string(), texture_creator.load_texture("images/tiles/mountain_side_vertical_right.png")?);
+	textures.insert("▃".to_string(), texture_creator.load_texture("images/tiles/mountain_side_bottom.png")?);
+	textures.insert("▍".to_string(), texture_creator.load_texture("images/tiles/mountain_side_vertical_left.png")?);
+	textures.insert("▛".to_string(), texture_creator.load_texture("images/tiles/mountain_top_left.png")?);
+	textures.insert("▜".to_string(), texture_creator.load_texture("images/tiles/mountain_top_right.png")?);
+	textures.insert("▙".to_string(), texture_creator.load_texture("images/tiles/mountain_bottom_left.png")?);
+	textures.insert("▟".to_string(), texture_creator.load_texture("images/tiles/mountain_bottom_right.png")?);
 	//Grass
-	textures.insert(" ", texture_creator.load_texture("images/tiles/grass_tile.png")?);
-	textures.insert("_", texture_creator.load_texture("images/tiles/empty_tile.png")?);
+	textures.insert(" ".to_string(), texture_creator.load_texture("images/tiles/grass_tile.png")?);
+	textures.insert("_".to_string(), texture_creator.load_texture("images/tiles/empty_tile.png")?);
 	//Rivers
-	textures.insert("=", texture_creator.load_texture("images/tiles/river_tile.png")?);
-	textures.insert("║", texture_creator.load_texture("images/tiles/river_vertical.png")?);
-	textures.insert("^", texture_creator.load_texture("images/tiles/river_end_vertical_top.png")?);
-	textures.insert("v", texture_creator.load_texture("images/tiles/river_end_vertical_bottom.png")?);
-	textures.insert(">", texture_creator.load_texture("images/tiles/river_end_right.png")?);
-	textures.insert("<", texture_creator.load_texture("images/tiles/river_end_left.png")?);
+	textures.insert("=".to_string(), texture_creator.load_texture("images/tiles/river_tile.png")?);
+	textures.insert("║".to_string(), texture_creator.load_texture("images/tiles/river_vertical.png")?);
+	textures.insert("^".to_string(), texture_creator.load_texture("images/tiles/river_end_vertical_top.png")?);
+	textures.insert("v".to_string(), texture_creator.load_texture("images/tiles/river_end_vertical_bottom.png")?);
+	textures.insert(">".to_string(), texture_creator.load_texture("images/tiles/river_end_right.png")?);
+	textures.insert("<".to_string(), texture_creator.load_texture("images/tiles/river_end_left.png")?);
 	//Bases
-	textures.insert("b", texture_creator.load_texture("images/tiles/barbarian_camp.png")?);
-	textures.insert("pc", texture_creator.load_texture("images/tiles/player_camp.png")?);
-	textures.insert("ec", texture_creator.load_texture("images/tiles/enemy_camp.png")?);
-	textures.insert("f", texture_creator.load_texture("images/tiles/barbarian_fort.png")?);
-	textures.insert("pf", texture_creator.load_texture("images/tiles/player_fort.png")?);
-	textures.insert("ef", texture_creator.load_texture("images/tiles/enemy_fort.png")?);
-	textures.insert("1", texture_creator.load_texture("images/tiles/blue_castle.png")?);
-	textures.insert("2", texture_creator.load_texture("images/tiles/red_castle.png")?);
+	textures.insert("b".to_string(), texture_creator.load_texture("images/tiles/barbarian_camp.png")?);
+	textures.insert("pc".to_string(), texture_creator.load_texture("images/tiles/player_camp.png")?);
+	textures.insert("ec".to_string(), texture_creator.load_texture("images/tiles/enemy_camp.png")?);
+	textures.insert("f".to_string(), texture_creator.load_texture("images/tiles/barbarian_fort.png")?);
+	textures.insert("pf".to_string(), texture_creator.load_texture("images/tiles/player_fort.png")?);
+	textures.insert("ef".to_string(), texture_creator.load_texture("images/tiles/enemy_fort.png")?);
+	textures.insert("1".to_string(), texture_creator.load_texture("images/tiles/blue_castle.png")?);
+	textures.insert("2".to_string(), texture_creator.load_texture("images/tiles/red_castle.png")?);
 	//Tree
-	textures.insert("t", texture_creator.load_texture("images/tiles/tree_tile.png")?);
+	textures.insert("t".to_string(), texture_creator.load_texture("images/tiles/tree_tile.png")?);
 
 	//Load unit textures
-	textures.insert("pll", texture_creator.load_texture("images/units/player1_melee.png")?);
-	textures.insert("plr", texture_creator.load_texture("images/units/player1_archer.png")?);
-	textures.insert("plm", texture_creator.load_texture("images/units/player1_mage.png")?);
-	textures.insert("pl2l", texture_creator.load_texture("images/units/player2_melee.png")?);
-	textures.insert("pl2r", texture_creator.load_texture("images/units/player2_archer.png")?);
-	textures.insert("pl2m", texture_creator.load_texture("images/units/player2_mage.png")?);
-	textures.insert("bl", texture_creator.load_texture("images/units/barbarian_melee.png")?);
-	textures.insert("br", texture_creator.load_texture("images/units/barbarian_archer.png")?);
+	textures.insert("pll".to_string(), texture_creator.load_texture("images/units/player1_melee.png")?);
+	textures.insert("plr".to_string(), texture_creator.load_texture("images/units/player1_archer.png")?);
+	textures.insert("plm".to_string(), texture_creator.load_texture("images/units/player1_mage.png")?);
+	textures.insert("plg".to_string(), texture_creator.load_texture("images/units/player1_guard.png")?);
+	textures.insert("pls".to_string(), texture_creator.load_texture("images/units/player1_scout.png")?);
+	textures.insert("pl2l".to_string(), texture_creator.load_texture("images/units/player2_melee.png")?);
+	textures.insert("pl2r".to_string(), texture_creator.load_texture("images/units/player2_archer.png")?);
+	textures.insert("pl2m".to_string(), texture_creator.load_texture("images/units/player2_mage.png")?);
+	textures.insert("pl2g".to_string(), texture_creator.load_texture("images/units/player2_guard.png")?);
+	textures.insert("pl2s".to_string(), texture_creator.load_texture("images/units/player2_scout.png")?);
+	textures.insert("bl".to_string(), texture_creator.load_texture("images/units/barbarian_melee.png")?);
+	textures.insert("br".to_string(), texture_creator.load_texture("images/units/barbarian_archer.png")?);
 
 	//Load UI textures
-	textures.insert("cursor", texture_creator.load_texture("images/interface/cursor.png")?);
-	textures.insert("unit_interface", texture_creator.load_texture("images/interface/unit_interface.png")?);
+	textures.insert("cursor".to_string(), texture_creator.load_texture("images/interface/cursor.png")?);
+	textures.insert("unit_interface".to_string(), texture_creator.load_texture("images/interface/unit_interface.png")?);
 
 	Ok(())
 }

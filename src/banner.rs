@@ -79,7 +79,7 @@ impl Banner {
 		core.wincan.draw_rect(banner_rect)?;
 		core.wincan.fill_rect(banner_rect)?;
 
-		if let Some(texture) = core.texture_map.get(&self.banner_key[..]) {
+		if let Some(texture) = core.texture_map.get(&self.banner_key) {
 			core.wincan.copy(&texture, None, text_rect)?;
 		}
 
@@ -98,8 +98,8 @@ impl Banner {
 	}
 }
 
-pub fn load_textures<'r>(textures: &mut HashMap<&str, Texture<'r>>, texture_creator: &'r TextureCreator<WindowContext>, bold_font: &Font<'r, 'r>) -> Result<(), String> {
-	textures.insert(BANNER_TURN_P1, {
+pub fn load_textures<'r>(textures: &mut HashMap<String, Texture<'r>>, texture_creator: &'r TextureCreator<WindowContext>, bold_font: &Font<'r, 'r>) -> Result<(), String> {
+	textures.insert(BANNER_TURN_P1.to_string(), {
 		let text_surface = bold_font.render("Player 1's Turn")
 			.blended_wrapped(Color::RGBA(0,0,0,BANNER_ALPHA), 320) //Black font
 			.map_err(|e| e.to_string())?;
@@ -108,7 +108,7 @@ pub fn load_textures<'r>(textures: &mut HashMap<&str, Texture<'r>>, texture_crea
 			.map_err(|e| e.to_string())?
 	});
 
-	textures.insert(BANNER_TURN_P2, {
+	textures.insert(BANNER_TURN_P2.to_string(), {
 		let text_surface = bold_font.render("Player 2's Turn")
 			.blended_wrapped(Color::RGBA(0,0,0,BANNER_ALPHA), 320) //Black font
 			.map_err(|e| e.to_string())?;
@@ -117,7 +117,7 @@ pub fn load_textures<'r>(textures: &mut HashMap<&str, Texture<'r>>, texture_crea
 			.map_err(|e| e.to_string())?
 	});
 
-	textures.insert(BANNER_TURN_BARB, {
+	textures.insert(BANNER_TURN_BARB.to_string(), {
 		let text_surface = bold_font.render("Barbarians' Turn")
 			.blended_wrapped(Color::RGBA(0,0,0,BANNER_ALPHA), 320) //Black font
 			.map_err(|e| e.to_string())?;
@@ -126,7 +126,7 @@ pub fn load_textures<'r>(textures: &mut HashMap<&str, Texture<'r>>, texture_crea
 			.map_err(|e| e.to_string())?
 	});
 
-	textures.insert(BANNER_WIN_P1, {
+	textures.insert(BANNER_WIN_P1.to_string(), {
 		let text_surface = bold_font.render("Player 1 wins!")
 			.blended_wrapped(Color::RGBA(0,0,0,BANNER_ALPHA), 320) //Black font
 			.map_err(|e| e.to_string())?;
@@ -135,7 +135,7 @@ pub fn load_textures<'r>(textures: &mut HashMap<&str, Texture<'r>>, texture_crea
 			.map_err(|e| e.to_string())?
 	});
 
-	textures.insert(BANNER_WIN_P2, {
+	textures.insert(BANNER_WIN_P2.to_string(), {
 		let text_surface = bold_font.render("Player 2 wins!")
 			.blended_wrapped(Color::RGBA(0,0,0,BANNER_ALPHA), 320) //Black font
 			.map_err(|e| e.to_string())?;

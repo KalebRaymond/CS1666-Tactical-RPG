@@ -9,6 +9,18 @@ pub const EVENT_MOVE: u8 = 2;
 pub const EVENT_ATTACK: u8 = 3;
 pub const EVENT_END_TURN: u8 = 4;
 pub const EVENT_END_GAME: u8 = 5;
+pub const EVENT_OBJ_CAPTURE: u8 = 6;
+pub const EVENT_UNIT_SPAWN: u8 = 7;
+
+pub const EVENT_ID_ENEMY: u8 = 0;
+pub const EVENT_ID_PLAYER: u8 = 1;
+pub const EVENT_ID_BARBARIAN: u8 = 2;
+
+pub const EVENT_UNIT_ARCHER: u8 = 0;
+pub const EVENT_UNIT_GUARD: u8 = 1;
+pub const EVENT_UNIT_MAGE: u8 = 2;
+pub const EVENT_UNIT_MELEE: u8 = 3;
+pub const EVENT_UNIT_SCOUT: u8 = 4;
 
 // allows a range of indeces in an array to be set with one expression
 // e.g. set_range!(arr[4..6] = [4, 5, 6, 7, 8]); will set arr[4] = 4 and arr[5] = 5
@@ -30,6 +42,7 @@ pub struct Event {
 	pub from_pos: (u32, u32),
 	pub to_pos: (u32, u32),
 	pub value: u8,
+	pub from_self: bool,
 }
 
 impl Event {
@@ -40,6 +53,7 @@ impl Event {
 			from_pos: (0, 0),
 			to_pos: (0, 0),
 			value: 0,
+			from_self: true,
 		}
 	}
 
@@ -50,6 +64,7 @@ impl Event {
 			from_pos,
 			to_pos,
 			value,
+			from_self: true,
 		}
 	}
 
@@ -66,6 +81,7 @@ impl Event {
 				from_u32_bytes(&arr[14..18]),
 			),
 			value: arr[18],
+			from_self: false,
 		}
 	}
 
