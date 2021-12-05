@@ -11,17 +11,59 @@ use std::time::Instant;
 
 use crate::SDLCore;
 use crate::tile::Tile;
+use crate::player_state::PlayerState;
+use crate::net::util::*;
 
 const MAP_WIDTH: u32 = 64;
 const MAP_HEIGHT: u32 = 64;
 
-const GUARD_HEALTH_ID: u32 = 25;
-const SCOUT_HEALTH_ID: u32 = 9;
+pub const GUARD_HEALTH_ID: u32 = 25;
+pub const SCOUT_HEALTH_ID: u32 = 9;
 
 pub enum Team {
 	Player,
 	Enemy,
 	Barbarians,
+}
+impl Team {
+    // Swaps the player/enemy enum values if invoked on the 'peer' client.
+    // Since the player state is shared between clients, some properties will
+    // use the "player" value to represent the host and "enemy" as the peer.
+    pub fn as_client(self, player_state: &PlayerState) -> Team {
+        if player_state.team == Team::Enemy {
+            match self {
+                Team::Player => Team::Enemy,
+                Team::Enemy => Team::Player,
+                _ => self,
+            }
+        } else { self }
+    }
+
+    pub fn to_id(self) -> u8 {
+        match self {
+            Team::Player => EVENT_ID_PLAYER,
+            Team::Enemy => EVENT_ID_ENEMY,
+            Team::Barbarians => EVENT_ID_BARBARIAN,
+        }
+    }
+
+    pub fn from_id(id: u8) -> Result<Team, String> {
+        match id {
+            EVENT_ID_PLAYER => Ok(Team::Player),
+            EVENT_ID_ENEMY => Ok(Team::Enemy),
+            EVENT_ID_BARBARIAN => Ok(Team::Barbarians),
+            _ => Err("Invalid team id".to_string())
+        }
+    }
+}
+impl ToString for Team {
+    fn to_string(&self) -> String {
+        match self {
+            Team::Player => "player",
+            Team::Enemy => "enemy",
+            Team::Barbarians => "barbarians",
+        }.to_string()
+    }
 }
 impl PartialEq for Team {
     fn eq(&self, other: &Self) -> bool {

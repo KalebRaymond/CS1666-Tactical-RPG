@@ -68,14 +68,21 @@ impl MultiPlayer<'_, '_> {
 		).map_err(|e| e.to_string())?;
 		let room_text_rect = centered_rect!(core, _, 350, room_w, room_h);
 
+		println!("Initializing with is_host:{}", client.is_host);
 		let game_map = GameMap::new(core, if client.is_host { Team::Player } else { Team::Enemy });
 
 		//Set camera size based on map size
 		core.cam.w = (game_map.map_size.0 as u32 * TILE_SIZE) as i32;
 		core.cam.h = (game_map.map_size.1 as u32 * TILE_SIZE) as i32;
-		//Start camera in lower left corner, to start with the player castle in view
-		core.cam.x = 0;
-		core.cam.y = -core.cam.h + core.wincan.window().size().1 as i32;
+		if client.is_host {
+			//Start camera in lower left corner, to start with the player castle in view
+			core.cam.x = 0;
+			core.cam.y = -core.cam.h + core.wincan.window().size().1 as i32;
+		} else {
+			//Start camera in lower left corner, to start with the player castle in view
+			core.cam.x = -core.cam.w + core.wincan.window().size().0 as i32;
+			core.cam.y = 0;
+		}
 
 		Ok(MultiPlayer {
 			core,
@@ -111,22 +118,9 @@ impl Drawable for MultiPlayer<'_, '_> {
 			}
 		}
 
+		// receive a new event from the server
 		if let Some(event) = self.client.poll()? {
-			match event {
-				Event{action: EVENT_END_TURN, ..} => {
-					// event.id == 0: signals the end of the opposing player's turn
-					if event.id == 0 && !self.game_map.player_state.is_turn() && self.game_map.player_state.current_turn != Team::Barbarians {
-						let next_team = self.game_map.player_state.advance_turn();
-						self.game_map.banner.show_turn(next_team);
-					}
-					// event.id == 2: signals the end of the barbarian turn by the host
-					else if event.id == 2 && !self.client.is_host && self.game_map.player_state.current_turn == Team::Barbarians {
-						let next_team = self.game_map.player_state.advance_turn();
-						self.game_map.banner.show_turn(next_team);
-					}
-				},
-				_ => {},
-			}
+			self.game_map.event_list.push(event);
 		}
 
 		self.core.wincan.clear();
@@ -150,36 +144,38 @@ impl Drawable for MultiPlayer<'_, '_> {
 			return Ok(GameState::MultiPlayer);
 		}
 
+		//If no one has won so far...
+		if self.game_map.winning_team.is_none() {
+			//Handle the current team's move
+			// handle the current player's turn
+			if self.game_map.player_state.is_turn() {
+				crate::player_turn::handle_player_turn(&self.core, &mut self.game_map)?;
+			}
+
+			// handle the barbarians' turn (only on the host client)
+			if self.client.is_host && self.game_map.player_state.current_turn == Team::Barbarians {
+				crate::barbarian_turn::handle_barbarian_turn(&self.core, &mut self.game_map)?;
+			}
+		}
+
 		//Record user inputs
 		self.core.input.update(&self.core.event_pump);
+
+		crate::game_map::apply_events(&self.core, &mut self.game_map)?.iter()
+			.filter(|e| e.from_self).copied()
+			.try_for_each(|e| self.client.send(e))?;
 
 		// render the current game board
 		self.game_map.draw(self.core)?;
 
-		// handle the current player's turn
-		if self.game_map.player_state.is_turn() {
-			if self.core.input.left_clicked && self.game_map.end_turn_button.is_mouse(self.core) {
-				// end the player turn
-				self.client.send(Event::create(EVENT_END_TURN, 0, (0,0), (0,0), 0))?;
-				let next_team = self.game_map.player_state.advance_turn();
-				self.game_map.banner.show_turn(next_team);
-			}
-		}
-
-		// handle the barbarians' turn (only on the host client)
-		if self.client.is_host && self.game_map.player_state.current_turn == Team::Barbarians {
-			if !self.game_map.banner.banner_visible {
-				// end the barbarians turn
-				self.client.send(Event::create(EVENT_END_TURN, 2, (0,0), (0,0), 0))?;
-				let next_team = self.game_map.player_state.advance_turn();
-				self.game_map.banner.show_turn(next_team);
-			}
-		}
-
 		self.core.wincan.set_viewport(self.core.cam);
 		self.core.wincan.present();
 
-		Ok(GameState::MultiPlayer)
+		if !self.game_map.winning_team.is_none() && !self.game_map.banner.banner_visible && self.core.input.left_clicked {
+			Ok(GameState::MainMenu)
+		} else {
+			Ok(GameState::MultiPlayer)
+		}
 	}
 
 }

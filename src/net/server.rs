@@ -82,7 +82,7 @@ impl Server {
 			let mut send_buffer = [0; 8];
 			set_range!(send_buffer[0..4] = to_u32_bytes(new_code));
 			set_range!(send_buffer[4..8] = to_u32_bytes(new_token));
-			stream.write(&send_buffer).map_err(|_e| "Could not write code response to stream")?;
+			stream.write_all(&send_buffer).map_err(|_e| "Could not write code response to stream")?;
 			stream.flush().map_err(|_e| "Could not flush stream")?;
 			return Ok(());
 		}
@@ -103,7 +103,7 @@ impl Server {
 			let mut send_buffer = [0; 8];
 			set_range!(send_buffer[0..4] = to_u32_bytes(code));
 			set_range!(send_buffer[4..8] = to_u32_bytes(room.token));
-			stream.write(&send_buffer).map_err(|_e| "Could not write join response to stream")?;
+			stream.write_all(&send_buffer).map_err(|_e| "Could not write join response to stream")?;
 			stream.flush().map_err(|_e| "Could not flush stream")?;
 			return Ok(());
 		}
@@ -123,14 +123,14 @@ impl Server {
 			room.push_event(is_host, addr, event)?;
 
 			// respond with 1 byte to indicate success
-			stream.write(&[1]).map_err(|_e| "Could not write event response to stream")?;
+			stream.write_all(&[1]).map_err(|_e| "Could not write event response to stream")?;
 		} else if buffer[0] == MSG_POLL {
 			// polling for events
 			let event = room.pop_event(is_host, addr)?;
 			let event_buffer = event.to_bytes();
 
 			// respond with event contents
-			stream.write(&event_buffer).map_err(|_e| "Could not write poll response to stream")?;
+			stream.write_all(&event_buffer).map_err(|_e| "Could not write poll response to stream")?;
 		}
 
 		stream.flush().map_err(|_e| "Could not flush stream")?;
@@ -183,13 +183,19 @@ impl Room {
 	}
 
 	fn pop_event(&mut self, is_host: bool, addr: IpAddr) -> Result<Event, String> {
-		if is_host && self.host_addr == addr {
-			Ok(self.host_events.pop().unwrap_or(Event::new(EVENT_NONE)))
+		let events = if is_host && self.host_addr == addr {
+			&mut self.host_events
 		} else if !is_host && self.peer_addr == Some(addr) {
-			Ok(self.peer_events.pop().unwrap_or(Event::new(EVENT_NONE)))
+			&mut self.peer_events
 		} else {
-			Err(String::from("Cannot pop_event: Peer has not joined the room"))
+			return Err(String::from("Cannot pop_event: Peer has not joined the room"));
+		};
+
+		if events.is_empty() {
+			return Ok(Event::new(EVENT_NONE))
 		}
+
+		Ok(events.remove(0))
 	}
 
 }
