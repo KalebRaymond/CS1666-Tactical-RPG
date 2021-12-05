@@ -30,11 +30,15 @@ impl Server {
 		let incoming = listener.incoming()
 			.filter_map(|s| match s {
 				Ok(stream) => Some(stream),
-				_ => None,
+				Err(e) => {
+					println!("Incoming stream error: {}", e.to_string());
+					None
+				}
 			});
 
 		// listen for any new connections
 		for mut stream in incoming {
+			println!("New connection");
 			match self.handle_request(&mut stream) {
 				Err(e) => println!("Request error: {}", e),
 				_ => {},
