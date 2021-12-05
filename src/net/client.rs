@@ -100,7 +100,7 @@ impl Client {
 		self.last_poll = Instant::now();
 		let mut stream = self.connect(MSG_POLL)?;
 
-		let mut buffer = [0; 18];
+		let mut buffer = [0; 19];
 		stream.read(&mut buffer).map_err(|_e| "Could not read poll response")?;
 
 		match Event::from_bytes(&buffer) {

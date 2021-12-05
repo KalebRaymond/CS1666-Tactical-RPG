@@ -18,10 +18,10 @@ impl DistanceMap {
         let mut to_player_castle: HashMap<(u32, u32), u32> = HashMap::new();
         let mut to_enemy_castle: HashMap<(u32, u32), u32> = HashMap::new();
         let mut to_barbarian_camps: HashMap<(u32, u32), HashMap<(u32, u32), u32>> = HashMap::new();
-        
+
         let file = File::open(path).expect("Could not open file");
         let file_io = BufReader::new(file);
-    
+
         //Parse distances.txt and populate the hashmaps with the values from the file
         let mut cur_map = &mut to_player_castle;
         for line in file_io.lines() {

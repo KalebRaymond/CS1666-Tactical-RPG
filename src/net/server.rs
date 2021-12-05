@@ -115,7 +115,7 @@ impl Server {
 
 		if buffer[0] == MSG_EVENT {
 			// sending an event
-			let mut event_buffer = [0; 18];
+			let mut event_buffer = [0; 19];
 			stream.read(&mut event_buffer).map_err(|_e| "Could not read event stream.")?;
 
 			// push event into room

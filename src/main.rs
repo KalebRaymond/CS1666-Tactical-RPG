@@ -3,7 +3,7 @@ extern crate sdl2;
 #[macro_use] mod sdl_macros;
 
 
-mod AI;
+mod ai;
 mod banner;
 mod barbarian_turn;
 mod credits;
@@ -64,7 +64,7 @@ pub struct SDLCore<'t> {
 	pub tiny_font: sdl2::ttf::Font<'t, 't>,
 	pub wincan: sdl2::render::WindowCanvas,
 	pub texture_creator: &'t TextureCreator<sdl2::video::WindowContext>,
-	pub texture_map: &'t HashMap<&'t str, Texture<'t>>,
+	pub texture_map: &'t HashMap<String, Texture<'t>>,
 	pub event_pump: sdl2::EventPump,
 	pub cam: Rect,
 	pub input: Input,
@@ -109,6 +109,7 @@ fn runner(vsync:bool) -> Result<(), String> {
 	let mut texture_map = HashMap::new();
 
 	crate::game_map::load_textures(&mut texture_map, &texture_creator)?;
+	crate::damage_indicator::load_textures(&mut texture_map, &texture_creator, &bold_font)?;
 	crate::banner::load_textures(&mut texture_map, &texture_creator, &bold_font)?;
 
 	let mut core = SDLCore{

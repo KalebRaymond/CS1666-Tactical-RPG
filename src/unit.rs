@@ -15,6 +15,9 @@ use crate::tile::Tile;
 const MAP_WIDTH: u32 = 64;
 const MAP_HEIGHT: u32 = 64;
 
+const GUARD_HEALTH_ID: u32 = 25;
+const SCOUT_HEALTH_ID: u32 = 9;
+
 pub enum Team {
 	Player,
 	Enemy,
@@ -71,7 +74,7 @@ impl PartialOrd for QueueObject {
 pub struct Unit<'a> {
     pub x: u32,
     pub y: u32,
-    pub team: Team, 
+    pub team: Team,
     pub hp: u32,
     pub max_hp: u32,
     movement_range: u32,
@@ -91,13 +94,15 @@ pub struct Unit<'a> {
     last_damaged_drawn: Instant,
     time_since_damaged: f32,
 
+    ranged_attacker: bool,
+
     //Used for barbarians to make sure they roam within a small radius
     pub starting_x: u32,
     pub starting_y: u32,
 }
 
 impl Unit <'_>{
-    pub fn new<'a> (x:u32, y:u32, team: Team, hp: u32, movement_range: u32, attack_range: u32, accuracy: u32, min_damage:u32, max_damage: u32, texture: &'a Texture) -> Unit<'a> {
+    pub fn new<'a> (x:u32, y:u32, team: Team, hp: u32, movement_range: u32, attack_range: u32, accuracy: u32, min_damage:u32, max_damage: u32, texture: &'a Texture, ranged_attacker: bool) -> Unit<'a> {
         Unit {
             x,
             y,
@@ -110,7 +115,7 @@ impl Unit <'_>{
             min_damage,
             max_damage,
             texture,
-            
+
             has_attacked: false,
             has_moved: false,
 
@@ -122,14 +127,21 @@ impl Unit <'_>{
             last_damaged_drawn: Instant::now(),
             time_since_damaged: 0.0,
 
+            ranged_attacker,
+
             starting_x: x,
             starting_y: y,
         }
     }
 
-    pub fn get_attack_damage(&self) -> u32 {
+    pub fn get_attack_damage(&self, other: &Unit) -> u32 {
         let chance = rand::thread_rng().gen_range(0..100);
-        if chance < self.accuracy {
+        let scout_debuff = if other.max_hp == SCOUT_HEALTH_ID {
+            20
+        } else {
+            0
+        };
+        if chance < self.accuracy - scout_debuff {
             rand::thread_rng().gen_range(self.min_damage..=self.max_damage)
         } else {
             0
@@ -147,16 +159,7 @@ impl Unit <'_>{
     }
 
     pub fn respawn_loc(&self, map: &mut HashMap<(u32, u32), Tile>, where_to_spawn: (u32,u32)) -> (u32, u32) {
-        if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((where_to_spawn.1, where_to_spawn.0)) {
-            //As long as a unit can move to this tile return it otherwise find closest available
-            if entry.get().unit_can_move_here() {
-                where_to_spawn
-            } else {
-                self.get_closest_move(where_to_spawn, map)
-            }
-        } else {
-            panic!("Trying to spawn unit off map")
-        }
+        respawn_loc((self.x, self.y), map, where_to_spawn)
     }
 
     pub fn get_tiles_in_movement_range(&self, map: &mut HashMap<(u32, u32), Tile>,) -> Vec<(u32, u32)> {
@@ -397,12 +400,103 @@ impl Unit <'_>{
                 }
             }
         }
-        
         tiles_in_range
     }
 
-    pub fn receive_damage(&mut self, damage: u32) {
-        self.hp -= damage;
+    pub fn get_tiles_can_attack_from_pos(&self, from_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>,) -> Vec<(u32, u32)> {
+        let mut tiles_in_range: Vec<(u32, u32)> = Vec::new();
+        let mut visited: HashMap<(u32,u32), bool> = HashMap::new();
+        let mut heap = BinaryHeap::new();
+        heap.push(QueueObject{coords: (from_pos.0, from_pos.1), cost: self.attack_range});
+        visited.insert((from_pos.0, from_pos.1), true);
+        while let Some(QueueObject { coords, cost }) = heap.pop() {
+            if cost == 0 {
+                continue
+            }
+            //Since we know that we can make a move here need to check each of the 4 sides of the current position to see if we can make a move
+            if coords.0 > 0 {
+                if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0-1 as u32)) {
+                    //As we have not already visited this tile
+                    if entry.get().can_attack_through && !visited.contains_key(&(coords.0-1, coords.1)){
+                        heap.push(QueueObject { coords: (coords.0-1, coords.1), cost:cost-1});
+                        visited.insert((coords.0-1, coords.1), true);
+                        match entry.get().contained_unit_team {
+                            Some(team) => {
+                                if team != self.team {
+                                    tiles_in_range.push((coords.0-1, coords.1));
+                                }
+                            },
+                            None => {}
+                        };
+                    }
+                }
+            }
+            if coords.0 < MAP_WIDTH-1 {
+                if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0+1 as u32)) {
+                    //As long as we have not already visited this tile
+                    if entry.get().can_attack_through && !visited.contains_key(&(coords.0+1, coords.1)){
+                        heap.push(QueueObject { coords: (coords.0+1, coords.1), cost:cost-1});
+                        visited.insert((coords.0+1, coords.1), true);
+                        match entry.get().contained_unit_team {
+                            Some(team) => {
+                                if team != self.team {
+                                    tiles_in_range.push((coords.0+1, coords.1));
+                                }
+                            },
+                            None => {}
+                        };
+                    }
+                }
+            }
+            if coords.1 > 0 {
+                if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1-1 as u32, coords.0 as u32)) {
+                    //As long as we have not already visited this tile
+                    if entry.get().can_attack_through && !visited.contains_key(&(coords.0, coords.1-1)){
+                        heap.push(QueueObject { coords: (coords.0, coords.1-1), cost:cost-1});
+                        visited.insert((coords.0, coords.1-1), true);
+                        match entry.get().contained_unit_team {
+                            Some(team) => {
+                                if team != self.team {
+                                    tiles_in_range.push((coords.0, coords.1-1));
+                                }
+                            },
+                            None => {}
+                        };
+                    }
+                }
+            }
+            if coords.1 < MAP_HEIGHT-1 {
+                if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1+1 as u32, coords.0 as u32)) {
+                    //As long as we have not already visited this tile
+                    if entry.get().can_attack_through && !visited.contains_key(&(coords.0, coords.1+1)){
+                        heap.push(QueueObject { coords: (coords.0, coords.1+1), cost:cost-1});
+                        visited.insert((coords.0, coords.1+1), true);
+                        match entry.get().contained_unit_team {
+                            Some(team) => {
+                                if team != self.team {
+                                    tiles_in_range.push((coords.0, coords.1+1));
+                                }
+                            },
+                            None => {}
+                        };
+                    }
+                }
+            }
+        }
+        tiles_in_range
+    }
+
+    pub fn receive_damage(&mut self, damage: u32, other: &Unit) {
+        let mut do_damage = damage;
+        if self.max_hp == GUARD_HEALTH_ID && other.ranged_attacker && damage > 1 {
+            do_damage /= 2;
+        }
+        if damage >= self.hp {
+            self.hp = 0;
+        }
+        else {
+            self.hp -= do_damage;
+        }
 
         //Make the unit turn red after taking damage
         self.is_attacked = true;
@@ -442,5 +536,59 @@ impl Unit <'_>{
 impl fmt::Display for Unit<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Unit(x:{}, y:{}, hp:{})", self.x, self.y, self.hp)
+    }
+}
+
+pub fn respawn_loc(castle_coords: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, where_to_spawn: (u32,u32)) -> (u32, u32) {
+    if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((where_to_spawn.1, where_to_spawn.0)) {
+        //As long as a unit can move to this tile return it otherwise find closest available
+        if entry.get().unit_can_move_here() {
+            where_to_spawn
+        } else {
+            let mut y_increment: i32 = 1;
+            let mut x_increment: i32 = 1;
+            let mut current_x:i32 = where_to_spawn.0 as i32;
+            let mut current_y:i32 = where_to_spawn.1 as i32;
+
+            if where_to_spawn.1 > castle_coords.1 { //If the coorodinate is below then our increment should be -1;
+                y_increment = -1;
+            } else if where_to_spawn.1 == castle_coords.1 { //If the coordinates are at the same y focus on moving x first
+                y_increment = 0;
+            }
+            if where_to_spawn.0 > castle_coords.0 { //If the coorodinate is to the right then our increment should be -1;
+                x_increment = -1;
+            } else if where_to_spawn.0 == castle_coords.0 { //If the coordinates are at the same x focus on moving y first
+                x_increment = 0;
+            }
+            loop {
+                if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((current_y as u32, (current_x + x_increment) as u32)) {
+                    //As long as a unit can move to this tile and we have not already visited this tile
+                    if entry.get().unit_can_move_here() {
+                        return ((current_x + x_increment) as u32, current_y as u32)
+                    }
+                }
+                if let std::collections::hash_map::Entry::Occupied(entry) = map.entry(((current_y + y_increment) as u32, current_x as u32)) {
+                    //As long as a unit can move to this tile and we have not already visited this tile
+                    if entry.get().unit_can_move_here() {
+                        return (current_x as u32, (current_y + y_increment) as u32)
+                    }
+                }
+                if let std::collections::hash_map::Entry::Occupied(entry) = map.entry(((current_y + y_increment) as u32, (current_x + x_increment) as u32)) {
+                    //As long as a unit can move to this tile and we have not already visited this tile
+                    if entry.get().unit_can_move_here() {
+                        return ((current_x + x_increment) as u32, (current_y + y_increment) as u32)
+                    }
+                }
+                current_x += x_increment;
+                current_y += y_increment;
+                if current_x == castle_coords.0 as i32 && current_y == castle_coords.1 as i32 {
+                    break;
+                }
+            }
+            //In the event that no closer moves are found, stay at current position
+            (castle_coords.0, castle_coords.1)
+        }
+    } else {
+        panic!("Trying to spawn unit off map")
     }
 }

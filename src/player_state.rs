@@ -1,5 +1,4 @@
 use crate::player_action::PlayerAction;
-use crate::unit_interface::UnitInterface;
 use crate::unit::Team;
 
 pub struct PlayerState {

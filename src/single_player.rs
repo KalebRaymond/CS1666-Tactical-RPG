@@ -1,32 +1,15 @@
 use sdl2::event::Event;
-use sdl2::image::LoadTexture;
-use sdl2::pixels::Color;
-use sdl2::render::BlendMode;
 use sdl2::keyboard::Keycode;
-use sdl2::rect::Rect;
-use sdl2::render::Texture;
 
-use std::collections::HashMap;
-use std::convert::TryInto;
-use crate::AI::*;
-use crate::button::Button;
-use crate::cursor::Cursor;
+use crate::ai::*;
 use crate::game_map::GameMap;
 use crate::{Drawable, GameState};
-use crate::{CAM_H, CAM_W, TILE_SIZE};
-use crate::pixel_coordinates::PixelCoordinates;
-use crate::player_action::PlayerAction;
-use crate::player_state::PlayerState;
+use crate::TILE_SIZE;
 use crate::player_turn;
 use crate::enemy_turn;
 use crate::barbarian_turn;
 use crate::SDLCore;
-use crate::tile::Tile;
-use crate::banner::Banner;
-use crate::unit_interface::UnitInterface;
-use crate::unit::{Team, Unit};
-
-const TURNS_ON_BASE: u32 = 3;
+use crate::unit::Team;
 
 pub struct SinglePlayer<'i, 'r> {
 	core: &'i mut SDLCore<'r>,
@@ -34,11 +17,6 @@ pub struct SinglePlayer<'i, 'r> {
 	game_map: GameMap<'i>,
 
 	distance_map: distance_map::DistanceMap,
-
-	winning_team: Option<Team>,
-	player1_on_base: u32,
-	player2_on_base: u32,
-	next_team_check: Team,
 }
 
 impl SinglePlayer<'_,'_> {
@@ -52,18 +30,12 @@ impl SinglePlayer<'_,'_> {
 		core.cam.x = 0;
 		core.cam.y = -core.cam.h + core.wincan.window().size().1 as i32;
 
-
-
 		let distance_map = distance_map::DistanceMap::new();
 
 		Ok(SinglePlayer {
 			core,
 			game_map,
 			distance_map,
-			winning_team: None,
-			player1_on_base: 0,
-			player2_on_base: 0,
-			next_team_check: Team::Player,
 		})
 	}
 }
@@ -84,75 +56,29 @@ impl Drawable for SinglePlayer<'_,'_> {
 		}
 
 		//If no one has won so far...
-		if self.winning_team.is_none() {
+		if self.game_map.winning_team.is_none() {
 			//Handle the current team's move
 			match self.game_map.player_state.current_turn {
-				Team::Player => {
-					player_turn::handle_player_turn(&self.core, &mut self.game_map)?;
-
-					// Checks to see if the player's units are on the opponent's castle tile
-					if self.next_team_check == Team::Player {
-						//Fix glitch where castle tile says it's occupied when it's not
-						self.game_map.correct_map_errors();
-
-						self.game_map.objectives.check_objectives(Team::Player, &self.game_map.player_units);
-						
-						if self.game_map.objectives.has_won(Team::Player) {
-							self.winning_team = self.game_map.set_winner(Team::Player);
-						}
-
-						println!("Turns on enemy castle: {}/{}", self.game_map.objectives.p2_castle_turns, TURNS_ON_BASE);
-						// Makes it so that this isn't checked every time it loops through
-						self.next_team_check = Team::Enemy;
-					}
-				},
-				Team::Enemy => {
-					enemy_turn::handle_enemy_turn(&self.core, &mut self.game_map, &self.distance_map)?;
-
-					if self.next_team_check == Team::Enemy {
-						//Fix glitch where castle tile says it's occupied when it's not
-						self.game_map.correct_map_errors();
-						
-						self.game_map.objectives.check_objectives(Team::Enemy, &self.game_map.enemy_units);
-						
-						if self.game_map.objectives.has_won(Team::Enemy) {
-							self.winning_team = self.game_map.set_winner(Team::Enemy);
-						}
-
-						println!("Turns on player castle: {}/{}", self.game_map.objectives.p1_castle_turns, TURNS_ON_BASE);
-						self.next_team_check = Team::Player;
-					}
-				},
-				Team::Barbarians => {
-					barbarian_turn::handle_barbarian_turn(&self.core, &mut self.game_map)?;
-				},
-			}
-
-			//Check for total party kill and set the other team as the winner
-			//Ideally you would check this whenever a unit on either team gets attacked, but this works
-			if self.game_map.player_units.len() == 0 {
-				println!("Enemy team won via Total Party Kill!");
-				self.winning_team = self.game_map.set_winner(Team::Enemy);
-			}
-			else if self.game_map.enemy_units.len() == 0 {
-				println!("Player team won via Total Party Kill!");
-				self.winning_team = self.game_map.set_winner(Team::Player);
+				Team::Player => player_turn::handle_player_turn(&self.core, &mut self.game_map)?,
+				Team::Enemy => enemy_turn::handle_enemy_turn(&self.core, &mut self.game_map, &self.distance_map)?,
+				Team::Barbarians => barbarian_turn::handle_barbarian_turn(&self.core, &mut self.game_map)?,
 			}
 		}
 
 		//Record user inputs
 		self.core.input.update(&self.core.event_pump);
 
-		self.game_map.draw(self.core);
+		crate::game_map::apply_events(&self.core, &mut self.game_map)?;
+
+		self.game_map.draw(self.core)?;
 
 		self.core.wincan.set_viewport(self.core.cam);
 		self.core.wincan.present();
 
-		if !self.winning_team.is_none() && !self.game_map.banner.banner_visible {
+		if !self.game_map.winning_team.is_none() && !self.game_map.banner.banner_visible {
 			Ok(GameState::MainMenu)
-		}
-		else {
+		} else {
 			Ok(GameState::SinglePlayer)
-		}		
+		}
 	}
 }

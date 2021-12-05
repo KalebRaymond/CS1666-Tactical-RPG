@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use std::time::Instant;
 
 use sdl2::image::LoadTexture;
@@ -11,10 +10,8 @@ use crate::net::util::*;
 
 use crate::game_map::GameMap;
 use crate::{Drawable, GameState};
-use crate::player_state::PlayerState;
 use crate::unit::Team;
-use crate::button::Button;
-use crate::{SDLCore, CAM_W, CAM_H, TILE_SIZE};
+use crate::{SDLCore, TILE_SIZE};
 
 pub struct MultiPlayer<'i, 'r> {
 	core: &'i mut SDLCore<'r>,
@@ -122,8 +119,8 @@ impl Drawable for MultiPlayer<'_, '_> {
 						let next_team = self.game_map.player_state.advance_turn();
 						self.game_map.banner.show_turn(next_team);
 					}
-					// event.id == 1: signals the end of the barbarian turn by the host
-					else if event.id == 1 && !self.client.is_host && self.game_map.player_state.current_turn == Team::Barbarians {
+					// event.id == 2: signals the end of the barbarian turn by the host
+					else if event.id == 2 && !self.client.is_host && self.game_map.player_state.current_turn == Team::Barbarians {
 						let next_team = self.game_map.player_state.advance_turn();
 						self.game_map.banner.show_turn(next_team);
 					}
@@ -157,13 +154,13 @@ impl Drawable for MultiPlayer<'_, '_> {
 		self.core.input.update(&self.core.event_pump);
 
 		// render the current game board
-		self.game_map.draw(self.core);
+		self.game_map.draw(self.core)?;
 
 		// handle the current player's turn
 		if self.game_map.player_state.is_turn() {
 			if self.core.input.left_clicked && self.game_map.end_turn_button.is_mouse(self.core) {
 				// end the player turn
-				self.client.send(Event::create(EVENT_END_TURN, 0, (0,0), (0,0)))?;
+				self.client.send(Event::create(EVENT_END_TURN, 0, (0,0), (0,0), 0))?;
 				let next_team = self.game_map.player_state.advance_turn();
 				self.game_map.banner.show_turn(next_team);
 			}
@@ -173,7 +170,7 @@ impl Drawable for MultiPlayer<'_, '_> {
 		if self.client.is_host && self.game_map.player_state.current_turn == Team::Barbarians {
 			if !self.game_map.banner.banner_visible {
 				// end the barbarians turn
-				self.client.send(Event::create(EVENT_END_TURN, 1, (0,0), (0,0)))?;
+				self.client.send(Event::create(EVENT_END_TURN, 2, (0,0), (0,0), 0))?;
 				let next_team = self.game_map.player_state.advance_turn();
 				self.game_map.banner.show_turn(next_team);
 			}
