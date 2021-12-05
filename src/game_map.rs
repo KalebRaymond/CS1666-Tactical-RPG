@@ -507,12 +507,15 @@ impl GameMap<'_> {
 	}
 }
 
-pub fn apply_events<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) -> Result<(), String> {
+pub fn apply_events<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) -> Result<Vec<Event>, String> {
+	let mut ret: Vec<Event> = Vec::new();
+
 	// process any new events in the event_list
 	for i in game_map.event_list_index..game_map.event_list.len() {
 		if let Some(event) = game_map.event_list.get(i).map(|e| e.clone()) {
 			println!("Applying event #{}: {}", i, event);
 			apply_event(core, game_map, event)?;
+			ret.push(event.clone());
 		}
 	}
 	game_map.event_list_index = game_map.event_list.len();
@@ -522,7 +525,7 @@ pub fn apply_events<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) -> Resul
 	game_map.enemy_units.retain(|_, u| u.hp > 0);
 	game_map.barbarian_units.retain(|_, u| u.hp > 0);
 
-	Ok(())
+	Ok(ret)
 }
 
 pub fn apply_event<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, event: Event) -> Result<(), String> {
