@@ -11,7 +11,7 @@ pub struct DistanceMap {
 
 impl DistanceMap {
     pub fn new() -> DistanceMap {
-        return DistanceMap::read_from_file("./src/AI/distances.txt".to_string());
+        return DistanceMap::read_from_file("./src/ai/distances.txt".to_string());
     }
 
     fn read_from_file(path: String) -> DistanceMap {
