@@ -7,5 +7,5 @@ services:
       dockerfile: Dockerfile
     image: castlequest
     ports:
-      - "26000:26000"
+      - "25566:25566"
     restart: always
