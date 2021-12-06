@@ -374,19 +374,15 @@ impl GameMap<'_> {
 			self.set_winner(Team::Player);
 		}
 
+		self.heal_units(client_team);
+
 		match team {
 			Team::Player => {
-				if self.objectives.p1_takeovers.0 > 0 || self.objectives.p1_takeovers.1 > 0 {
-					self.heal_units(team);
-				}
 				for unit in &mut self.player_units.values_mut() {
 					unit.next_turn();
 				}
 			}
 			Team::Enemy => {
-				if self.objectives.p2_takeovers.0 > 0 || self.objectives.p2_takeovers.1 > 0 {
-					self.heal_units(team);
-				}
 				for unit in &mut self.enemy_units.values_mut() {
 					unit.next_turn();
 				}
@@ -421,20 +417,34 @@ impl GameMap<'_> {
 	}
 
 	pub fn heal_units(&mut self, team: Team) {
-		if team == Team::Player {
-			let mut total_heal = self.objectives.p1_takeovers.0 * 2 + self.objectives.p1_takeovers.1 * 4;
-			println!("Total heals for Player = {}", total_heal);
-			for (pos, unit) in &mut self.player_units {
-				total_heal = unit.heal(total_heal);
-				println!("Player unit at {}, {} healed, {} remaining", pos.0, pos.1, total_heal);
-			}
-		} else {
-			let mut total_heal = self.objectives.p2_takeovers.0 * 2 + self.objectives.p2_takeovers.1 * 4;
-			println!("Total heals for Enemy = {}", total_heal);
-			for (pos, unit) in &mut self.enemy_units {
-				total_heal = unit.heal(total_heal);
-				println!("Player unit at {}, {} healed, {} remaining", pos.0, pos.1, total_heal);
-			}
+		let unit_map = match team {
+			Team::Player => &mut self.player_units,
+			Team::Enemy => &mut self.enemy_units,
+			_ => return,
+		};
+
+		let takeovers = match team {
+			Team::Player => &self.objectives.p1_takeovers,
+			Team::Enemy => &self.objectives.p2_takeovers,
+			_ => return,
+		};
+
+		// calculate heal amount for overtaken objectives (1hp per camp, 2hp per fortress)
+		let mut total_heal = takeovers.0 + takeovers.1 * 2;
+		if total_heal == 0 { return; }
+		println!("Total heals for {} = {}", team.to_string(), total_heal);
+
+		let mut unit_list: Vec<&mut Unit> = unit_map.values_mut().collect();
+
+		// deterministically sort hashmap contents by min hp & map position
+		let map_width = self.map_size.0;
+		unit_list.sort_by_key(|u| u.hp);
+		unit_list.sort_by_key(|u| u.x + u.y*map_width as u32);
+
+		// apply hea
+		for unit in unit_list {
+			total_heal = unit.heal(total_heal);
+			println!("  Player unit at {:?} healed, {} remaining", (unit.x, unit.y), total_heal);
 		}
 	}
 
