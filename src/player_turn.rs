@@ -8,6 +8,7 @@ use crate::game_map::GameMap;
 use crate::pixel_coordinates::PixelCoordinates;
 use crate::player_action::PlayerAction;
 use crate::SDLCore;
+use crate::unit::Team;
 use crate::unit_interface::UnitInterface;
 use crate::net::util::*;
 
@@ -126,14 +127,15 @@ pub fn handle_player_turn<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) ->
                 if game_map.actual_attacks.contains(&(j, i)) {
                     let active_unit = game_map.get_unit(&(game_map.player_state.active_unit_j as u32, game_map.player_state.active_unit_i as u32))?;
                     let atk_unit = game_map.get_unit(&(j, i))?;
+                    let atk_team = atk_unit.team;
                     let atk_damage = active_unit.get_attack_damage(atk_unit);
                     let atk_kill = atk_unit.hp <= atk_damage;
                     println!("Player: Attacking unit at {:?} with {} damage.", (j, i), atk_damage);
 
                     game_map.event_list.push(Event::create(EVENT_ATTACK, 0, (game_map.player_state.active_unit_j as u32, game_map.player_state.active_unit_i as u32), (j, i), atk_damage as u8));
 
-                    // if the attacked Barbarian will die on this turn...
-                    if atk_kill {
+                    // If the attacked unit was a barbarian, and died on this turn...
+                    if atk_kill && atk_team == Team::Barbarians {
                         //Need to check and see if this barbarian was converted - currently a 45% chance
                         let chance = rand::thread_rng().gen_range(0..100);
                         if chance < 45 {
