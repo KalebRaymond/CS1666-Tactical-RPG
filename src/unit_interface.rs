@@ -136,7 +136,7 @@ impl<'a> UnitInterface<'a> {
                 else {
                     core.wincan.copy(texture, Rect::new(0,32,64,16), Rect::new(self.x, self.y+16*(self.txt.len() as i32-1)+(32.0*self.anim_progress) as i32, 64, 16))?;
                 }
-                
+
                 Ok(())
             },
             _ => { Err("Texture not defined.".to_string()) },
