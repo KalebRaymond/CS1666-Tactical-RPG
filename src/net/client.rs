@@ -1,6 +1,6 @@
 use std::io::prelude::*;
-use std::net::{TcpStream, ToSocketAddrs};
-use std::time::Instant;
+use std::net::{TcpStream};
+use std::time::{Instant, Duration};
 
 use crate::net::SERVER_ADDR;
 use crate::net::util::*;
@@ -62,6 +62,8 @@ impl Client {
 	// creates a new TcpStream connection & sends/validates the request header
 	fn connect(&self, action: u8) -> Result<TcpStream, String> {
 		let mut stream = TcpStream::connect(&self.addr).map_err(|_e| "Could not initialize TCP stream")?;
+		stream.set_read_timeout(Some(Duration::from_secs(1))).map_err(|_e| "Could set read timeout")?;
+		stream.set_write_timeout(Some(Duration::from_secs(1))).map_err(|_e| "Could set write timeout")?;
 
 		let mut send_bytes = [0; 10];
 		send_bytes[0] = action;
