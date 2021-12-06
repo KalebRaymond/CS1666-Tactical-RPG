@@ -441,8 +441,8 @@ impl GameMap<'_> {
 
 		// deterministically sort hashmap contents by min hp & map position
 		let map_width = self.map_size.0;
-		unit_list.sort_by_key(|u| u.hp);
 		unit_list.sort_by_key(|u| u.x + u.y*map_width as u32);
+		unit_list.sort_by_key(|u| u.hp);
 
 		// apply health increase for each unit
 		for unit in unit_list {
@@ -450,10 +450,12 @@ impl GameMap<'_> {
 			total_heal = total_heal.checked_sub(heal).unwrap_or(0);
 			println!("  Player unit at {:?} healed, {} remaining", (unit.x, unit.y), total_heal);
 
-			self.damage_indicators.push(DamageIndicator::new_heal(core, heal, PixelCoordinates::from_matrix_indices(
-				unit.y.checked_sub(1).unwrap_or(unit.y),
-				unit.x
-			))?);
+			if heal > 0 {
+				self.damage_indicators.push(DamageIndicator::new_heal(core, heal, PixelCoordinates::from_matrix_indices(
+					unit.y.checked_sub(1).unwrap_or(unit.y),
+					unit.x
+				))?);
+			}
 
 			if total_heal == 0 { break; }
 		}
