@@ -69,7 +69,6 @@ impl MultiPlayer<'_, '_> {
 		).map_err(|e| e.to_string())?;
 		let room_text_rect = centered_rect!(core, _, 350, room_w, room_h);
 
-		println!("Initializing with is_host:{}", client.is_host);
 		let game_map = GameMap::new(core, if client.is_host { Team::Player } else { Team::Enemy });
 
 		//Set camera size based on map size
