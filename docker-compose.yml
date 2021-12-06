@@ -6,5 +6,6 @@ services:
       context: .
       dockerfile: Dockerfile
     image: castlequest
-    network_mode: host
+    ports:
+      - "26000:26000/tcp"
     restart: always

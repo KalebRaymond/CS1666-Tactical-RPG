@@ -29,7 +29,7 @@ impl Client {
 	pub fn new() -> Result<Client, String> {
 		let addr = unsafe {
 			String::from(SERVER_ADDR)
-		}.to_socket_addrs().unwrap().next().unwrap().to_string();
+		};
 
 		let code = match unsafe { CODE } {
 			Some(c) => c,
