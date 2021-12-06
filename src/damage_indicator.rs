@@ -43,6 +43,24 @@ impl DamageIndicator {
         })
     }
 
+    pub fn new_heal(core: &SDLCore, heal: u32, position: PixelCoordinates) -> Result<DamageIndicator, String> {
+        let text = "+".to_string() + &heal.to_string();
+        let text_size = core.bold_font.size_of(&text).map_err(|_e| "Could not determine text size")?;
+
+        Ok(DamageIndicator {
+            damage: heal,
+            x: position.x.try_into().unwrap(),
+            y: position.y.try_into().unwrap(),
+            is_visible: true,
+
+            last_drawn: Instant::now(),
+            elapsed_time: 0.0,
+
+            text,
+            text_size,
+        })
+    }
+
     pub fn draw<'r>(&mut self, core: &mut SDLCore<'r>) -> Result<(), String> {
         let texture = core.texture_map.get(&self.text).ok_or("Could not obtain a valid damage texture")?;
 
@@ -74,6 +92,19 @@ pub fn load_textures<'r>(textures: &mut HashMap<String, Texture<'r>>, texture_cr
 			texture_creator.create_texture_from_surface(
 				&bold_font.render(&text)
                 	.blended_wrapped(Color::RGBA(255, 0, 0, 255), 320)
+                	.map_err(|e| e.to_string())?
+			).map_err(|e| e.to_string())?
+		);
+	}
+
+    for i in 0..10 {
+		let text = format!("+{}", i);
+		textures.insert(
+			text.to_string(),
+            //Create texture to display the health increase as a string
+			texture_creator.create_texture_from_surface(
+				&bold_font.render(&text)
+                	.blended_wrapped(Color::RGBA(0, 64, 0, 255), 320)
                 	.map_err(|e| e.to_string())?
 			).map_err(|e| e.to_string())?
 		);

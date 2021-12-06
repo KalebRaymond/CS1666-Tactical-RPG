@@ -584,16 +584,13 @@ impl Unit <'_>{
         Ok(())
     }
 
+    // heals the unit & returns the amount of hp applied
     pub fn heal(&mut self, total_heal: u32) -> u32 {
         println!("Current unit hp: {}/{}", self.hp, self.max_hp);
-        if self.max_hp - self.hp > total_heal {
-            self.hp += total_heal;
-            return 0;
-        } else {
-            let remaining = self.max_hp - self.hp;
-            self.hp = self.max_hp;
-            total_heal - remaining
-        }
+        let heal = (self.max_hp - self.hp).min(total_heal);
+        self.hp += heal;
+
+        heal
     }
 }
 
