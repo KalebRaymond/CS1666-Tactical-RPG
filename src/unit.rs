@@ -114,6 +114,8 @@ impl PartialOrd for QueueObject {
 }
 
 pub struct Unit<'a> {
+    pub draw_x: f64,
+    pub draw_y: f64,
     pub x: u32,
     pub y: u32,
     pub team: Team,
@@ -146,6 +148,8 @@ pub struct Unit<'a> {
 impl Unit <'_>{
     pub fn new<'a> (x:u32, y:u32, team: Team, hp: u32, movement_range: u32, attack_range: u32, accuracy: u32, min_damage:u32, max_damage: u32, texture: &'a Texture, ranged_attacker: bool) -> Unit<'a> {
         Unit {
+            draw_x: -1.0,
+            draw_y: -1.0,
             x,
             y,
             team,
@@ -563,8 +567,17 @@ impl Unit <'_>{
             self.default_sprite_src
         };
 
+        if self.draw_x < 0.0 || self.draw_y < 0.0 {
+            self.draw_x = dest.x as f64;
+            self.draw_y = dest.y as f64;
+        }
+
+        self.draw_x = (self.draw_x + dest.x as f64) / 2.0;
+        self.draw_y = (self.draw_y + dest.y as f64) / 2.0;
+        let rect = Rect::new(self.draw_x as i32, self.draw_y as i32, dest.width(), dest.height());
+
         //Draw the sprite
-        core.wincan.copy(self.texture, src, *dest)?;
+        core.wincan.copy(self.texture, src, rect)?;
 
         Ok(())
     }
