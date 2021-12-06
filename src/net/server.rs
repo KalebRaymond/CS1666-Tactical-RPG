@@ -1,6 +1,7 @@
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream, IpAddr, ToSocketAddrs};
 use std::collections::HashMap;
+use std::time::Instant;
 
 use rand::Rng;
 use rand::prelude::*;
@@ -69,16 +70,21 @@ impl Server {
 			loop {
 				new_code = self.rand.gen_range(1..10000);
 
-				// TODO: overwrite room entry if older than 24h
+				// overwrite room entry if older than 24h
+				if let Some(room) = self.rooms.get(&new_code) {
+					if Instant::now().duration_since(room.last_poll).as_secs() > 60*60*24 {
+						self.rooms.remove(&new_code);
+					} else {
+						continue;
+					}
+				}
 
 				// once an unused room code is found, create the room
-				if !self.rooms.contains_key(&new_code) {
-					println!("{} is creating a room with code {:?}", addr.to_string(), new_code);
-					let room = Room::new(addr);
-					new_token = room.token;
-					self.rooms.insert(new_code, room);
-					break;
-				}
+				println!("{} is creating a room with code {:?}", addr.to_string(), new_code);
+				let room = Room::new(addr);
+				new_token = room.token;
+				self.rooms.insert(new_code, room);
+				break;
 			}
 
 			// respond with new code + token of created room
@@ -147,6 +153,7 @@ struct Room {
 	peer_addr: Option<IpAddr>,
 	host_events: Vec<Event>,
 	peer_events: Vec<Event>,
+	last_poll: Instant,
 }
 
 impl Room {
@@ -158,6 +165,7 @@ impl Room {
 			peer_addr: None,
 			host_events: Vec::new(),
 			peer_events: vec![Event::new(EVENT_JOIN)], // initial join event for host -> peer
+			last_poll: Instant::now(),
 		}
 	}
 
@@ -186,6 +194,8 @@ impl Room {
 	}
 
 	fn pop_event(&mut self, is_host: bool, addr: IpAddr) -> Result<Event, String> {
+		self.last_poll = Instant::now();
+
 		let events = if is_host && self.host_addr == addr {
 			&mut self.host_events
 		} else if !is_host && self.peer_addr == Some(addr) {
