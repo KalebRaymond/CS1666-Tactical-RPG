@@ -5,7 +5,7 @@ use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::Texture;
 
-use crate::net::client::Client;
+use crate::net::client::{Client, ClientBuffer};
 use crate::net::util::*;
 
 use crate::game_map::GameMap;
@@ -16,6 +16,7 @@ use crate::{SDLCore, TILE_SIZE};
 pub struct MultiPlayer<'i, 'r> {
 	core: &'i mut SDLCore<'r>,
 	client: Client,
+	client_buffer: ClientBuffer,
 
 	bg_texture: Texture<'i>,
 	bg_interface: Texture<'i>,
@@ -87,6 +88,7 @@ impl MultiPlayer<'_, '_> {
 		Ok(MultiPlayer {
 			core,
 			client,
+			client_buffer: ClientBuffer::new(),
 
 			bg_texture,
 			bg_interface,
@@ -119,8 +121,10 @@ impl Drawable for MultiPlayer<'_, '_> {
 		}
 
 		// receive a new event from the server
-		if let Some(event) = self.client.poll()? {
-			self.game_map.event_list.push(event);
+		match self.client_buffer.poll(&mut self.client) {
+			Ok(Some(event)) => self.game_map.event_list.push(event),
+			Err(e) => println!("Error polling server: {}", e),
+			_ => {},
 		}
 
 		self.core.wincan.clear();
@@ -163,7 +167,7 @@ impl Drawable for MultiPlayer<'_, '_> {
 
 		crate::game_map::apply_events(&self.core, &mut self.game_map)?.iter()
 			.filter(|e| e.from_self).copied()
-			.try_for_each(|e| self.client.send(e))?;
+			.for_each(|e| self.client_buffer.send(e));
 
 		// render the current game board
 		self.game_map.draw(self.core)?;

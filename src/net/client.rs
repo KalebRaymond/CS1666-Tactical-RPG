@@ -16,13 +16,55 @@ pub fn set_code(code: Option<u32>) {
 	}
 }
 
+pub struct ClientBuffer {
+	send_buffer: Vec<Event>,
+	last_poll: Instant,
+}
+
+impl ClientBuffer {
+	pub fn new() -> ClientBuffer {
+		ClientBuffer {
+			send_buffer: Vec::new(),
+			last_poll: Instant::now(),
+		}
+	}
+
+	pub fn send(&mut self, event: Event) {
+		self.send_buffer.push(event);
+	}
+
+	pub fn poll(&mut self, client: &mut Client) -> Result<Option<Event>, String> {
+		// if there are any new events, send one instead of polling
+		if let Some(event) = self.send_buffer.first() {
+			client.send(event.clone())?;
+			self.send_buffer.remove(0);
+			return Ok(None);
+		}
+
+		// don't send polls if <1s since last (empty) call
+		if Instant::now().duration_since(self.last_poll).as_secs() < 1 {
+			return Ok(None);
+		}
+
+		let ret = client.poll()?;
+
+		// only update last_poll once an empty poll is received
+		if let Some(e) = ret {
+			if e.action == EVENT_NONE {
+				self.last_poll = Instant::now();
+			}
+		}
+
+		Ok(ret)
+	}
+}
+
 pub struct Client {
 	pub code: u32,
 	token: u32,
 	pub is_host: bool,
 	pub is_joined: bool,
 	addr: String,
-	last_poll: Instant,
 }
 
 impl Client {
@@ -37,7 +79,7 @@ impl Client {
 		};
 
 		// construct the client and either create/join the room
-		let mut client = Client { code, token: 0, is_host: code == 0, is_joined: false, addr, last_poll: Instant::now() };
+		let mut client = Client { code, token: 0, is_host: code == 0, is_joined: false, addr };
 		let mut stream = client.connect(if code == 0 { MSG_CREATE } else { MSG_JOIN })?;
 
 		let mut buffer = [0; 8];
@@ -94,32 +136,18 @@ impl Client {
 	}
 
 	pub fn poll(&mut self) -> Result<Option<Event>, String> {
-		// don't send polls if <1s since last (empty) call
-		if Instant::now().duration_since(self.last_poll).as_secs() < 1 {
-			return Ok(None);
-		}
-
 		let mut stream = self.connect(MSG_POLL)?;
 
 		let mut buffer = [0; 19];
 		stream.read(&mut buffer).map_err(|_e| "Could not read poll response")?;
 
-		let ret = match Event::from_bytes(&buffer) {
+		match Event::from_bytes(&buffer) {
 			Event{action: EVENT_NONE, ..} => Ok(None),
 			Event{action: EVENT_JOIN, ..} => {
 				self.is_joined = true;
 				Ok(None)
 			},
 			e => Ok(Some(e))
-		};
-
-		// only update last_poll once an empty poll is received
-		if let Ok(Some(e)) = ret {
-			if e.action == EVENT_NONE {
-				self.last_poll = Instant::now();
-			}
 		}
-
-		ret
 	}
 }
