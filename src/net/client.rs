@@ -71,7 +71,7 @@ impl Client {
 		set_range!(send_bytes[2..6] = to_u32_bytes(self.code));
 		set_range!(send_bytes[6..10] = to_u32_bytes(self.token));
 
-		stream.write(&send_bytes).map_err(|_e| "Could not send connection info")?;
+		stream.write_all(&send_bytes).map_err(|_e| "Could not send connection info")?;
 
 		Ok(stream)
 	}
@@ -80,7 +80,7 @@ impl Client {
 		let mut stream = self.connect(MSG_EVENT)?;
 
 		let buffer = event.to_bytes();
-		stream.write(&buffer).map_err(|_e| "Could not write event buffer")?;
+		stream.write_all(&buffer).map_err(|_e| "Could not write event buffer")?;
 
 		let mut response_buffer = [0; 1];
 		stream.read(&mut response_buffer).map_err(|_e| "Could not read event response")?;
