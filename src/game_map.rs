@@ -193,6 +193,7 @@ impl GameMap<'_> {
 			let max_move = TILE_SIZE as i32;
 			core.cam.x = (core.cam.x - (core.input.mouse_x_old - core.input.mouse_x).clamp(-max_move, max_move)).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
 			core.cam.y = (core.cam.y - (core.input.mouse_y_old - core.input.mouse_y).clamp(-max_move, max_move)).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0);
+			core.wincan.set_viewport(core.cam);
 			core.set_animating(true);
 		}
 
