@@ -68,6 +68,15 @@ pub struct SDLCore<'t> {
 	pub event_pump: sdl2::EventPump,
 	pub cam: Rect,
 	pub input: Input,
+	pub is_animating: bool,
+}
+
+impl SDLCore<'_> {
+
+	pub fn set_animating(&mut self, animating: bool) {
+		self.is_animating = self.is_animating || animating;
+	}
+
 }
 
 fn runner(vsync:bool) -> Result<(), String> {
@@ -123,6 +132,7 @@ fn runner(vsync:bool) -> Result<(), String> {
 		event_pump,
 		cam,
 		input,
+		is_animating: false,
 	};
 
 	// ----- Start the game loop in the menu -----

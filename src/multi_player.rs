@@ -120,10 +120,14 @@ impl Drawable for MultiPlayer<'_, '_> {
 		}
 
 		// receive a new event from the server
-		match self.client_buffer.poll(&mut self.client) {
-			Ok(Some(event)) => self.game_map.event_list.push(event),
-			Err(e) => println!("Error polling server: {}", e),
-			_ => {},
+		if !self.core.is_animating {
+			match self.client_buffer.poll(&mut self.client) {
+				Ok(Some(event)) => self.game_map.event_list.push(event),
+				Err(e) => println!("Error polling server: {}", e),
+				_ => {},
+			}
+		} else {
+			self.core.is_animating = false;
 		}
 
 		self.core.wincan.clear();

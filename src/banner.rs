@@ -91,6 +91,7 @@ impl Banner {
 		//After a set amount of seconds pass and if the banner is still visible, start to make the banner disappear
 		if self.initial_banner_output.elapsed() >= Duration::from_millis(BANNER_TIMEOUT) && self.current_banner_transparency != 0 {
 			self.current_banner_transparency -= 25;
+			core.set_animating(true);
 		}
 
 		Ok(())

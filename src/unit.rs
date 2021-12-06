@@ -567,13 +567,15 @@ impl Unit <'_>{
             self.default_sprite_src
         };
 
-        if self.draw_x < 0.0 || self.draw_y < 0.0 {
+        let should_animate = dest.intersection(core.cam) != None && (self.draw_x - dest.x as f64).abs() > 0.01 || (self.draw_y - dest.y as f64).abs() > 0.01;
+        if should_animate && self.draw_x > 0.0 && self.draw_y > 0.0 {
+            self.draw_x = (self.draw_x + dest.x as f64) / 2.0;
+            self.draw_y = (self.draw_y + dest.y as f64) / 2.0;
+        } else {
             self.draw_x = dest.x as f64;
             self.draw_y = dest.y as f64;
         }
 
-        self.draw_x = (self.draw_x + dest.x as f64) / 2.0;
-        self.draw_y = (self.draw_y + dest.y as f64) / 2.0;
         let rect = Rect::new(self.draw_x as i32, self.draw_y as i32, dest.width(), dest.height());
 
         //Draw the sprite
