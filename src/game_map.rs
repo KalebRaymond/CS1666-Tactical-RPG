@@ -525,9 +525,24 @@ pub fn apply_events<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) -> Resul
 	game_map.event_list_index = new_index;
 
 	// remove any (dead) units that have reached 0 hp
-	game_map.player_units.retain(|_, u| u.hp > 0);
-	game_map.enemy_units.retain(|_, u| u.hp > 0);
-	game_map.barbarian_units.retain(|_, u| u.hp > 0);
+	let mut dead_units: Vec<(u32, u32)> = Vec::new();
+	dead_units.extend(
+		game_map.player_units.values().filter(|u| u.hp == 0).map(|u| (u.x, u.y))
+	);
+	dead_units.extend(
+		game_map.enemy_units.values().filter(|u| u.hp == 0).map(|u| (u.x, u.y))
+	);
+	dead_units.extend(
+		game_map.barbarian_units.values().filter(|u| u.hp == 0).map(|u| (u.x, u.y))
+	);
+
+	for pos in dead_units {
+		game_map.player_units.remove(&pos);
+		game_map.enemy_units.remove(&pos);
+		game_map.barbarian_units.remove(&pos);
+
+		game_map.map_tiles.get_mut(&(pos.1, pos.0)).map(|t| t.update_team(None));
+	}
 
 	Ok(ret)
 }
