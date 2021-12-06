@@ -150,15 +150,16 @@ fn runner(vsync:bool) -> Result<(), String> {
 }
 
 fn run_game_state<'i, 'r>(core: &'i mut SDLCore<'r>, game_state: &GameState) -> Result<GameState, String> {
+	sdl2::mixer::open_audio(44100, AUDIO_S32SYS, DEFAULT_CHANNELS, 1024)?;
+	let _mixer_filetypes = sdl2::mixer::init(InitFlag::MP3)?;
+	let bg_music: sdl2::mixer::Music;
+
 	let mut scene: Box<dyn Drawable> = match game_state {
 		GameState::MainMenu => {
 			// background music for main menu
 			// - This had to be moved into a scope that exists outside of both the `main_menu.rs` functions as it needs a persistent lifetime (otherwise it segfaults)
 			// - in the future, this should be abstracted; we could create a `sound_queue: Vec<Path>` in SDLCore that any function can push to in order to play sounds
-			sdl2::mixer::open_audio(44100, AUDIO_S32SYS, DEFAULT_CHANNELS, 1024)?;
-			let _mixer_filetypes = sdl2::mixer::init(InitFlag::MP3)?;
-			let bg_music = sdl2::mixer::Music::from_file(Path::new("./music/main_menu.mp3"))?;
-
+			bg_music = sdl2::mixer::Music::from_file(Path::new("./music/main_menu.mp3"))?;
 			bg_music.play(-1)?;
 
 			Box::new(MainMenu::new(core)?)
