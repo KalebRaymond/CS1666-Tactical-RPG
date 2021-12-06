@@ -40,34 +40,38 @@ pub fn handle_barbarian_turn<'a>(_core: &SDLCore<'a>, game_map: &mut GameMap<'a>
 
 	//If the barbarian did not find a unit to attack, make it move randomly by 1 tile in an available direction
 	let mut directions = vec![0, 1, 2, 3, 4];
-	let mut potential_move = (original_x, original_y);
-
 	while directions.len() > 0 {
 		//Pick and remove a random direction from the vector of directions
 		let index = (0..directions.len()).choose(&mut rng_thread).unwrap();
 		let direction_to_move = directions.swap_remove(index);
 
+		let mut potential_x: Option<u32> = Some(original_x);
+		let mut potential_y: Option<u32> = Some(original_y);
 		match direction_to_move {
 			0 => {
 				//Move up
-				potential_move.1 -= 1;
+				potential_y = original_y.checked_sub(1);
 			},
 			1 => {
 				//Move right
-				potential_move.0 += 1;
+				potential_x = original_x.checked_add(1);
 			},
 			2 => {
 				//Move down
-				potential_move.1 += 1;
+				potential_y = original_y.checked_add(1);
 			},
 			3 => {
 				//Move left
-				potential_move.0 -= 1;
+				potential_x = original_x.checked_sub(1);
 			},
 			_ => {
 				//Do nothing
 			}
 		};
+
+		let potential_move = if let (Some(x), Some(y)) = (potential_x, potential_y) {
+			(x, y)
+		} else { continue };
 
 		//Make sure the barbarian does not roam outside of a certain manhattan distance from its starting point
 		//Radius = 3 tiles
@@ -78,9 +82,6 @@ pub fn handle_barbarian_turn<'a>(_core: &SDLCore<'a>, game_map: &mut GameMap<'a>
 			game_map.event_list.push(Event::create(EVENT_MOVE, 0, (original_x, original_y), potential_move, 0));
 			break;
 		}
-
-		//Reset the potential move to the barbarian's starting position and try a different direction
-		potential_move = (original_x, original_y);
 	}
 
 	Ok(())
