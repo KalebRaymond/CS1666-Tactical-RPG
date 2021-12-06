@@ -583,6 +583,15 @@ impl Unit <'_>{
 
         Ok(())
     }
+
+    // heals the unit & returns the amount of hp applied
+    pub fn heal(&mut self, total_heal: u32) -> u32 {
+        println!("Current unit hp: {}/{}", self.hp, self.max_hp);
+        let heal = (self.max_hp - self.hp).min(total_heal);
+        self.hp += heal;
+
+        heal
+    }
 }
 
 impl fmt::Display for Unit<'_> {

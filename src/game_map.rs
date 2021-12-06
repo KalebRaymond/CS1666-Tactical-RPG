@@ -181,7 +181,7 @@ impl GameMap<'_> {
 		prepare_player_units(&mut map.enemy_units, Team::Enemy, if player_team == Team::Player { &p2_units_abrev } else { &p1_units_abrev }, &core.texture_map, &mut map.map_tiles);
 		prepare_player_units(&mut map.barbarian_units, Team::Barbarians, &barb_units_abrev, &core.texture_map, &mut map.map_tiles);
 
-		map.initialize_next_turn(Team::Player);
+		map.initialize_next_turn(core, Team::Player).unwrap();
 
 		map
 	}
@@ -193,6 +193,7 @@ impl GameMap<'_> {
 			let max_move = TILE_SIZE as i32;
 			core.cam.x = (core.cam.x - (core.input.mouse_x_old - core.input.mouse_x).clamp(-max_move, max_move)).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
 			core.cam.y = (core.cam.y - (core.input.mouse_y_old - core.input.mouse_y).clamp(-max_move, max_move)).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0);
+			core.wincan.set_viewport(core.cam);
 			core.set_animating(true);
 		}
 
@@ -232,17 +233,21 @@ impl GameMap<'_> {
 				if pos_to_change.0 == fort_locations.0 || pos_to_change.0 == fort_locations.1 {
 					let texture = self.camp_textures[1].0;
 					self.map_tiles.insert((pos_to_change.0.1,pos_to_change.0.0), Tile::new(pos_to_change.0.1, pos_to_change.0.0, true, true, None, Some(Structure::Camp), texture));
+					self.objectives.p1_takeovers.1 += 1;
 				} else {
 					let texture = self.camp_textures[0].0;
 					self.map_tiles.insert((pos_to_change.0.0,pos_to_change.0.1), Tile::new(pos_to_change.0.0, pos_to_change.0.1, true, true, None, Some(Structure::Camp), texture));
+					self.objectives.p1_takeovers.0 += 1;
 				}
 			} else {
 				if pos_to_change.0 == fort_locations.0 || pos_to_change.0 == fort_locations.1 {
 					let texture = self.camp_textures[1].1;
 					self.map_tiles.insert((pos_to_change.0.1,pos_to_change.0.0), Tile::new(pos_to_change.0.1, pos_to_change.0.0, true, true, None, Some(Structure::Camp), texture));
+					self.objectives.p2_takeovers.1 += 1;
 				} else {
 					let texture = self.camp_textures[0].1;
 					self.map_tiles.insert((pos_to_change.0.0,pos_to_change.0.1), Tile::new(pos_to_change.0.0, pos_to_change.0.1, true, true, None, Some(Structure::Camp), texture));
+					self.objectives.p2_takeovers.0 += 1;
 				}
 			}
 		}
@@ -344,7 +349,7 @@ impl GameMap<'_> {
 	}
 
 	// Function that takes a HashMap of units and sets all has_attacked and has_moved to false so that they can move again
-	pub fn initialize_next_turn(&mut self, team: Team) {
+	pub fn initialize_next_turn(&mut self, core: &SDLCore, team: Team) -> Result<(), String> {
 		let client_team = team.as_client(&self.player_state);
 		self.banner.show_turn(client_team);
 
@@ -370,6 +375,8 @@ impl GameMap<'_> {
 			self.set_winner(Team::Player);
 		}
 
+		self.heal_units(core, client_team)?;
+
 		match team {
 			Team::Player => {
 				for unit in &mut self.player_units.values_mut() {
@@ -387,6 +394,8 @@ impl GameMap<'_> {
 				}
 			}
 		}
+
+		Ok(())
 	}
 
 	//Sets up the winner's banner so it can start displaying, and returns an Option containing the Team corresponding to the winning team
@@ -408,6 +417,50 @@ impl GameMap<'_> {
 		// send an END_GAME event to the other client
 		self.event_list.push(Event::create(EVENT_END_GAME, winner.as_client(&self.player_state).to_id(), (0,0), (0,0), 0));
 		self.winning_team = Some(winner);
+	}
+
+	pub fn heal_units(&mut self, core: &SDLCore, team: Team) -> Result<(), String> {
+		let unit_map = match team {
+			Team::Player => &mut self.player_units,
+			Team::Enemy => &mut self.enemy_units,
+			_ => return Ok(()),
+		};
+
+		let takeovers = match team {
+			Team::Player => &self.objectives.p1_takeovers,
+			Team::Enemy => &self.objectives.p2_takeovers,
+			_ => return Ok(()),
+		};
+
+		// calculate heal amount for overtaken objectives (1hp per camp, 2hp per fortress)
+		let mut total_heal = takeovers.0 + takeovers.1 * 2;
+		if total_heal == 0 { return Ok(()); }
+		println!("Total heals for {} = {}", team.to_string(), total_heal);
+
+		let mut unit_list: Vec<&mut Unit> = unit_map.values_mut().collect();
+
+		// deterministically sort hashmap contents by min hp & map position
+		let map_width = self.map_size.0;
+		unit_list.sort_by_key(|u| u.x + u.y*map_width as u32);
+		unit_list.sort_by_key(|u| u.hp);
+
+		// apply health increase for each unit
+		for unit in unit_list {
+			let heal = unit.heal(total_heal);
+			total_heal = total_heal.checked_sub(heal).unwrap_or(0);
+			println!("  Player unit at {:?} healed, {} remaining", (unit.x, unit.y), total_heal);
+
+			if heal > 0 {
+				self.damage_indicators.push(DamageIndicator::new_heal(core, heal, PixelCoordinates::from_matrix_indices(
+					unit.y.checked_sub(1).unwrap_or(unit.y),
+					unit.x
+				))?);
+			}
+
+			if total_heal == 0 { break; }
+		}
+
+		Ok(())
 	}
 
 	/* For some reason there's a glitch where sometimes the spaces where the enemy units spawn are
@@ -619,7 +672,7 @@ pub fn apply_event<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, event: Ev
 		EVENT_END_TURN => {
 			let next_team = game_map.player_state.advance_turn();
 			println!("Ending turn: preparing turn for {}", next_team.to_string());
-			game_map.initialize_next_turn(next_team);
+			game_map.initialize_next_turn(core, next_team)?;
 		},
 		EVENT_SPAWN_UNIT => {
 			let unit_team = if event.from_self { Team::Player } else { Team::Enemy };
