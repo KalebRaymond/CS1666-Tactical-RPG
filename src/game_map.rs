@@ -595,7 +595,10 @@ pub fn apply_event<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, event: Ev
 			attacking_unit.starting_x = attacking_unit.x;
 			attacking_unit.starting_y = attacking_unit.y;
 			unit.receive_damage(event.value as u32, &attacking_unit);
-			game_map.damage_indicators.push(DamageIndicator::new(core, event.value as u32, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
+			game_map.damage_indicators.push(DamageIndicator::new(core, event.value as u32, PixelCoordinates::from_matrix_indices(
+				unit.y.checked_sub(1).unwrap_or(unit.y),
+				unit.x
+			))?);
 		},
 		EVENT_END_TURN => {
 			let next_team = game_map.player_state.advance_turn();
