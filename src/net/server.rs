@@ -1,7 +1,7 @@
 use std::io::prelude::*;
-use std::net::{TcpListener, TcpStream, IpAddr, ToSocketAddrs};
+use std::net::{TcpListener, TcpStream, IpAddr};
 use std::collections::HashMap;
-use std::time::Instant;
+use std::time::{Instant, Duration};
 
 use rand::Rng;
 use rand::prelude::*;
@@ -47,6 +47,9 @@ impl Server {
 	}
 
 	fn handle_request<'s>(&mut self, stream: &'s mut TcpStream) -> Result<(), String> {
+		stream.set_read_timeout(Some(Duration::from_secs(1))).map_err(|_e| "Could set read timeout")?;
+		stream.set_write_timeout(Some(Duration::from_secs(1))).map_err(|_e| "Could set write timeout")?;
+
 		let mut buffer = [0; 10]; // parse request header: 1 byte (MSG_ type) + 4 bytes (u32 room code)
 		stream.read(&mut buffer).map_err(|_e| "Could not read request stream.")?;
 

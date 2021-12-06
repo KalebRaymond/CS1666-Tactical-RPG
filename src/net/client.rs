@@ -1,6 +1,6 @@
 use std::io::prelude::*;
-use std::net::{TcpStream, ToSocketAddrs};
-use std::time::Instant;
+use std::net::{TcpStream};
+use std::time::{Instant, Duration};
 
 use crate::net::SERVER_ADDR;
 use crate::net::util::*;
@@ -62,6 +62,8 @@ impl Client {
 	// creates a new TcpStream connection & sends/validates the request header
 	fn connect(&self, action: u8) -> Result<TcpStream, String> {
 		let mut stream = TcpStream::connect(&self.addr).map_err(|_e| "Could not initialize TCP stream")?;
+		stream.set_read_timeout(Some(Duration::from_secs(1))).map_err(|_e| "Could set read timeout")?;
+		stream.set_write_timeout(Some(Duration::from_secs(1))).map_err(|_e| "Could set write timeout")?;
 
 		let mut send_bytes = [0; 10];
 		send_bytes[0] = action;
@@ -69,7 +71,7 @@ impl Client {
 		set_range!(send_bytes[2..6] = to_u32_bytes(self.code));
 		set_range!(send_bytes[6..10] = to_u32_bytes(self.token));
 
-		stream.write(&send_bytes).map_err(|_e| "Could not send connection info")?;
+		stream.write_all(&send_bytes).map_err(|_e| "Could not send connection info")?;
 
 		Ok(stream)
 	}
@@ -78,7 +80,7 @@ impl Client {
 		let mut stream = self.connect(MSG_EVENT)?;
 
 		let buffer = event.to_bytes();
-		stream.write(&buffer).map_err(|_e| "Could not write event buffer")?;
+		stream.write_all(&buffer).map_err(|_e| "Could not write event buffer")?;
 
 		let mut response_buffer = [0; 1];
 		stream.read(&mut response_buffer).map_err(|_e| "Could not read event response")?;
