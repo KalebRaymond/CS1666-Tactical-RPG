@@ -66,7 +66,7 @@ impl DamageIndicator {
 
 pub fn load_textures<'r>(textures: &mut HashMap<String, Texture<'r>>, texture_creator: &'r TextureCreator<WindowContext>, bold_font: &Font<'r, 'r>) -> Result<(), String> {
     // create damage indicator textures
-	for i in 0..9 {
+	for i in 0..10 {
 		let text = format!("-{}", i);
 		textures.insert(
 			text.to_string(),
