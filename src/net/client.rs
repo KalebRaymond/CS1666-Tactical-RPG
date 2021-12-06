@@ -1,5 +1,5 @@
 use std::io::prelude::*;
-use std::net::TcpStream;
+use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Instant;
 
 use crate::net::SERVER_ADDR;
