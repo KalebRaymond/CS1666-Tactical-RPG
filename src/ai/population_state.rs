@@ -131,7 +131,10 @@ impl PopulationState {
                                     tile_under_attack.update_team(None);
                                 } else {
                                     unit.receive_damage(damage_done, &active_unit);
-                                    game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
+                                    game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(
+                                        unit.y.checked_sub(1).unwrap_or(unit.y),
+                                        unit.x
+                                    ))?);
                                     println!("Enemy at {}, {} attacking player unit at {}, {} for {} damage. Unit now has {} hp.", active_unit.x, active_unit.y, tile_with_least_health.0, tile_with_least_health.1, damage_done, unit.hp);
                                 }
                             }
@@ -147,7 +150,10 @@ impl PopulationState {
                                     dead_barb = true;
                                 } else {
                                     unit.receive_damage(damage_done, &active_unit);
-                                    game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
+                                    game_map.damage_indicators.push(DamageIndicator::new(core, damage_done, PixelCoordinates::from_matrix_indices(
+                                        unit.y.checked_sub(1).unwrap_or(unit.y),
+                                        unit.x
+                                    ))?);
                                     println!("Enemy at {}, {} attacking barbarian unit at {}, {} for {} damage. Unit now has {} hp.", active_unit.x, active_unit.y, tile_with_least_health.0, tile_with_least_health.1, damage_done, unit.hp);
                                 }
                             }

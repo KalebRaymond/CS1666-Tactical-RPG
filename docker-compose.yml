@@ -1,0 +1,11 @@
+version: "3"
+
+services:
+  castle_quest:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: castlequest
+    ports:
+      - "26000:26000/tcp"
+    restart: always

@@ -173,7 +173,7 @@ impl GameMap<'_> {
 			('s', (52,10)), ('s', (53,11)),
 		);
 		//let p2_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (16,44))); //Spawns a single enemy near the player
-		let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(); //vec!(('l', (4,6)), ('l', (6,8)), ('l', (7,7)), ('r', (8,5)), ('l', (59,56)), ('l', (56,56)), ('l', (54,57)), ('r', (56,59)), ('l', (28,15)), ('l', (29,10)), ('l', (32,11)), ('l', (35,15)), ('r', (30,8)), ('r', (36,10)), ('l', (28,52)), ('l', (28,48)), ('l', (33,51)), ('l', (35,48)), ('r', (32,53)), ('r', (33,56)), ('l', (17,38)), ('l', (16,37)), ('r', (23,36)), ('r', (18,30)), ('l', (46,25)), ('l', (47,26)), ('r', (40,27)), ('r', (45,33)),);
+		let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (4,6)), ('l', (6,8)), ('l', (7,7)), ('r', (8,5)), ('l', (59,56)), ('l', (56,56)), ('l', (54,57)), ('r', (56,59)), ('l', (28,15)), ('l', (29,10)), ('l', (32,11)), ('l', (35,15)), ('r', (30,8)), ('r', (36,10)), ('l', (28,52)), ('l', (28,48)), ('l', (33,51)), ('l', (35,48)), ('r', (32,53)), ('r', (33,56)), ('l', (17,38)), ('l', (16,37)), ('r', (23,36)), ('r', (18,30)), ('l', (46,25)), ('l', (47,26)), ('r', (40,27)), ('r', (45,33)),);
 		//let barb_units_abrev: Vec<(char, (u32,u32))> = vec!(('l', (32, 60))); //Spawns a single barbarian near the bottom of the map
 		//let barb_units_abrev: Vec<(char, (u32,u32))> = Vec::new(); //No barbarians
 
@@ -193,6 +193,7 @@ impl GameMap<'_> {
 			let max_move = TILE_SIZE as i32;
 			core.cam.x = (core.cam.x - (core.input.mouse_x_old - core.input.mouse_x).clamp(-max_move, max_move)).clamp(-core.cam.w + core.wincan.window().size().0 as i32, 0);
 			core.cam.y = (core.cam.y - (core.input.mouse_y_old - core.input.mouse_y).clamp(-max_move, max_move)).clamp(-core.cam.h + core.wincan.window().size().1 as i32, 0);
+			core.set_animating(true);
 		}
 
 		let (i, j) = PixelCoordinates::matrix_indices_from_pixel(
@@ -553,9 +554,24 @@ pub fn apply_events<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>) -> Resul
 	game_map.event_list_index = new_index;
 
 	// remove any (dead) units that have reached 0 hp
-	game_map.player_units.retain(|_, u| u.hp > 0);
-	game_map.enemy_units.retain(|_, u| u.hp > 0);
-	game_map.barbarian_units.retain(|_, u| u.hp > 0);
+	let mut dead_units: Vec<(u32, u32)> = Vec::new();
+	dead_units.extend(
+		game_map.player_units.values().filter(|u| u.hp == 0).map(|u| (u.x, u.y))
+	);
+	dead_units.extend(
+		game_map.enemy_units.values().filter(|u| u.hp == 0).map(|u| (u.x, u.y))
+	);
+	dead_units.extend(
+		game_map.barbarian_units.values().filter(|u| u.hp == 0).map(|u| (u.x, u.y))
+	);
+
+	for pos in dead_units {
+		game_map.player_units.remove(&pos);
+		game_map.enemy_units.remove(&pos);
+		game_map.barbarian_units.remove(&pos);
+
+		game_map.map_tiles.get_mut(&(pos.1, pos.0)).map(|t| t.update_team(None));
+	}
 
 	Ok(ret)
 }
@@ -623,7 +639,10 @@ pub fn apply_event<'a>(core: &SDLCore<'a>, game_map: &mut GameMap<'a>, event: Ev
 			attacking_unit.starting_x = attacking_unit.x;
 			attacking_unit.starting_y = attacking_unit.y;
 			unit.receive_damage(event.value as u32, &attacking_unit);
-			game_map.damage_indicators.push(DamageIndicator::new(core, event.value as u32, PixelCoordinates::from_matrix_indices(unit.y - 1, unit.x))?);
+			game_map.damage_indicators.push(DamageIndicator::new(core, event.value as u32, PixelCoordinates::from_matrix_indices(
+				unit.y.checked_sub(1).unwrap_or(unit.y),
+				unit.x
+			))?);
 		},
 		EVENT_END_TURN => {
 			let next_team = game_map.player_state.advance_turn();
