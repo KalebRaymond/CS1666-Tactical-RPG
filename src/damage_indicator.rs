@@ -13,8 +13,8 @@ use crate::SDLCore;
 
 pub struct DamageIndicator {
     pub damage: u32,
-    pub x: u32,
-    pub y: u32,
+    pub x: i32,
+    pub y: i32,
     pub is_visible: bool,
 
     last_drawn: Instant,
@@ -31,8 +31,8 @@ impl DamageIndicator {
 
         Ok(DamageIndicator {
             damage: damage,
-            x: position.x,
-            y: position.y,
+            x: position.x.try_into().unwrap(),
+            y: position.y.try_into().unwrap(),
             is_visible: true,
 
             last_drawn: Instant::now(),
@@ -47,7 +47,7 @@ impl DamageIndicator {
         let texture = core.texture_map.get(&self.text).ok_or("Could not obtain a valid damage texture")?;
 
         let (w, h) = self.text_size;
-        core.wincan.copy(&texture, None, Rect::new(self.x.try_into().unwrap(), self.y.try_into().unwrap(), w, h))?;
+        core.wincan.copy(&texture, None, Rect::new(self.x, self.y, w, h))?;
 
         self.elapsed_time += self.last_drawn.elapsed().as_secs_f32();
         self.last_drawn = Instant::now();

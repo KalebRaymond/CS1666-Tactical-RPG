@@ -183,7 +183,7 @@ impl Unit <'_>{
         } else {
             0
         };
-        if chance < self.accuracy - scout_debuff {
+        if chance < self.accuracy.checked_sub(scout_debuff).unwrap_or(0) {
             rand::thread_rng().gen_range(self.min_damage..=self.max_damage)
         } else {
             0
@@ -533,12 +533,7 @@ impl Unit <'_>{
         if self.max_hp == GUARD_HEALTH_ID && other.ranged_attacker && damage > 1 {
             do_damage /= 2;
         }
-        if damage >= self.hp {
-            self.hp = 0;
-        }
-        else {
-            self.hp -= do_damage;
-        }
+        self.hp = self.hp.checked_sub(do_damage).unwrap_or(0);
 
         //Make the unit turn red after taking damage
         self.is_attacked = true;
