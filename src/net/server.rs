@@ -50,19 +50,17 @@ impl Server {
 		stream.set_read_timeout(Some(Duration::from_secs(1))).map_err(|_e| "Could set read timeout")?;
 		stream.set_write_timeout(Some(Duration::from_secs(1))).map_err(|_e| "Could set write timeout")?;
 
-		let mut buffer = [0; 10]; // parse request header: 1 byte (MSG_ type) + 4 bytes (u32 room code)
+		let mut buffer = [0; 13]; // parse request header: 1 byte (MSG_ type) + 4 bytes (u32 user token) + 4 bytes (u32 room code) + 4 bytes (u32 room token)
 		stream.read(&mut buffer).map_err(|_e| "Could not read request stream.")?;
 
-		// parse variables from request header: [addr, is_host, code, token]
+		// parse variables from request header: [addr, user_token, code, token]
 		let addr = stream.peer_addr().map_err(|_e| "Could not read request address.")?.ip();
-		let is_host = if buffer[1] == 0 { false } else if buffer[1] == 1 { true } else {
-			return Err(String::from("Invalid request: is_host not valid"));
-		};
-		let code = from_u32_bytes(&buffer[2..6]);
-		let token = from_u32_bytes(&buffer[6..10]);
+		let user_token = from_u32_bytes(&buffer[1..5]);
+		let code = from_u32_bytes(&buffer[5..9]);
+		let token = from_u32_bytes(&buffer[9..13]);
 
 		// ensure that room code is within the expected range
-		if (code <= 0 && !is_host) || code > 9999 {
+		if code <= 0 || code > 9999 || (code == 0 && buffer[0] != MSG_CREATE) {
 			return Err(String::from("Invalid request: code not valid"));
 		}
 
@@ -107,10 +105,6 @@ impl Server {
 
 		if buffer[0] == MSG_JOIN {
 			// joining a room
-			if is_host {
-				return Err(String::from("Cannot join a room as the host"));
-			}
-
 			println!("{} is joining room {:?}", addr.to_string(), code);
 			room.try_join(addr)?;
 
@@ -128,6 +122,11 @@ impl Server {
 		if token != room.token {
 			return Err(String::from("Invalid request: incorrect token"));
 		}
+
+		if user_token != room.host_token && user_token != room.peer_token {
+			return Err(String::from("Invalid request: invalid user token"));
+		}
+		let is_host = user_token == room.host_token;
 
 		if buffer[0] == MSG_EVENT {
 			// sending an event
@@ -221,7 +220,6 @@ impl Room {
 
 		Ok(events.remove(0))
 	}
-
 }
 
 pub fn run() {
