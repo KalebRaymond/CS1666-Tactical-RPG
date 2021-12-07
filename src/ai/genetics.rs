@@ -288,7 +288,6 @@ fn assign_value_to_state (current_state: &mut PopulationState) {
 fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> (f64, bool, bool, bool, bool) {
     let mut value: f64 = 0.0;
 
-    //let distance_from_own_castle = (unit_pos.0 as i32 - p2_castle.0 as i32).abs() + (unit_pos.1 as i32 - p2_castle.1 as i32).abs();
     let distance_from_own_castle: u32 = if let Some(dist) = distance_map.to_enemy_castle.get(&unit_pos) {
                                         *dist
                                     } else {
@@ -404,7 +403,7 @@ fn choose_index_from_distribution(probabilities: &Vec<f64>) -> usize {
 }
 
 // Perform a bidirectional search to find the actual distance of the unit from the goal
-pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>) -> u32 {
+pub fn _get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>) -> u32 {
     let mut visited_init: HashMap<(u32,u32), u32> = HashMap::new();
     let mut visited_goal: HashMap<(u32,u32), u32> = HashMap::new();
     let mut init_heap = BinaryHeap::new();
@@ -538,7 +537,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
 }
 
 //Creates a txt file containing rust code that initializes a bunch of hashmaps that contain the distance from each tile to each goal area
-pub fn get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, u32), enemy_castle: (u32, u32), camp_coords: &Vec<(u32, u32)>) -> Result<(), String>{
+pub fn _get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, u32), enemy_castle: (u32, u32), camp_coords: &Vec<(u32, u32)>) -> Result<(), String>{
     println!("Calculating distances to each goal from each tile");
 
     let file = File::create("./src/AI/distances.txt").expect("Could not create src/AI/distances.txt");
@@ -549,7 +548,7 @@ pub fn get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, 
     for i in 0..MAP_HEIGHT {
         for j in 0..MAP_WIDTH {
             //Flip i & j so that they are in (x, y) order in the file
-            let dist = get_actual_distance_from_goal((j, i), p1_castle, map);
+            let dist = _get_actual_distance_from_goal((j, i), p1_castle, map);
             writeln!(file_io, "{} {} {}", j, i, dist).expect("Write error");
         }
     }
@@ -561,7 +560,7 @@ pub fn get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, 
     for i in 0..MAP_HEIGHT {
         for j in 0..MAP_WIDTH {
             //Flip i & j so that they are in (x, y) order in the file
-            let dist = get_actual_distance_from_goal((j, i), enemy_castle, map);
+            let dist = _get_actual_distance_from_goal((j, i), enemy_castle, map);
             writeln!(file_io, "{} {} {}", j, i, dist).expect("Write error");
         }
     }
@@ -575,7 +574,7 @@ pub fn get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, 
         for i in 0..MAP_HEIGHT {
             for j in 0..MAP_WIDTH {
                 //Flip i & j so that they are in (x, y) order in the file
-                let dist = get_actual_distance_from_goal((j, i), *cur_camp, map);
+                let dist = _get_actual_distance_from_goal((j, i), *cur_camp, map);
                 writeln!(file_io, "{} {} {}", j, i, dist).expect("Write error");
             }
         }
