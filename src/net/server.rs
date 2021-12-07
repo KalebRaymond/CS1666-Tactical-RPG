@@ -70,7 +70,7 @@ impl Server {
 			let token: u32;
 			let host_token: u32;
 			loop {
-				new_code = self.rand.gen_range(1..10000);
+				code = self.rand.gen_range(1..10000);
 
 				// overwrite room entry if older than 24h
 				if let Some(room) = self.rooms.get(&code) {
@@ -92,7 +92,7 @@ impl Server {
 
 			// respond with new code + token of created room
 			let mut send_buffer = [0; 12];
-			set_range!(send_buffer[0..4] = to_u32_bytes(host_token))
+			set_range!(send_buffer[0..4] = to_u32_bytes(host_token));
 			set_range!(send_buffer[4..8] = to_u32_bytes(code));
 			set_range!(send_buffer[8..12] = to_u32_bytes(token));
 			stream.write_all(&send_buffer).map_err(|_e| "Could not write code response to stream")?;

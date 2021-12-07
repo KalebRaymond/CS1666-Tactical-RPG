@@ -62,7 +62,7 @@ impl ClientBuffer {
 pub struct Client {
 	pub code: u32,
 	room_token: u32,
-	user_token: u32;
+	user_token: u32,
 	pub is_host: bool,
 	pub is_joined: bool,
 	addr: String,
@@ -83,7 +83,7 @@ impl Client {
 		let mut client = Client { code, room_token: 0, user_token: 0, is_host: code == 0, is_joined: false, addr };
 		let mut stream = client.connect(if code == 0 { MSG_CREATE } else { MSG_JOIN })?;
 
-		let mut buffer = [0; 8];
+		let mut buffer = [0; 12];
 		stream.read(&mut buffer).map_err(|_e| "Could not read connection response")?;
 
 		// check if the returned room code matches the intended join code in send_bytes (i.e. whether the room was actually joined)
