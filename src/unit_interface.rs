@@ -33,18 +33,6 @@ pub struct UnitInterface<'a> {
 }
 
 impl<'a> UnitInterface<'a> {
-    pub fn new(i: u32, j: u32, t: Vec<&'a str>, tex: &'a Texture<'a>) -> UnitInterface<'a> {
-        UnitInterface {
-            x: ((j-2) * crate::TILE_SIZE) as i32,
-            y: ((i-1) * crate::TILE_SIZE) as i32,
-            txt: t.iter().map( |text| SelectOption{ text:text, valid:true } ).collect(),
-            texture: Some(tex),
-            anim_progress: 0.0,
-            anim_state: AnimState::Open,
-            last_drawn: Instant::now(),
-        }
-    }
-
     pub fn from_unit(unit: &Unit, tex: &'a Texture<'a>) -> UnitInterface<'a> {
         let x_off = if unit.x < 2 { 1 } else { -2 };
         let y_off = if unit.y < 1 { 0 } else { -1 };
