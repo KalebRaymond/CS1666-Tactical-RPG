@@ -81,7 +81,7 @@ impl Client {
 
 		// construct the client and either create/join the room
 		let mut client = Client { code, room_token: 0, user_token: 0, is_host: code == 0, is_joined: false, addr };
-		let mut stream = client.connect(if code == 0 { MSG_CREATE } else { MSG_JOIN })?;
+		let mut stream = client.connect(if client.is_host { MSG_CREATE } else { MSG_JOIN })?;
 
 		let mut buffer = [0; 12];
 		stream.read(&mut buffer).map_err(|_e| "Could not read connection response")?;
