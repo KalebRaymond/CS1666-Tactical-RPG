@@ -100,8 +100,8 @@ fn crossover(state_1: &PopulationState, state_2: &PopulationState) -> (Populatio
     let endpoints = (0..state_1.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, 2);
     let upper_endpoint = *endpoints.iter().max().unwrap();
     let lower_endpoint = *endpoints.iter().min().unwrap();
-    let mut state_1_copy = state_1.clone();
-    let mut state_2_copy = state_2.clone();
+    let state_1_copy = state_1.clone();
+    let state_2_copy = state_2.clone();
 
     let mut new_state_1_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
     let mut new_state_2_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
