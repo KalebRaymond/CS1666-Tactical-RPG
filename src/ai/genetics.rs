@@ -28,20 +28,20 @@ const ATTACK_VALUE: f64 = 1.0;
 const MIN_DEFENSE: u32 = 5; //Since one of our AI goals says that some units should stay behind and defend, we need metrics to enforce this
 const DEFENSE_PENALTY: f64 = 5.0;
 
-const MAP_WIDTH: u32 = 64;
-const MAP_HEIGHT: u32 = 64;
+const _MAP_WIDTH: u32 = 64;
+const _MAP_HEIGHT: u32 = 64;
 
-fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> Vec<PopulationState> {
+fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> Vec<PopulationState> {
     let mut rng_thread = thread_rng();
     let mut population: Vec<PopulationState> = Vec::new();
 
     //Generate 1 less state so we can add the initial population
-    for i in 1..POP_NUM {
+    for _ in 1..POP_NUM {
         let mut unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
 
         for unit in succinct_units.iter() {
             let selected_move: (u32, u32) = *unit.possible_moves.iter().choose(&mut rng_thread).unwrap();
-            let move_value = current_unit_value(unit.attack_range, selected_move, map, p2_castle, p1_castle, camp_coords, distance_map);
+            let move_value = current_unit_value(unit.attack_range, selected_move, map, camp_coords, distance_map);
             unit_movements.push((selected_move, move_value));
         }
         let mut state = PopulationState::new(unit_movements, 0.0);
@@ -54,7 +54,7 @@ fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut Has
 
 //Randomly selects unit within a state and reassigns them a new position
 //After we mutate a state we also need to be able to update its value
-fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) {
+fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) {
     let mut rng_thread = thread_rng();
     let index_of_units_to_mutate = (0..state.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, MUT_NUM);
     for index in index_of_units_to_mutate {
@@ -86,7 +86,7 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
                 break;
             }
         }
-        let move_value = current_unit_value(succinct_units[index].attack_range, *new_move, map, p2_castle, p1_castle, camp_coords, distance_map);
+        let move_value = current_unit_value(succinct_units[index].attack_range, *new_move, map, camp_coords, distance_map);
         state.units_and_utility[index] = (*new_move, move_value);
 	}
     //Don't forget to update the overall value of the state (can't just substract the difference in values from the state as we are also checking overall conditions)
@@ -100,8 +100,8 @@ fn crossover(state_1: &PopulationState, state_2: &PopulationState) -> (Populatio
     let endpoints = (0..state_1.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, 2);
     let upper_endpoint = *endpoints.iter().max().unwrap();
     let lower_endpoint = *endpoints.iter().min().unwrap();
-    let mut state_1_copy = state_1.clone();
-    let mut state_2_copy = state_2.clone();
+    let state_1_copy = state_1.clone();
+    let state_2_copy = state_2.clone();
 
     let mut new_state_1_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
     let mut new_state_2_unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
@@ -152,7 +152,7 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
     println!("Genetic Algorithm Constants:\nPopulation Size: {}, Number of Generations: {}, Mutation Probability: {}, Number of Units Changed on Mutate: {}, Elite Percentage: {}, Culling Percentage: {}\n", POP_NUM, GEN_NUM, MUT_PROB, MUT_NUM, E_PERC, C_PERC);
 
     for unit in game_map.enemy_units.values() {
-        let move_value = current_unit_value(unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
+        let move_value = current_unit_value(unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, &game_map.objectives.barbarian_camps, distance_map);
         original_unit_movements.push(((unit.x, unit.y), move_value));
 
         //If a unit is currently in the process of capturing, it should not consider other moves
@@ -165,13 +165,13 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
         succinct_units.push(current_unit);
     }
 
-    let mut initial_population = generate_initial_population(&succinct_units, &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
+    let mut initial_population = generate_initial_population(&succinct_units, &mut game_map.map_tiles, &game_map.objectives.barbarian_camps, distance_map);
     let mut original_state = PopulationState::new(original_unit_movements, 0.0);
     assign_value_to_state(&mut original_state);
     initial_population.push(original_state);
 
     let mut new_generation: Vec<PopulationState> = Vec::new();
-    let mut remaining_population: Vec<PopulationState> = Vec::new();
+    let mut remaining_population: Vec<PopulationState>;
 
     for i in 0..GEN_NUM {
         initial_population.sort_unstable();
@@ -228,7 +228,7 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
         let num_to_mutate: usize = ((MUT_PROB * (new_generation.len() as f32)).round() as i32).try_into().unwrap();
         let mut states_to_mutate = new_generation.iter_mut().choose_multiple(&mut rng_thread, num_to_mutate);
         for state in states_to_mutate.iter_mut() {
-            mutate(state, &succinct_units, &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
+            mutate(state, &succinct_units, &mut game_map.map_tiles, &game_map.objectives.barbarian_camps, distance_map);
         }
 
         initial_population = new_generation.clone();
@@ -242,7 +242,6 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
         //println!("Num units: {}", best_individual.units_and_utility.len());
         //Also need to remember to reset the corresponding vectors for the next generation
         new_generation = Vec::new();
-        remaining_population = Vec::new();
     }
 
     //init_population now generally represents the best possible states that have been found and we can use these to form the considered moves of our minimax and we can repeat this for the enemy to get their "best" move and make the decision from there
@@ -253,18 +252,18 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
 fn assign_value_to_state (current_state: &mut PopulationState) {
     let mut total_value: f64 = 0.0;
     let mut units_defending: u32 = 0; //Units near own castle
-    let mut units_sieging: u32 = 0; //Units near enemy castle
-    let mut units_near_camp: u32 = 0;
-    let mut units_able_to_attack: u32 = 0;
+    let mut _units_sieging: u32 = 0; //Units near enemy castle
+    let mut _units_near_camp: u32 = 0;
+    let mut _units_able_to_attack: u32 = 0;
 
     //println!("Utility Function Constants:\nMinimum Distance from Objectives: {}, Defending Weight: {}, Sieging Weight: {}, Camp Weight: {}, Value from Attack: {}, Minimum Defending Units: {}, Defense Penalty: {}\n", MIN_DISTANCE, DEFENDING_WEIGHT, SIEGING_WEIGHT, CAMP_WEIGHT, ATTACK_VALUE, MIN_DEFENSE, DEFENSE_PENALTY);
 
     for value in current_state.units_and_utility.iter() {
         total_value += value.1.0;
         units_defending += value.1.1 as u32;
-        units_sieging += value.1.2 as u32;
-        units_near_camp += value.1.3 as u32;
-        units_able_to_attack += value.1.4 as u32;
+        _units_sieging += value.1.2 as u32;
+        _units_near_camp += value.1.3 as u32;
+        _units_able_to_attack += value.1.4 as u32;
     }
 
     // Calculations for state as a whole (not individual units)
@@ -286,15 +285,13 @@ fn assign_value_to_state (current_state: &mut PopulationState) {
 // 4: able_to_attack
 // Minus "being able to attack" all other values will be calculated using heuristics (relative manhattan distance)
 // Additionally not calculating closest unit to save time since based on the distance from objectives and the ability to attack this distance should be implied
-fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> (f64, bool, bool, bool, bool) {
+fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> (f64, bool, bool, bool, bool) {
     let mut value: f64 = 0.0;
 
-    //let distance_from_own_castle = (unit_pos.0 as i32 - p2_castle.0 as i32).abs() + (unit_pos.1 as i32 - p2_castle.1 as i32).abs();
     let distance_from_own_castle: u32 = if let Some(dist) = distance_map.to_enemy_castle.get(&unit_pos) {
                                         *dist
                                     } else {
                                         panic!();
-                                        100000
                                     };
 
     let defending: bool = if distance_from_own_castle <= MIN_DISTANCE {
@@ -307,7 +304,6 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
                                         *dist
                                     } else {
                                         panic!();
-                                        100000
                                     };
 
     let sieging: bool =   if distance_from_enemy_castle == 0 {
@@ -337,7 +333,6 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
                 }
             } else {
                 panic!();
-                100000
             }
         } else {
             panic!();
@@ -408,7 +403,7 @@ fn choose_index_from_distribution(probabilities: &Vec<f64>) -> usize {
 }
 
 // Perform a bidirectional search to find the actual distance of the unit from the goal
-pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>) -> u32 {
+pub fn _get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>) -> u32 {
     let mut visited_init: HashMap<(u32,u32), u32> = HashMap::new();
     let mut visited_goal: HashMap<(u32,u32), u32> = HashMap::new();
     let mut init_heap = BinaryHeap::new();
@@ -441,7 +436,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                         }
                     }
                 }
-                if coords.0 < MAP_WIDTH-1 {
+                if coords.0 < _MAP_WIDTH-1 {
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0+1 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_init.get(&(coords.0+1, coords.1)) {
@@ -467,7 +462,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                         }
                     }
                 }
-                if coords.1 < MAP_HEIGHT-1 {
+                if coords.1 < _MAP_HEIGHT-1 {
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1+1 as u32, coords.0 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_init.get(&(coords.0, coords.1+1)) {
@@ -496,7 +491,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                         }
                     }
                 }
-                if coords.0 < MAP_WIDTH-1 {
+                if coords.0 < _MAP_WIDTH-1 {
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0+1 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_goal.get(&(coords.0+1, coords.1)) {
@@ -522,7 +517,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
                         }
                     }
                 }
-                if coords.1 < MAP_HEIGHT-1 {
+                if coords.1 < _MAP_HEIGHT-1 {
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1+1 as u32, coords.0 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_goal.get(&(coords.0, coords.1+1)) {
@@ -542,7 +537,7 @@ pub fn get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32),
 }
 
 //Creates a txt file containing rust code that initializes a bunch of hashmaps that contain the distance from each tile to each goal area
-pub fn get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, u32), enemy_castle: (u32, u32), camp_coords: &Vec<(u32, u32)>) -> Result<(), String>{
+pub fn _get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, u32), enemy_castle: (u32, u32), camp_coords: &Vec<(u32, u32)>) -> Result<(), String>{
     println!("Calculating distances to each goal from each tile");
 
     let file = File::create("./src/AI/distances.txt").expect("Could not create src/AI/distances.txt");
@@ -550,10 +545,10 @@ pub fn get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, 
 
     //Get distance from each tile to the p1 castle
     writeln!(file_io, "p1_castle").expect("Write error");
-    for i in 0..MAP_HEIGHT {
-        for j in 0..MAP_WIDTH {
+    for i in 0.._MAP_HEIGHT {
+        for j in 0.._MAP_WIDTH {
             //Flip i & j so that they are in (x, y) order in the file
-            let dist = get_actual_distance_from_goal((j, i), p1_castle, map);
+            let dist = _get_actual_distance_from_goal((j, i), p1_castle, map);
             writeln!(file_io, "{} {} {}", j, i, dist).expect("Write error");
         }
     }
@@ -562,10 +557,10 @@ pub fn get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, 
 
     //Get distance from each tile to the enemy castle
     writeln!(file_io, "enemy_castle").expect("Write error");
-    for i in 0..MAP_HEIGHT {
-        for j in 0..MAP_WIDTH {
+    for i in 0.._MAP_HEIGHT {
+        for j in 0.._MAP_WIDTH {
             //Flip i & j so that they are in (x, y) order in the file
-            let dist = get_actual_distance_from_goal((j, i), enemy_castle, map);
+            let dist = _get_actual_distance_from_goal((j, i), enemy_castle, map);
             writeln!(file_io, "{} {} {}", j, i, dist).expect("Write error");
         }
     }
@@ -576,10 +571,10 @@ pub fn get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32, 
     writeln!(file_io, "barb_camps").expect("Write error");
     for cur_camp in camp_coords.iter() {
         writeln!(file_io, "# {} {}", cur_camp.0, cur_camp.1).expect("Write error");
-        for i in 0..MAP_HEIGHT {
-            for j in 0..MAP_WIDTH {
+        for i in 0.._MAP_HEIGHT {
+            for j in 0.._MAP_WIDTH {
                 //Flip i & j so that they are in (x, y) order in the file
-                let dist = get_actual_distance_from_goal((j, i), *cur_camp, map);
+                let dist = _get_actual_distance_from_goal((j, i), *cur_camp, map);
                 writeln!(file_io, "{} {} {}", j, i, dist).expect("Write error");
             }
         }

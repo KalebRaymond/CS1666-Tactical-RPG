@@ -62,7 +62,7 @@ impl PopulationState {
         //Both the hashmap of units and the vector of moves should be the same length; if not something went wrong and should panic
         for index in 0..self.units_and_utility.len() {
             let mut new_move = self.units_and_utility[index].0;
-            let mut actual_unit = actual_units_mut.next().unwrap(); //Units should be in order so we can just use next to get corresponding unit (nth panics)
+            let actual_unit = actual_units_mut.next().unwrap(); //Units should be in order so we can just use next to get corresponding unit (nth panics)
 
             // If this move exists in the moves of the unit, move to it...
             if !self.is_dupe_unit_placement_ending_at(&new_move, index) {
