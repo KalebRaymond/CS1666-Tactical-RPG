@@ -294,7 +294,6 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
                                         *dist
                                     } else {
                                         panic!();
-                                        100000
                                     };
 
     let defending: bool = if distance_from_own_castle <= MIN_DISTANCE {
@@ -307,7 +306,6 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
                                         *dist
                                     } else {
                                         panic!();
-                                        100000
                                     };
 
     let sieging: bool =   if distance_from_enemy_castle == 0 {
