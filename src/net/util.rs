@@ -16,10 +16,10 @@ pub const EVENT_ID_PLAYER: u8 = 1;
 pub const EVENT_ID_BARBARIAN: u8 = 2;
 
 pub const EVENT_UNIT_ARCHER: u8 = 0;
-pub const EVENT_UNIT_GUARD: u8 = 1;
+pub const _EVENT_UNIT_GUARD: u8 = 1;
 pub const EVENT_UNIT_MAGE: u8 = 2;
 pub const EVENT_UNIT_MELEE: u8 = 3;
-pub const EVENT_UNIT_SCOUT: u8 = 4;
+pub const _EVENT_UNIT_SCOUT: u8 = 4;
 
 // allows a range of indeces in an array to be set with one expression
 // e.g. set_range!(arr[4..6] = [4, 5, 6, 7, 8]); will set arr[4] = 4 and arr[5] = 5

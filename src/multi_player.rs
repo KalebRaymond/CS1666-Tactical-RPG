@@ -6,7 +6,6 @@ use sdl2::rect::Rect;
 use sdl2::render::Texture;
 
 use crate::net::client::{Client, ClientBuffer};
-use crate::net::util::*;
 
 use crate::game_map::GameMap;
 use crate::{Drawable, GameState};
