@@ -7,7 +7,6 @@ use crate::SDLCore;
 
 pub struct Button<'r> {
 	rect: Rect,
-	text: String,
 	text_size: (u32, u32),
 	texture: sdl2::render::Texture<'r>,
 }
@@ -22,7 +21,6 @@ impl Button<'_> {
 
 		Ok(Button {
 			rect,
-			text: text.to_string(),
 			text_size: core.bold_font.size_of(text).map_err(|_e| "Could not determine text size")?,
 			texture,
 		})

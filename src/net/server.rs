@@ -1,6 +1,7 @@
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream, IpAddr};
 use std::collections::HashMap;
+use std::time::{Instant, Duration};
 
 use rand::Rng;
 use rand::prelude::*;
@@ -30,7 +31,10 @@ impl Server {
 		let incoming = listener.incoming()
 			.filter_map(|s| match s {
 				Ok(stream) => Some(stream),
-				_ => None,
+				Err(e) => {
+					println!("Incoming stream error: {}", e.to_string());
+					None
+				}
 			});
 
 		// listen for any new connections
@@ -43,46 +47,55 @@ impl Server {
 	}
 
 	fn handle_request<'s>(&mut self, stream: &'s mut TcpStream) -> Result<(), String> {
-		let mut buffer = [0; 10]; // parse request header: 1 byte (MSG_ type) + 4 bytes (u32 room code)
+		stream.set_read_timeout(Some(Duration::from_secs(1))).map_err(|_e| "Could set read timeout")?;
+		stream.set_write_timeout(Some(Duration::from_secs(1))).map_err(|_e| "Could set write timeout")?;
+
+		let mut buffer = [0; 13]; // parse request header: 1 byte (MSG_ type) + 4 bytes (u32 user token) + 4 bytes (u32 room code) + 4 bytes (u32 room token)
 		stream.read(&mut buffer).map_err(|_e| "Could not read request stream.")?;
 
-		// parse variables from request header: [addr, is_host, code, token]
+		// parse variables from request header: [addr, user_token, code, token]
 		let addr = stream.peer_addr().map_err(|_e| "Could not read request address.")?.ip();
-		let is_host = if buffer[1] == 0 { false } else if buffer[1] == 1 { true } else {
-			return Err(String::from("Invalid request: is_host not valid"));
-		};
-		let code = from_u32_bytes(&buffer[2..6]);
-		let token = from_u32_bytes(&buffer[6..10]);
-
+		let user_token = from_u32_bytes(&buffer[1..5]);
+		let code = from_u32_bytes(&buffer[5..9]);
+		let token = from_u32_bytes(&buffer[9..13]);
+		
 		// ensure that room code is within the expected range
-		if (code <= 0 && !is_host) || code > 9999 {
+		if code < 0 || code > 9999 || (code == 0 && buffer[0] != MSG_CREATE) {
 			return Err(String::from("Invalid request: code not valid"));
 		}
 
 		if buffer[0] == MSG_CREATE {
 			// creating a room
-			let mut new_code: u32;
-			let new_token: u32;
+			let mut code: u32;
+			let token: u32;
+			let host_token: u32;
 			loop {
-				new_code = self.rand.gen_range(1..10000);
+				code = self.rand.gen_range(1..10000);
 
-				// TODO: overwrite room entry if older than 24h
+				// overwrite room entry if older than 24h
+				if let Some(room) = self.rooms.get(&code) {
+					if Instant::now().duration_since(room.last_poll).as_secs() > 60*60*24 {
+						self.rooms.remove(&code);
+					} else {
+						continue;
+					}
+				}
 
 				// once an unused room code is found, create the room
-				if !self.rooms.contains_key(&new_code) {
-					println!("{} is creating a room with code {:?}", addr.to_string(), new_code);
-					let room = Room::new(addr);
-					new_token = room.token;
-					self.rooms.insert(new_code, room);
-					break;
-				}
+				println!("{} is creating a room with code {:?}", addr.to_string(), code);
+				let room = Room::new(addr);
+				token = room.token;
+				host_token = room.host_token;
+				self.rooms.insert(code, room);
+				break;
 			}
 
 			// respond with new code + token of created room
-			let mut send_buffer = [0; 8];
-			set_range!(send_buffer[0..4] = to_u32_bytes(new_code));
-			set_range!(send_buffer[4..8] = to_u32_bytes(new_token));
-			stream.write(&send_buffer).map_err(|_e| "Could not write code response to stream")?;
+			let mut send_buffer = [0; 12];
+			set_range!(send_buffer[0..4] = to_u32_bytes(host_token));
+			set_range!(send_buffer[4..8] = to_u32_bytes(code));
+			set_range!(send_buffer[8..12] = to_u32_bytes(token));
+			stream.write_all(&send_buffer).map_err(|_e| "Could not write code response to stream")?;
 			stream.flush().map_err(|_e| "Could not flush stream")?;
 			return Ok(());
 		}
@@ -92,18 +105,15 @@ impl Server {
 
 		if buffer[0] == MSG_JOIN {
 			// joining a room
-			if is_host {
-				return Err(String::from("Cannot join a room as the host"));
-			}
-
 			println!("{} is joining room {:?}", addr.to_string(), code);
 			room.try_join(addr)?;
 
 			// respond with joined room code + token to indicate success
-			let mut send_buffer = [0; 8];
-			set_range!(send_buffer[0..4] = to_u32_bytes(code));
-			set_range!(send_buffer[4..8] = to_u32_bytes(room.token));
-			stream.write(&send_buffer).map_err(|_e| "Could not write join response to stream")?;
+			let mut send_buffer = [0; 12];
+			set_range!(send_buffer[0..4] = to_u32_bytes(room.peer_token));
+			set_range!(send_buffer[4..8] = to_u32_bytes(code));
+			set_range!(send_buffer[8..12] = to_u32_bytes(room.token));
+			stream.write_all(&send_buffer).map_err(|_e| "Could not write join response to stream")?;
 			stream.flush().map_err(|_e| "Could not flush stream")?;
 			return Ok(());
 		}
@@ -113,9 +123,14 @@ impl Server {
 			return Err(String::from("Invalid request: incorrect token"));
 		}
 
+		if user_token != room.host_token && user_token != room.peer_token {
+			return Err(String::from("Invalid request: invalid user token"));
+		}
+		let is_host = user_token == room.host_token;
+
 		if buffer[0] == MSG_EVENT {
 			// sending an event
-			let mut event_buffer = [0; 18];
+			let mut event_buffer = [0; 19];
 			stream.read(&mut event_buffer).map_err(|_e| "Could not read event stream.")?;
 
 			// push event into room
@@ -123,14 +138,14 @@ impl Server {
 			room.push_event(is_host, addr, event)?;
 
 			// respond with 1 byte to indicate success
-			stream.write(&[1]).map_err(|_e| "Could not write event response to stream")?;
+			stream.write_all(&[1]).map_err(|_e| "Could not write event response to stream")?;
 		} else if buffer[0] == MSG_POLL {
 			// polling for events
 			let event = room.pop_event(is_host, addr)?;
 			let event_buffer = event.to_bytes();
 
 			// respond with event contents
-			stream.write(&event_buffer).map_err(|_e| "Could not write poll response to stream")?;
+			stream.write_all(&event_buffer).map_err(|_e| "Could not write poll response to stream")?;
 		}
 
 		stream.flush().map_err(|_e| "Could not flush stream")?;
@@ -142,8 +157,11 @@ struct Room {
 	token: u32,
 	host_addr: IpAddr,
 	peer_addr: Option<IpAddr>,
+	host_token: u32,
+	peer_token: u32,
 	host_events: Vec<Event>,
 	peer_events: Vec<Event>,
+	last_poll: Instant,
 }
 
 impl Room {
@@ -153,8 +171,11 @@ impl Room {
 			token: random(),
 			host_addr: addr,
 			peer_addr: None,
+			host_token: random(),
+			peer_token: random(),
 			host_events: Vec::new(),
 			peer_events: vec![Event::new(EVENT_JOIN)], // initial join event for host -> peer
+			last_poll: Instant::now(),
 		}
 	}
 
@@ -183,15 +204,22 @@ impl Room {
 	}
 
 	fn pop_event(&mut self, is_host: bool, addr: IpAddr) -> Result<Event, String> {
-		if is_host && self.host_addr == addr {
-			Ok(self.host_events.pop().unwrap_or(Event::new(EVENT_NONE)))
-		} else if !is_host && self.peer_addr == Some(addr) {
-			Ok(self.peer_events.pop().unwrap_or(Event::new(EVENT_NONE)))
-		} else {
-			Err(String::from("Cannot pop_event: Peer has not joined the room"))
-		}
-	}
+		self.last_poll = Instant::now();
 
+		let events = if is_host && self.host_addr == addr {
+			&mut self.host_events
+		} else if !is_host && self.peer_addr == Some(addr) {
+			&mut self.peer_events
+		} else {
+			return Err(String::from("Cannot pop_event: Peer has not joined the room"));
+		};
+
+		if events.is_empty() {
+			return Ok(Event::new(EVENT_NONE))
+		}
+
+		Ok(events.remove(0))
+	}
 }
 
 pub fn run() {
@@ -199,7 +227,8 @@ pub fn run() {
 		String::from(SERVER_ADDR)
 	};
 
-	let mut server = Server::new(&addr);
+	let port = *(addr.split(":").collect::<Vec<&str>>().last().unwrap());
+	let mut server = Server::new(format!("0.0.0.0:{}", port).as_ref());
 
 	println!("Listening at {}", &addr);
 	server.listen();

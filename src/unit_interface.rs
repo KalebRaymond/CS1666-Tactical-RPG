@@ -33,18 +33,6 @@ pub struct UnitInterface<'a> {
 }
 
 impl<'a> UnitInterface<'a> {
-    pub fn new(i: u32, j: u32, t: Vec<&'a str>, tex: &'a Texture<'a>) -> UnitInterface<'a> {
-        UnitInterface {
-            x: ((j-2) * crate::TILE_SIZE) as i32,
-            y: ((i-1) * crate::TILE_SIZE) as i32,
-            txt: t.iter().map( |text| SelectOption{ text:text, valid:true } ).collect(),
-            texture: Some(tex),
-            anim_progress: 0.0,
-            anim_state: AnimState::Open,
-            last_drawn: Instant::now(),
-        }
-    }
-
     pub fn from_unit(unit: &Unit, tex: &'a Texture<'a>) -> UnitInterface<'a> {
         let x_off = if unit.x < 2 { 1 } else { -2 };
         let y_off = if unit.y < 1 { 0 } else { -1 };
@@ -136,7 +124,7 @@ impl<'a> UnitInterface<'a> {
                 else {
                     core.wincan.copy(texture, Rect::new(0,32,64,16), Rect::new(self.x, self.y+16*(self.txt.len() as i32-1)+(32.0*self.anim_progress) as i32, 64, 16))?;
                 }
-                
+
                 Ok(())
             },
             _ => { Err("Texture not defined.".to_string()) },
