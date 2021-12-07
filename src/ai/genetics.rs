@@ -31,7 +31,7 @@ const DEFENSE_PENALTY: f64 = 5.0;
 const MAP_WIDTH: u32 = 64;
 const MAP_HEIGHT: u32 = 64;
 
-fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> Vec<PopulationState> {
+fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> Vec<PopulationState> {
     let mut rng_thread = thread_rng();
     let mut population: Vec<PopulationState> = Vec::new();
 
@@ -41,7 +41,7 @@ fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut Has
 
         for unit in succinct_units.iter() {
             let selected_move: (u32, u32) = *unit.possible_moves.iter().choose(&mut rng_thread).unwrap();
-            let move_value = current_unit_value(unit.attack_range, selected_move, map, p2_castle, p1_castle, camp_coords, distance_map);
+            let move_value = current_unit_value(unit.attack_range, selected_move, map, camp_coords, distance_map);
             unit_movements.push((selected_move, move_value));
         }
         let mut state = PopulationState::new(unit_movements, 0.0);
@@ -54,7 +54,7 @@ fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut Has
 
 //Randomly selects unit within a state and reassigns them a new position
 //After we mutate a state we also need to be able to update its value
-fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) {
+fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) {
     let mut rng_thread = thread_rng();
     let index_of_units_to_mutate = (0..state.units_and_utility.len() as usize).choose_multiple(&mut rng_thread, MUT_NUM);
     for index in index_of_units_to_mutate {
@@ -86,7 +86,7 @@ fn mutate(state: &mut PopulationState, succinct_units: &Vec<SuccinctUnit>, map: 
                 break;
             }
         }
-        let move_value = current_unit_value(succinct_units[index].attack_range, *new_move, map, p2_castle, p1_castle, camp_coords, distance_map);
+        let move_value = current_unit_value(succinct_units[index].attack_range, *new_move, map, camp_coords, distance_map);
         state.units_and_utility[index] = (*new_move, move_value);
 	}
     //Don't forget to update the overall value of the state (can't just substract the difference in values from the state as we are also checking overall conditions)
@@ -152,7 +152,7 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
     println!("Genetic Algorithm Constants:\nPopulation Size: {}, Number of Generations: {}, Mutation Probability: {}, Number of Units Changed on Mutate: {}, Elite Percentage: {}, Culling Percentage: {}\n", POP_NUM, GEN_NUM, MUT_PROB, MUT_NUM, E_PERC, C_PERC);
 
     for unit in game_map.enemy_units.values() {
-        let move_value = current_unit_value(unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
+        let move_value = current_unit_value(unit.attack_range, (unit.x, unit.y), &mut game_map.map_tiles, &game_map.objectives.barbarian_camps, distance_map);
         original_unit_movements.push(((unit.x, unit.y), move_value));
 
         //If a unit is currently in the process of capturing, it should not consider other moves
@@ -165,7 +165,7 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
         succinct_units.push(current_unit);
     }
 
-    let mut initial_population = generate_initial_population(&succinct_units, &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
+    let mut initial_population = generate_initial_population(&succinct_units, &mut game_map.map_tiles, &game_map.objectives.barbarian_camps, distance_map);
     let mut original_state = PopulationState::new(original_unit_movements, 0.0);
     assign_value_to_state(&mut original_state);
     initial_population.push(original_state);
@@ -228,7 +228,7 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
         let num_to_mutate: usize = ((MUT_PROB * (new_generation.len() as f32)).round() as i32).try_into().unwrap();
         let mut states_to_mutate = new_generation.iter_mut().choose_multiple(&mut rng_thread, num_to_mutate);
         for state in states_to_mutate.iter_mut() {
-            mutate(state, &succinct_units, &mut game_map.map_tiles, &game_map.objectives.p2_castle, &game_map.objectives.p1_castle, &game_map.objectives.barbarian_camps, distance_map);
+            mutate(state, &succinct_units, &mut game_map.map_tiles, &game_map.objectives.barbarian_camps, distance_map);
         }
 
         initial_population = new_generation.clone();
@@ -285,7 +285,7 @@ fn assign_value_to_state (current_state: &mut PopulationState) {
 // 4: able_to_attack
 // Minus "being able to attack" all other values will be calculated using heuristics (relative manhattan distance)
 // Additionally not calculating closest unit to save time since based on the distance from objectives and the ability to attack this distance should be implied
-fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, p2_castle: &(u32, u32), p1_castle: &(u32, u32), camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> (f64, bool, bool, bool, bool) {
+fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut HashMap<(u32, u32), Tile>, camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> (f64, bool, bool, bool, bool) {
     let mut value: f64 = 0.0;
 
     //let distance_from_own_castle = (unit_pos.0 as i32 - p2_castle.0 as i32).abs() + (unit_pos.1 as i32 - p2_castle.1 as i32).abs();
