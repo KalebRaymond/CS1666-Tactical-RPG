@@ -58,9 +58,9 @@ impl Server {
 		let user_token = from_u32_bytes(&buffer[1..5]);
 		let code = from_u32_bytes(&buffer[5..9]);
 		let token = from_u32_bytes(&buffer[9..13]);
-
+		
 		// ensure that room code is within the expected range
-		if code <= 0 || code > 9999 || (code == 0 && buffer[0] != MSG_CREATE) {
+		if code < 0 || code > 9999 || (code == 0 && buffer[0] != MSG_CREATE) {
 			return Err(String::from("Invalid request: code not valid"));
 		}
 
