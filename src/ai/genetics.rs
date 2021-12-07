@@ -36,7 +36,7 @@ fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut Has
     let mut population: Vec<PopulationState> = Vec::new();
 
     //Generate 1 less state so we can add the initial population
-    for i in 1..POP_NUM {
+    for _ in 1..POP_NUM {
         let mut unit_movements: Vec<((u32,u32), (f64, bool, bool, bool, bool))> = Vec::new();
 
         for unit in succinct_units.iter() {
@@ -171,7 +171,7 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
     initial_population.push(original_state);
 
     let mut new_generation: Vec<PopulationState> = Vec::new();
-    let mut remaining_population: Vec<PopulationState> = Vec::new();
+    let mut remaining_population: Vec<PopulationState>;
 
     for i in 0..GEN_NUM {
         initial_population.sort_unstable();
@@ -242,7 +242,6 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
         //println!("Num units: {}", best_individual.units_and_utility.len());
         //Also need to remember to reset the corresponding vectors for the next generation
         new_generation = Vec::new();
-        remaining_population = Vec::new();
     }
 
     //init_population now generally represents the best possible states that have been found and we can use these to form the considered moves of our minimax and we can repeat this for the enemy to get their "best" move and make the decision from there
@@ -253,18 +252,18 @@ pub fn genetic_algorithm(game_map: &mut GameMap, distance_map: &DistanceMap) -> 
 fn assign_value_to_state (current_state: &mut PopulationState) {
     let mut total_value: f64 = 0.0;
     let mut units_defending: u32 = 0; //Units near own castle
-    let mut units_sieging: u32 = 0; //Units near enemy castle
-    let mut units_near_camp: u32 = 0;
-    let mut units_able_to_attack: u32 = 0;
+    let mut _units_sieging: u32 = 0; //Units near enemy castle
+    let mut _units_near_camp: u32 = 0;
+    let mut _units_able_to_attack: u32 = 0;
 
     //println!("Utility Function Constants:\nMinimum Distance from Objectives: {}, Defending Weight: {}, Sieging Weight: {}, Camp Weight: {}, Value from Attack: {}, Minimum Defending Units: {}, Defense Penalty: {}\n", MIN_DISTANCE, DEFENDING_WEIGHT, SIEGING_WEIGHT, CAMP_WEIGHT, ATTACK_VALUE, MIN_DEFENSE, DEFENSE_PENALTY);
 
     for value in current_state.units_and_utility.iter() {
         total_value += value.1.0;
         units_defending += value.1.1 as u32;
-        units_sieging += value.1.2 as u32;
-        units_near_camp += value.1.3 as u32;
-        units_able_to_attack += value.1.4 as u32;
+        _units_sieging += value.1.2 as u32;
+        _units_near_camp += value.1.3 as u32;
+        _units_able_to_attack += value.1.4 as u32;
     }
 
     // Calculations for state as a whole (not individual units)
@@ -335,7 +334,6 @@ fn current_unit_value (unit_attack_range: u32, unit_pos: (u32, u32), map: &mut H
                 }
             } else {
                 panic!();
-                100000
             }
         } else {
             panic!();
