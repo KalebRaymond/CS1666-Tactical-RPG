@@ -28,8 +28,8 @@ const ATTACK_VALUE: f64 = 1.0;
 const MIN_DEFENSE: u32 = 5; //Since one of our AI goals says that some units should stay behind and defend, we need metrics to enforce this
 const DEFENSE_PENALTY: f64 = 5.0;
 
-const MAP_WIDTH: u32 = 64;
-const MAP_HEIGHT: u32 = 64;
+const _MAP_WIDTH: u32 = 64;
+const _MAP_HEIGHT: u32 = 64;
 
 fn generate_initial_population(succinct_units: &Vec<SuccinctUnit>, map: &mut HashMap<(u32, u32), Tile>, camp_coords: &Vec<(u32, u32)>, distance_map: &DistanceMap) -> Vec<PopulationState> {
     let mut rng_thread = thread_rng();
@@ -436,7 +436,7 @@ pub fn _get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32)
                         }
                     }
                 }
-                if coords.0 < MAP_WIDTH-1 {
+                if coords.0 < _MAP_WIDTH-1 {
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0+1 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_init.get(&(coords.0+1, coords.1)) {
@@ -462,7 +462,7 @@ pub fn _get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32)
                         }
                     }
                 }
-                if coords.1 < MAP_HEIGHT-1 {
+                if coords.1 < _MAP_HEIGHT-1 {
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1+1 as u32, coords.0 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_init.get(&(coords.0, coords.1+1)) {
@@ -491,7 +491,7 @@ pub fn _get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32)
                         }
                     }
                 }
-                if coords.0 < MAP_WIDTH-1 {
+                if coords.0 < _MAP_WIDTH-1 {
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1 as u32, coords.0+1 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_goal.get(&(coords.0+1, coords.1)) {
@@ -517,7 +517,7 @@ pub fn _get_actual_distance_from_goal(unit_pos: (u32, u32), goal_pos: (u32, u32)
                         }
                     }
                 }
-                if coords.1 < MAP_HEIGHT-1 {
+                if coords.1 < _MAP_HEIGHT-1 {
                     if let std::collections::hash_map::Entry::Occupied(entry) = map.entry((coords.1+1 as u32, coords.0 as u32)) {
                         //If we have already visited this tile from the other direction, the sum of the costs is the actual distance
                         if let Some(num) = visited_goal.get(&(coords.0, coords.1+1)) {
@@ -545,8 +545,8 @@ pub fn _get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32,
 
     //Get distance from each tile to the p1 castle
     writeln!(file_io, "p1_castle").expect("Write error");
-    for i in 0..MAP_HEIGHT {
-        for j in 0..MAP_WIDTH {
+    for i in 0.._MAP_HEIGHT {
+        for j in 0.._MAP_WIDTH {
             //Flip i & j so that they are in (x, y) order in the file
             let dist = _get_actual_distance_from_goal((j, i), p1_castle, map);
             writeln!(file_io, "{} {} {}", j, i, dist).expect("Write error");
@@ -557,8 +557,8 @@ pub fn _get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32,
 
     //Get distance from each tile to the enemy castle
     writeln!(file_io, "enemy_castle").expect("Write error");
-    for i in 0..MAP_HEIGHT {
-        for j in 0..MAP_WIDTH {
+    for i in 0.._MAP_HEIGHT {
+        for j in 0.._MAP_WIDTH {
             //Flip i & j so that they are in (x, y) order in the file
             let dist = _get_actual_distance_from_goal((j, i), enemy_castle, map);
             writeln!(file_io, "{} {} {}", j, i, dist).expect("Write error");
@@ -571,8 +571,8 @@ pub fn _get_goal_distances(map: &mut HashMap<(u32, u32), Tile>, p1_castle: (u32,
     writeln!(file_io, "barb_camps").expect("Write error");
     for cur_camp in camp_coords.iter() {
         writeln!(file_io, "# {} {}", cur_camp.0, cur_camp.1).expect("Write error");
-        for i in 0..MAP_HEIGHT {
-            for j in 0..MAP_WIDTH {
+        for i in 0.._MAP_HEIGHT {
+            for j in 0.._MAP_WIDTH {
                 //Flip i & j so that they are in (x, y) order in the file
                 let dist = _get_actual_distance_from_goal((j, i), *cur_camp, map);
                 writeln!(file_io, "{} {} {}", j, i, dist).expect("Write error");
