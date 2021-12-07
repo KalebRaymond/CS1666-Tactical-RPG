@@ -68,32 +68,35 @@ impl Server {
 
 		if buffer[0] == MSG_CREATE {
 			// creating a room
-			let mut new_code: u32;
-			let new_token: u32;
+			let mut code: u32;
+			let token: u32;
+			let host_token: u32;
 			loop {
 				new_code = self.rand.gen_range(1..10000);
 
 				// overwrite room entry if older than 24h
-				if let Some(room) = self.rooms.get(&new_code) {
+				if let Some(room) = self.rooms.get(&code) {
 					if Instant::now().duration_since(room.last_poll).as_secs() > 60*60*24 {
-						self.rooms.remove(&new_code);
+						self.rooms.remove(&code);
 					} else {
 						continue;
 					}
 				}
 
 				// once an unused room code is found, create the room
-				println!("{} is creating a room with code {:?}", addr.to_string(), new_code);
+				println!("{} is creating a room with code {:?}", addr.to_string(), code);
 				let room = Room::new(addr);
-				new_token = room.token;
-				self.rooms.insert(new_code, room);
+				token = room.token;
+				host_token = room.host_token;
+				self.rooms.insert(code, room);
 				break;
 			}
 
 			// respond with new code + token of created room
-			let mut send_buffer = [0; 8];
-			set_range!(send_buffer[0..4] = to_u32_bytes(new_code));
-			set_range!(send_buffer[4..8] = to_u32_bytes(new_token));
+			let mut send_buffer = [0; 12];
+			set_range!(send_buffer[0..4] = to_u32_bytes(host_token))
+			set_range!(send_buffer[4..8] = to_u32_bytes(code));
+			set_range!(send_buffer[8..12] = to_u32_bytes(token));
 			stream.write_all(&send_buffer).map_err(|_e| "Could not write code response to stream")?;
 			stream.flush().map_err(|_e| "Could not flush stream")?;
 			return Ok(());
@@ -112,9 +115,10 @@ impl Server {
 			room.try_join(addr)?;
 
 			// respond with joined room code + token to indicate success
-			let mut send_buffer = [0; 8];
-			set_range!(send_buffer[0..4] = to_u32_bytes(code));
-			set_range!(send_buffer[4..8] = to_u32_bytes(room.token));
+			let mut send_buffer = [0; 12];
+			set_range!(send_buffer[0..4] = to_u32_bytes(room.peer_token));
+			set_range!(send_buffer[4..8] = to_u32_bytes(code));
+			set_range!(send_buffer[8..12] = to_u32_bytes(room.token));
 			stream.write_all(&send_buffer).map_err(|_e| "Could not write join response to stream")?;
 			stream.flush().map_err(|_e| "Could not flush stream")?;
 			return Ok(());
@@ -154,6 +158,8 @@ struct Room {
 	token: u32,
 	host_addr: IpAddr,
 	peer_addr: Option<IpAddr>,
+	host_token: u32,
+	peer_token: u32,
 	host_events: Vec<Event>,
 	peer_events: Vec<Event>,
 	last_poll: Instant,
@@ -166,6 +172,8 @@ impl Room {
 			token: random(),
 			host_addr: addr,
 			peer_addr: None,
+			host_token: random(),
+			peer_token: random(),
 			host_events: Vec::new(),
 			peer_events: vec![Event::new(EVENT_JOIN)], // initial join event for host -> peer
 			last_poll: Instant::now(),
