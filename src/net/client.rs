@@ -110,11 +110,11 @@ impl Client {
 		stream.set_read_timeout(Some(Duration::from_secs(1))).map_err(|_e| "Could set read timeout")?;
 		stream.set_write_timeout(Some(Duration::from_secs(1))).map_err(|_e| "Could set write timeout")?;
 
-		let mut send_bytes = [0; 10];
+		let mut send_bytes = [0; 13];
 		send_bytes[0] = action;
-		send_bytes[1] = if self.is_host { 1 } else { 0 };
-		set_range!(send_bytes[2..6] = to_u32_bytes(self.code));
-		set_range!(send_bytes[6..10] = to_u32_bytes(self.token));
+		set_range!(send_bytes[1..5] = to_u32_bytes(self.user_token));
+		set_range!(send_bytes[5..9] = to_u32_bytes(self.code));
+		set_range!(send_bytes[9..13] = to_u32_bytes(self.room_token));
 
 		stream.write_all(&send_bytes).map_err(|_e| "Could not send connection info")?;
 
