@@ -61,7 +61,8 @@ impl ClientBuffer {
 
 pub struct Client {
 	pub code: u32,
-	token: u32,
+	room_token: u32,
+	user_token: u32,
 	pub is_host: bool,
 	pub is_joined: bool,
 	addr: String,
@@ -79,22 +80,24 @@ impl Client {
 		};
 
 		// construct the client and either create/join the room
-		let mut client = Client { code, token: 0, is_host: code == 0, is_joined: false, addr };
-		let mut stream = client.connect(if code == 0 { MSG_CREATE } else { MSG_JOIN })?;
+		let mut client = Client { code, room_token: 0, user_token: 0, is_host: code == 0, is_joined: false, addr };
+		let mut stream = client.connect(if client.is_host { MSG_CREATE } else { MSG_JOIN })?;
 
-		let mut buffer = [0; 8];
+		let mut buffer = [0; 12];
 		stream.read(&mut buffer).map_err(|_e| "Could not read connection response")?;
 
 		// check if the returned room code matches the intended join code in send_bytes (i.e. whether the room was actually joined)
-		let new_code = from_u32_bytes(&buffer[0..4]);
-		let new_token = from_u32_bytes(&buffer[4..8]);
+		let user_token = from_u32_bytes(&buffer[0..4]);
+		let new_code = from_u32_bytes(&buffer[4..8]);
+		let new_token = from_u32_bytes(&buffer[8..12]);
 
 		if !client.is_host && code != new_code {
 			return Err(String::from("Invalid room code returned"))
 		} else {
 			println!("Entered a room with code {:?}", new_code);
 			client.code = new_code;
-			client.token = new_token;
+			client.room_token = new_token;
+			client.user_token = user_token;
 		}
 
 		// successfully joined a room & constructed a client
@@ -107,11 +110,11 @@ impl Client {
 		stream.set_read_timeout(Some(Duration::from_secs(1))).map_err(|_e| "Could set read timeout")?;
 		stream.set_write_timeout(Some(Duration::from_secs(1))).map_err(|_e| "Could set write timeout")?;
 
-		let mut send_bytes = [0; 10];
+		let mut send_bytes = [0; 13];
 		send_bytes[0] = action;
-		send_bytes[1] = if self.is_host { 1 } else { 0 };
-		set_range!(send_bytes[2..6] = to_u32_bytes(self.code));
-		set_range!(send_bytes[6..10] = to_u32_bytes(self.token));
+		set_range!(send_bytes[1..5] = to_u32_bytes(self.user_token));
+		set_range!(send_bytes[5..9] = to_u32_bytes(self.code));
+		set_range!(send_bytes[9..13] = to_u32_bytes(self.room_token));
 
 		stream.write_all(&send_bytes).map_err(|_e| "Could not send connection info")?;
 
